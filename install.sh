@@ -2,7 +2,7 @@
 
 # Set the distro as variable
 UNAME=$(uname | tr "[:upper:]" "[:lower:]")
-WEAVIATE_DIR="/bin/weaviate-cli"
+WEAVIATE_DIR="/usr/bin/weaviate-cli"
 WEAVIATE_ZIP="weaviate-cli.zip"
 NEED_TO_INSTALL=" " # Keep the space, need for validation
 
@@ -96,8 +96,8 @@ pip3 install -r requirements.txt
 cd $CURRENT_DIR
 
 # Create alias
-alias weaviate-cli="python3 $WEAVIATE_DIR/weaviate.py"
-echo alias weaviate-cli=\"python3 $WEAVIATE_DIR/weaviate.py\" >> ~/.bashrc
+alias weaviate-cli="python3 $WEAVIATE_DIR/weaviate-cli.py"
+echo alias weaviate-cli=\"python3 $WEAVIATE_DIR/weaviate-cli.py\" >> ~/.bashrc
 source ~/.bashrc
 
 # unset vars
