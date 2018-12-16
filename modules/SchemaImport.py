@@ -13,6 +13,8 @@
 
 """This module handles the import of a Weaviate instance."""
 import json
+import validators
+import urllib
 from modules.Messages import Messages
 
 class SchemaImport:
@@ -34,13 +36,25 @@ class SchemaImport:
         else:
             return True
 
+    def downloadSchemaFiles(self, outputFile, url):
+        """This functions downloads a schema file."""
+        thingsFileFromUrl = urllib.request.urlopen(url)
+        data = thingsFileFromUrl.read()
+        with open(outputFile, 'w+') as output:
+            output.write(data.decode('utf-8'))
+        return outputFile
+
     def Run(self, thingsFile, actionsFile, deleteIfFound):
         """This functions runs the import module."""
 
         # start the import
         self.helpers.Info(Messages().Get(113))
 
-        # check things files
+        # check if things files is url
+        if validators.url(thingsFile) is True:
+            thingsFile = self.downloadSchemaFiles('./things.json', thingsFile)
+
+        # open the actionsfile
         try:
             with open(thingsFile, 'r') as file:
                 things = json.load(file)
@@ -48,6 +62,10 @@ class SchemaImport:
             self.helpers.Error(Messages().Get(201) + thingsFile)
 
         # check actions files
+        if validators.url(thingsFile) is True:
+            thingsFile = self.downloadSchemaFiles('./things.json', thingsFile)
+
+        # open the actionsfile
         try:
             with open(actionsFile, 'r') as file:
                 actions = json.load(file)
