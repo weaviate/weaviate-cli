@@ -56,14 +56,14 @@ class SchemaImport:
 
         # open the actionsfile
         try:
-            with open(thingsFile, 'r') as file:
+            with open(actionsFile, 'r') as file:
                 things = json.load(file)
         except IOError:
-            self.helpers.Error(Messages().Get(201) + thingsFile)
+            self.helpers.Error(Messages().Get(201) + actionsFile)
 
         # check actions files
-        if validators.url(thingsFile) is True:
-            thingsFile = self.downloadSchemaFiles('./things.json', thingsFile)
+        if validators.url(actionsFile) is True:
+            actionsFile = self.downloadSchemaFiles('./things.json', actionsFile)
 
         # open the actionsfile
         try:
