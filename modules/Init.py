@@ -32,9 +32,7 @@ class Init:
         """This function sets the config file"""
 
         configVars = {
-            "url": "",
-            "key": "",
-            "token": ""
+            "url": ""
         }
 
         # Validate and set URL
@@ -43,8 +41,6 @@ class Init:
 
         # start creating the config file
         configVars["url"] = options.init_url
-        configVars["key"] = options.init_key
-        configVars["token"] = options.init_token
 
         # write to file
         try:

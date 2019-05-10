@@ -44,33 +44,37 @@ class SchemaImport:
             output.write(data.decode('utf-8'))
         return outputFile
 
-    def Run(self, thingsFile, actionsFile, deleteIfFound):
+    def Run(self, ontologyFile, deleteIfFound):
         """This functions runs the import module."""
 
         # start the import
         self.helpers.Info(Messages().Get(113))
 
+        # Check if the schema is empty
+        if deleteIfFound == False:
+            schemaThingsCount, schemaActionsCount = self.helpers.SchemaCount()
+            if schemaThingsCount != 0 or schemaActionsCount != 0:
+                self.helpers.Error(Messages().Get(208))
+
         # check if things files is url
-        if validators.url(thingsFile) is True:
-            thingsFile = self.downloadSchemaFiles('./things.json', thingsFile)
+        if validators.url(ontologyFile) is True:
+            ontologyFile = self.downloadSchemaFiles('./ontology.json', ontologyFile)
 
         # open the thingsfile
         try:
-            with open(thingsFile, 'r') as file:
-                things = json.load(file)
+            with open(ontologyFile, 'r') as file:
+                ontology = json.load(file)
         except IOError:
-            self.helpers.Error(Messages().Get(201) + thingsFile)
+            self.helpers.Error(Messages().Get(201) + ontologyFile)
 
-        # check actions files
-        if validators.url(actionsFile) is True:
-            actionsFile = self.downloadSchemaFiles('./things.json', actionsFile)
+        # Set things and actions from ontology file
+        if "actions" not in ontology:
+            self.helpers.Error(Messages().Get(209) + "actions")
+        elif "things" not in ontology:
+            self.helpers.Error(Messages().Get(209) + "things")
 
-        # open the actionsfile
-        try:
-            with open(actionsFile, 'r') as file:
-                actions = json.load(file)
-        except IOError:
-            self.helpers.Error(Messages().Get(202) + actionsFile)
+        actions = ontology["actions"]
+        things = ontology["things"]
 
         # Validate if delete function would work
         if deleteIfFound is True:
@@ -91,11 +95,11 @@ class SchemaImport:
 
         # Add properties to things (needs to run after CreateConceptClasses()!)
         self.helpers.Info(Messages().Get(116) + "things")
-        self.helpers.AddPropsToConceptClasses("things", things["classes"])
+        self.helpers.AddPropsToConceptClasses("things", things["classes"], deleteIfFound)
 
         # Add properties to things (needs to run after CreateConceptClasses()!)
         self.helpers.Info(Messages().Get(116) + "actions")
-        self.helpers.AddPropsToConceptClasses("actions", actions["classes"])
+        self.helpers.AddPropsToConceptClasses("actions", actions["classes"], deleteIfFound)
 
         # Validate Things & Actions
         self.helpers.Info(Messages().Get(117))

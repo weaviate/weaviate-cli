@@ -4,7 +4,7 @@ _CLI tool for for Weaviate_
 
 ## Documentation
 
-[Documentation can be found in the Weaviate repo.](https://github.com/creativesoftwarefdn/weaviate/blob/develop/docs/en/use/weaviate-cli-tool.md)
+[Documentation can be found in the Weaviate repo.](https://github.com/semi-technologies/weaviate/blob/master/docs/en/use/weaviate-cli-tool.md)
 
 ## Build Status
 

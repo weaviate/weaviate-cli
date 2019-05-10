@@ -61,7 +61,7 @@ class Helpers:
             # Add the item
             self.weaviate.Post("/schema/" + name, sendObject)
 
-    def AddPropsToConceptClasses(self, name, concepts):
+    def AddPropsToConceptClasses(self, name, concepts, deleteIfFound):
         """This function adds properties to a concept object. \
         needs to run after CreateConceptClasses()."""
 
@@ -75,62 +75,77 @@ class Helpers:
 
                 # create the property object
                 propertyObject = {
-                    "@dataType": [],
+                    "dataType": [],
                     "cardinality": "atMostOne",
                     "description": self.ValidateAndGet(prperty, \
                     "description", "description of " + name),
-                    "name": self.ValidateAndGet(prperty, "name", "name of " + name),
-                    "keywords": []
+                    "name": self.ValidateAndGet(prperty, "name", "name of " + name)
                 }
 
-                # validate if @datatype is formatted correctly.
-                self.ValidateAndGet(prperty, "@dataType", "@dataType of" + name)
+                # validate if dataType is formatted correctly.
+                self.ValidateAndGet(prperty, "dataType", "dataType of" + name)
 
-                if len(prperty["@dataType"]) == 0:
-                    self.Error("There is no @datatype for the Thing with class: " \
+                if len(prperty["dataType"]) == 0:
+                    self.Error("There is no dataType for the Thing with class: " \
                     + self.ValidateAndGet(prperty, "name", "root: " + name))
 
                 # check if the dataTypes are set correctly (with multiple crefs, only crefs)
-                if len(prperty["@dataType"]) > 1:
+                if len(prperty["dataType"]) > 1:
                     # set cardinality
                     propertyObject["cardinality"] = "many"
                     # check if they are all crefs
                     correctlyFormatted = True
-                    for datatype in prperty["@dataType"]:
+                    for datatype in prperty["dataType"]:
                         if datatype[0] != datatype[0].capitalize():
                             correctlyFormatted = False
                     if correctlyFormatted is False:
-                        self.Error("There is an incorrect @datatype for the Thing with class: " + \
-                        self.ValidateAndGet(prperty, "name", "root @datatype: " + name))
+                        self.Error("There is an incorrect dataType for the Thing with class: " + \
+                        self.ValidateAndGet(prperty, "name", "root dataType: " + name))
 
-                # add the @datatype(s)
-                for datatype in prperty["@dataType"]:
-                    propertyObject["@dataType"].append(datatype)
+                # add the dataType(s)
+                for datatype in prperty["dataType"]:
+                    propertyObject["dataType"].append(datatype)
 
                 # add the Keywords
-                self.ValidateAndGet(prperty, "keywords", "keywords of the root " \
-                + name + " => " + prperty["name"])
-                for keyword in prperty["keywords"]:
-                    propertyObject["keywords"].append({
-                        "keyword": self.ValidateAndGet(keyword, "keyword", "keyword" + name),
-                        "weight": self.ValidateAndGet(keyword, "weight", "weight: " + name)
-                    })
+                if "keywords" in propertyObject:
+                    self.ValidateAndGet(prperty, "keywords", "keywords of the root " \
+                    + name + " => " + prperty["name"])
+                    for keyword in prperty["keywords"]:
+                        propertyObject["keywords"].append({
+                            "keyword": self.ValidateAndGet(keyword, "keyword", "keyword" + name),
+                            "weight": self.ValidateAndGet(keyword, "weight", "weight: " + name)
+                        })
 
-            # Update the class with the schema
-            self.weaviate.Post("/schema/" + name + "/" + \
-            self.ValidateAndGet(concept, "class", "classname of " + name) + \
-            "/properties", propertyObject)
+                # Delete if deleteIfFound is set
+                if deleteIfFound == True:
+                    self.Info("Delete: " + self.ValidateAndGet(prperty, "name", "name of " + name))
+                    self.weaviate.Delete("/schema/" + name + "/" + \
+                        self.ValidateAndGet(concept, "class", "classname of " + name) + \
+                        "/properties/" + \
+                        self.ValidateAndGet(prperty, "name", "name of " + name))
+
+                # Update the class with the schema
+                status, result = self.weaviate.Post("/schema/" + name + "/" + \
+                self.ValidateAndGet(concept, "class", "classname of " + name) + \
+                "/properties", propertyObject)
+
+                if status != 200:
+                    self.Error(str(result))
 
     def compareJSON(self, className, objectNeedle, objectStack):
         """This function compares the JSON of a remote Weaviate \
         agains local Things and Action files."""
 
+        ##
+        # https://github.com/semi-technologies/weaviate-cli/issues/9
+        ##
+
         # loop over stack
-        for concept in objectStack:
-            if concept["class"] == className:
-                print(concept)
-                print(objectNeedle)
-                exit(0)
+        # for concept in objectStack:
+        #     if concept["class"] == className:
+        #         print(concept)
+        #         print(objectNeedle)
+        #         exit(0)
 
         return True
 
@@ -159,6 +174,12 @@ class Helpers:
         #
 
         return success
+
+    def SchemaCount(self):
+        """Counts the things and actions in the schema"""
+        _, conceptCount = self.weaviate.Get("/schema")
+
+        return len(conceptCount["things"]["classes"]), len(conceptCount["actions"]["classes"])
 
     def Error(self, i):
         """This function produces an error and throws an exit 1."""
