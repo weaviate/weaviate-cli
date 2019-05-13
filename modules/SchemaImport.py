@@ -97,7 +97,7 @@ class SchemaImport:
         self.helpers.Info(Messages().Get(116) + "things")
         self.helpers.AddPropsToConceptClasses("things", things["classes"], deleteIfFound)
 
-        # Add properties to things (needs to run after CreateConceptClasses()!)
+        # Add properties to actions (needs to run after CreateConceptClasses()!)
         self.helpers.Info(Messages().Get(116) + "actions")
         self.helpers.AddPropsToConceptClasses("actions", actions["classes"], deleteIfFound)
 

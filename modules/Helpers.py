@@ -76,9 +76,8 @@ class Helpers:
                 # create the property object
                 propertyObject = {
                     "dataType": [],
-                    "cardinality": "atMostOne",
-                    "description": self.ValidateAndGet(prperty, \
-                    "description", "description of " + name),
+                    "cardinality": self.ValidateAndGet(prperty, "cardinality", "cardinality of " + name),
+                    "description": self.ValidateAndGet(prperty, "description", "description of " + name),
                     "name": self.ValidateAndGet(prperty, "name", "name of " + name)
                 }
 
@@ -91,8 +90,6 @@ class Helpers:
 
                 # check if the dataTypes are set correctly (with multiple crefs, only crefs)
                 if len(prperty["dataType"]) > 1:
-                    # set cardinality
-                    propertyObject["cardinality"] = "many"
                     # check if they are all crefs
                     correctlyFormatted = True
                     for datatype in prperty["dataType"]:

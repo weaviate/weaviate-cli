@@ -27,17 +27,13 @@ class Truncate:
         self.helpers = Helpers(c)
         self.weaviate = Weaviate(c)
 
-    def truncateProps(self, propType):
+    def truncatePropsAndClassses(self, propType):
         _, schema = self.weaviate.Get("/schema")
-        self.helpers.Info("Deleting properties of: " + propType)
+        self.helpers.Info("Deleting properties and " + propType)
         for singletonClass in schema[propType]["classes"]:
-            if len(singletonClass["properties"]) == 0:
-                continue
-            else:
-                for singletonProperty in singletonClass["properties"]:
-                    statusCode = self.weaviate.Delete("/schema/" + propType + "/" + singletonClass["class"] + "/properties/" + singletonProperty["name"])
-                    if statusCode != 200:
-                        self.helpers.Error("Error while deleting property `" + singletonProperty["name"] + "`. Error code: " + str(statusCode))
+            statusCode = self.weaviate.Delete("/schema/" + propType + "/" + singletonClass["class"])
+            if statusCode != 200:
+                self.helpers.Error("Error while deleting property `" + singletonClass["class"] + "`. Error code: " + str(statusCode))
 
     def truncateSchema(self):
 
@@ -48,8 +44,8 @@ class Truncate:
             return
 
         # Delete properties
-        self.truncateProps("actions")
-        self.truncateProps("things")
+        self.truncatePropsAndClassses("actions")
+        self.truncatePropsAndClassses("things")
 
     def Run(self, force):
         """This public function is the main Run command which runs this module."""
@@ -60,4 +56,4 @@ class Truncate:
             if var == "y" or var == "Y":
                 self.truncateSchema()
             else:
-                self.helpers(self.config).Info(Messages().Get(129))
+                self.helpers.Info(Messages().Get(129))

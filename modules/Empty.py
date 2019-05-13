@@ -33,20 +33,21 @@ class Empty:
         # Get all concepts
         _, result = self.weaviate.Get("/" + conceptType)
 
-        # loop and delete
-        for concept in result[conceptType]:
-            # delete the concept
-            statusCode, _ = self.weaviate.Delete("/" + conceptType + "/" + concept["id"])
-            # validate if valid
-            if statusCode != 204:
-                self.helpers(self.config).Error(Messages().Get(207))
-            else:
-                counter = counter + 1
-                self.helpers(self.config).Info(Messages().Get(125) + concept["id"])
+        # check if there are concepts
+        if "totalResults" in result:
 
-        # if total is 25 restart
-        if counter == 25:
-            counter = 0
+            # loop and delete
+            for concept in result[conceptType]:
+
+                # delete the concept
+                statusCode = self.weaviate.Delete("/" + conceptType + "/" + concept["id"])
+                # validate if valid
+                if statusCode != 204:
+                    self.helpers.Error(Messages().Get(207))
+                else:
+                    self.helpers.Info(Messages().Get(125) + concept["id"])
+
+            # restart the function
             self.emptyWeaviate(conceptType)
 
     def Run(self, force):
@@ -60,4 +61,4 @@ class Empty:
                 self.emptyWeaviate("things")
                 self.emptyWeaviate("actions")
             else:
-                self.helpers(self.config).Info(Messages().Get(123))
+                self.helpers.Info(Messages().Get(123))
