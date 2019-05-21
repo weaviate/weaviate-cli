@@ -1,4 +1,4 @@
 __pycache__
 modules/__pycache__
-
+dist/
 .DS_Store

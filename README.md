@@ -2,13 +2,27 @@
 
 _CLI tool for for Weaviate_
 
+## Installation
+
+```sh
+$ pip install weaviate-cli
+```
+
+You can use the cli tool globally by running:
+
+```sh
+$ weaviate-cli --help
+```
+
+_Note: not tested on Windows_
+
 ## Documentation
 
 [Documentation can be found in the Weaviate repo.](https://github.com/semi-technologies/weaviate/blob/master/docs/en/use/weaviate-cli-tool.md)
 
 ## Build Status
 
-| Branch   | Status        |
+| Badge   | Status        |
 | -------- |:-------------:|
-| Master   | [![Build Status](https://api.travis-ci.org/creativesoftwarefdn/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
-| Develop  | [![Build Status](https://api.travis-ci.org/creativesoftwarefdn/weaviate-cli.svg?branch=develop)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
+| Travis   | [![Build Status](https://api.travis-ci.org/semi-technologies/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
+| PyPi     | [![Build Status](https://img.shields.io/pypi/v/weaviate-cli.svg)](https://pypi.org/project/weaviate-cli/)

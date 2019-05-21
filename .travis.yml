@@ -1,34 +1,18 @@
-after_success:
-  # Login to dockerhub
-  # - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  # - |
-  #   # Build & Push docker images on dev and master
-  #   if [ $TRAVIS_PULL_REQUEST = "false" ]; then
-  #     if [ $TRAVIS_BRANCH = "master" ]; then
-  #       # collect the latest version
-  #       LATESTVERSION=$(git show --oneline HEAD:$WEAVIATESCHEMAFILE | jq -r ".info.version")
-  #       # Build master
-  #       DOCKERTARGET=weaviate_base     
-  #     elif [ $TRAVIS_BRANCH = "develop" ]; then
-  #       # collect the latest version
-  #       LATESTVERSION=unstable
-  #       # Build master
-  #       DOCKERTARGET=development
-  #     fi
-  #     # Build & Push
-  #     travis_wait 30 docker build -f "Dockerfile-prod" -t creativesoftwarefdn/weaviate:$LATESTVERSION --target $DOCKERTARGET .
-  #     docker push creativesoftwarefdn/weaviate:unstable
-  #   fi
 language: python
 python:
   - "3.6"
+after_success:
+  - python -m twine upload dist/* -u semi-technologies -p $PYPIPASS
 install:
+  - python -m pip install --upgrade pip setuptools wheel
+  - python -m pip install tqdm
+  - python -m pip install --user --upgrade twine
   - pip install -r requirements.txt
 branches: 
   only: 
     - master
-    - develop
 dist: xenial
 script: 
   - find . -iname "*.py" | xargs pylint --rcfile=.pylintrc
+  - python setup.py bdist_wheel
 sudo: required

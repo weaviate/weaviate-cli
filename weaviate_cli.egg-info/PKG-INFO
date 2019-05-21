@@ -1,0 +1,39 @@
+Metadata-Version: 2.1
+Name: weaviate-cli
+Version: 0.0.3
+Summary: CLI tool for Weaviate
+Home-page: https://github.com/semi-technologies/weaviate-cli
+Author: SeMI Technologies
+Author-email: hello@semi.technology
+License: UNKNOWN
+Description: # Weaviate-CLI <img alt='Weaviate logo' src='https://raw.githubusercontent.com/creativesoftwarefdn/weaviate/19de0956c69b66c5552447e84d016f4fe29d12c9/docs/assets/weaviate-logo.png' width='180' align='right' />
+        
+        _CLI tool for for Weaviate_
+        
+        ## Installation
+        
+        ```sh
+        $ pip install weaviate-cli
+        ```
+        
+        You can use the cli tool globally by running:
+        
+        ```sh
+        $ weaviate-cli --help
+        ```
+        
+        _Note: not tested on Windows_
+        
+        ## Documentation
+        
+        [Documentation can be found in the Weaviate repo.](https://github.com/semi-technologies/weaviate/blob/master/docs/en/use/weaviate-cli-tool.md)
+        
+        ## Build Status
+        
+        | Branch   | Status        |
+        | -------- |:-------------:|
+        | Master   | [![Build Status](https://api.travis-ci.org/creativesoftwarefdn/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
