@@ -5,7 +5,7 @@ _CLI tool for for Weaviate_
 ## Installation
 
 ```sh
-$ curl -s https://git.io/fj4br | bash
+$ curl -Ls https://git.io/fj4br | bash
 ```
 
 After re-opening your CLI. You can use the cli-tool globally by running:
