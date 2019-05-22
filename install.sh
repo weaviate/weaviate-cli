@@ -2,7 +2,7 @@
 CURRENTDIR=$(pwd)
 cd ~
 git clone https://github.com/semi-technologies/weaviate-cli
-echo ~/weaviate-cli/bin >> ~/.profile
+echo export $PATH=$PATH:~/weaviate-cli/bin >> ~/.profile
 cd $CURRENTDIR
 clear
-echo "Weaviate-cli installation is done - open a new CLI and run weaviate-cli --version"
+echo "Weaviate-cli installation is done - run weaviate-cli --version" &
