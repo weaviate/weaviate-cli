@@ -60,6 +60,7 @@ class Messages:
         self.messages[130] += "E.g. https://someurl:8080"
         self.messages[131] = "Provide a valid email address. Only used when requested a sandbox"
         self.messages[132] = "Provide a valid path or URL to the ontology schema json file"
+        self.messages[133] = "Nothing set... maybe run again with --help?"
 
         # Whoops, unknown message
         if no not in self.messages:

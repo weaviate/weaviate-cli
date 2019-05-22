@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: weaviate-cli
-Version: 0.0.3
+Version: 0.0.5
 Summary: CLI tool for Weaviate
 Home-page: https://github.com/semi-technologies/weaviate-cli
 Author: SeMI Technologies
@@ -30,9 +30,10 @@ Description: # Weaviate-CLI <img alt='Weaviate logo' src='https://raw.githubuser
         
         ## Build Status
         
-        | Branch   | Status        |
+        | Badge   | Status        |
         | -------- |:-------------:|
-        | Master   | [![Build Status](https://api.travis-ci.org/creativesoftwarefdn/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
+        | Travis   | [![Build Status](https://api.travis-ci.org/semi-technologies/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
+        | PyPi     | [![Build Status](https://img.shields.io/pypi/v/weaviate-cli.svg)](https://pypi.org/project/weaviate-cli/)
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent

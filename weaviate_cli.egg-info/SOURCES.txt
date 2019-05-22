@@ -13,4 +13,5 @@ modules/__init__.py
 weaviate_cli.egg-info/PKG-INFO
 weaviate_cli.egg-info/SOURCES.txt
 weaviate_cli.egg-info/dependency_links.txt
+weaviate_cli.egg-info/entry_points.txt
 weaviate_cli.egg-info/top_level.txt

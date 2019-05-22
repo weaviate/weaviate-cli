@@ -5,16 +5,14 @@ _CLI tool for for Weaviate_
 ## Installation
 
 ```sh
-$ pip install weaviate-cli
+$ curl -s https://git.io/fj4br | bash
 ```
 
-You can use the cli tool globally by running:
+After re-opening your CLI. You can use the cli-tool globally by running:
 
 ```sh
-$ weaviate-cli --help
+$ weaviate-cli --version
 ```
-
-_Note: not tested on Windows_
 
 ## Documentation
 

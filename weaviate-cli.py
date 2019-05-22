@@ -14,6 +14,7 @@
 
 """This is the main module for the Weaviate-cli tool."""
 import argparse
+import os
 from modules.Init import Init
 from modules.Weaviate import Weaviate
 from modules.Messages import Messages
@@ -48,32 +49,45 @@ def main():
     args.add_argument('--empty', help=Messages().Get(121), action="store_true")
     args.add_argument('--empty-force', help=Messages().Get(122), action="store_true")
 
+    # Show version
+    args.add_argument('--version', help=Messages().Get(121), action="store_true")
+
     options = args.parse_args()
 
     # Check init and validate if set
     if options.init is True:
         Init().setConfig(options)
+    elif options.version is True:
+        with open(os.path.dirname(os.path.realpath(__file__))+"/version", "r") as fh:
+            print(fh.read())
+            exit(0)
 
     # Set the config
     config = Init().loadConfig()
 
-    # Ping Weaviate to validate the connection
-    Weaviate(config).Ping()
-
     # Check which items to load
     if options.schema_import is True:
         from modules.SchemaImport import SchemaImport
+        # Ping Weaviate to validate the connection
+        Weaviate(config).Ping()
         SchemaImport(config).Run(options.schema_import_ontology, options.schema_import_overwrite)
     elif options.schema_export is True:
         from modules.SchemaExport import SchemaExport
+        # Ping Weaviate to validate the connection
+        Weaviate(config).Ping()
         SchemaExport(config).Run()
     elif options.empty is True:
         from modules.Empty import Empty
+        # Ping Weaviate to validate the connection
+        Weaviate(config).Ping()
         Empty(config).Run(options.empty_force)
     elif options.schema_truncate is True:
         from modules.Truncate import Truncate
+        # Ping Weaviate to validate the connection
+        Weaviate(config).Ping()
         Truncate(config).Run(options.schema_truncate_force)
     else:
+        Helpers(None).Info("\n" + Messages().Get(133))
         exit(0)
 
 if __name__ == '__main__':

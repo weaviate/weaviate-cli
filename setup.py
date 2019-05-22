@@ -13,7 +13,6 @@
 
 """This is the setup module for the Weaviate-cli tool."""
 """Based on: https://dzone.com/articles/executable-package-pip-install"""
-import subprocess
 import setuptools
 from setuptools.command.install import install
 from setuptools import Distribution
@@ -21,11 +20,8 @@ from setuptools import Distribution
 with open("README.md", "r") as fh:
     longDescription = fh.read()
 
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
-    def run(self):
-        subprocess.call("echo " + getSetuptoolsScriptDir() + "/weaviate-cli.py > /usr/local/bin/weaviate-cli && chmod +x /usr/local/bin/weaviate-cli", shell=True)
-        install.run(self)
+with open("version", "r") as fh:
+    version = fh.read()
 
 class OnlyGetScriptPath(install):
     """Get the script path."""
@@ -44,8 +40,7 @@ def getSetuptoolsScriptDir():
 
 setuptools.setup(
     name='weaviate-cli',
-    version='0.0.3',
-    scripts=['weaviate-cli.py'],
+    version=version,
     author="SeMI Technologies",
     author_email="hello@semi.technology",
     description="CLI tool for Weaviate",
@@ -56,7 +51,10 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    cmdclass={
-        'install': PostInstallCommand,
-    }
+    include_package_data=True,
+    entry_points={
+        "console_scripts": [
+            "weaviate-cli=__main__:main",
+        ]
+    },
 )
