@@ -30,6 +30,12 @@ def main():
     args.add_argument('--init', help=Messages().Get(100), action="store_true")
     args.add_argument('--init-url', default=None, help=Messages().Get(101))
     args.add_argument('--init-email', default=None, help=Messages().Get(101))
+    args.add_argument('--init-auth', default=None, help=Messages().Get(134))
+    args.add_argument('--init-auth-url', default=None, help=Messages().Get(139))
+    args.add_argument('--init-auth-clientid', default=None, help=Messages().Get(135))
+    args.add_argument('--init-auth-granttype', default=None, help=Messages().Get(136))
+    args.add_argument('--init-auth-clientsecret', default=None, help=Messages().Get(137))
+    args.add_argument('--init-auth-realmid', default=None, help=Messages().Get(138))
 
     # Get the arguments for schema import
     args.add_argument('--schema-import', help=Messages().Get(104), action="store_true")
@@ -48,6 +54,9 @@ def main():
     # Empty a weaviate
     args.add_argument('--empty', help=Messages().Get(121), action="store_true")
     args.add_argument('--empty-force', help=Messages().Get(122), action="store_true")
+
+    # Ping a Weaviate
+    args.add_argument('--ping', help=Messages().Get(140), action="store_true")
 
     # Show version
     args.add_argument('--version', help=Messages().Get(121), action="store_true")
@@ -86,8 +95,12 @@ def main():
         # Ping Weaviate to validate the connection
         Weaviate(config).Ping()
         Truncate(config).Run(options.schema_truncate_force)
-    else:
+    elif options.ping is True:
+        Weaviate(config).Ping()
+    elif options.init is not True:
         Helpers(None).Info("\n" + Messages().Get(133))
+        exit(0)
+    else:
         exit(0)
 
 if __name__ == '__main__':

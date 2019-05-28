@@ -45,7 +45,7 @@ class Messages:
         self.messages[116] = "Add properties to "
         self.messages[117] = "Validate if the schemas are added correctly"
         self.messages[118] = "Succesfully imported the schema"
-        self.messages[119] = "Created config file"
+        self.messages[119] = "Created or updated config file"
         self.messages[120] = "Config set"
         self.messages[121] = "Empty the Weaviate"
         self.messages[122] = "Force deletion"
@@ -56,11 +56,19 @@ class Messages:
         self.messages[127] = "Force the truncation of the schema"
         self.messages[128] = "Do you want to truncate the schema? (y/n) "
         self.messages[129] = "Stopping truncating"
-        self.messages[130] = "Provide a valid URL including schema and port if needed."
+        self.messages[130] = "Provide a valid URL to Weaviate including schema and port if needed."
         self.messages[130] += "E.g. https://someurl:8080"
         self.messages[131] = "Provide a valid email address. Only used when requested a sandbox"
         self.messages[132] = "Provide a valid path or URL to the ontology schema json file"
         self.messages[133] = "Nothing set... maybe run again with --help?"
+        self.messages[134] = "What type of auth do you use? 1 = No authentication. 2 = OAuth"
+        self.messages[135] = "What is the OAuth client_id? Leave empty for none"
+        self.messages[136] = "What is the OAuth grant_type? Leave empty for none"
+        self.messages[137] = "What is the OAuth client_secret? Leave empty for none"
+        self.messages[138] = "What is the OAuth realm_id? Leave empty for none"
+        self.messages[139] = "What is the OAuth URL?"
+        self.messages[140] = "Validate if a Weaviate can be pinged with authentication"
+        self.messages[141] = "Outdated Bearer, updating now..."
 
         # Whoops, unknown message
         if no not in self.messages:
@@ -84,13 +92,15 @@ class Messages:
         self.messages[208] += "Did you try --schema-truncate or --schema-import-overwrite? "
         self.messages[208] += "Use --help for more info"
         self.messages[209] = "The ontology file is not properly formatted, can't find: "
-        self.messages[210] = "Cant't connect to the Weaviate."
+        self.messages[210] = "Cant't connect to the Weaviate. "
         self.messages[210] += "Are your setting correct? Run with --init or --help to solve."
         self.messages[211] = "No valid URL is set."
         self.messages[212] = "No valid email is set."
         self.messages[213] = "Goodbye! See you @ www.semi.technology"
         self.messages[214] = "Can't run the import function! Did you point to the correct file?"
         self.messages[214] += "Is the file formatted correctly?"
+        self.messages[215] = "That was not a valid selection. Select a numeric value for authentication"
+        self.messages[216] = "Unable to get a OAuth token from server. Are the credentials and URLs correct?"
 
         # Whoops, unknown message
         if no not in self.messages:

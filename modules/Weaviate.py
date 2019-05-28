@@ -16,6 +16,8 @@ import urllib
 import json
 import requests
 from modules.Messages import Messages
+from modules.Init import Init
+import datetime, time
 
 class Weaviate:
     """This class handles the communication with Weaviate."""
@@ -28,10 +30,53 @@ class Weaviate:
         self.config = c
         self.helpers = Helpers
 
+    def GetEpochTime(self):
+        dts = datetime.datetime.utcnow()
+        return round(time.mktime(dts.timetuple()) + dts.microsecond/1e6)
+
+    def getHeadersForRequest(self):
+        """Returns the correct headers for a request"""
+
+        headers = {"content-type": "application/json"}
+
+        # Add bearer if OAuth (config value "2" means OAuth)
+        if self.config['auth'] == 2:
+            headers["Authorization"] = "Bearer " + self.config["auth_bearer"]
+
+        return headers
+
+    def AuthGetBearer(self):
+
+        # Set the body
+        requestBody = {
+            "client_id": self.config['auth_clientid'],
+            "grant_type": self.config['auth_granttype'],
+            "client_secret": self.config['auth_clientsecret'],
+            "realm_id": self.config['auth_realmid']
+        }
+
+        # try to request
+        try:
+            request = requests.post(self.config["auth_url"] + "/access_token", requestBody)
+        except urllib.error.HTTPError as error:
+            self.helpers(self.config).Error(Messages().Get(216))
+
+        # Update the config file
+        Init().UpdateConfigFile('auth_bearer', request.json()['access_token'])
+        Init().UpdateConfigFile('auth_expires', int(self.GetEpochTime() + request.json()['expires_in'] - 2))
+
+    def Auth(self):
+        # Handle OAuth (auth type == 2)
+        if self.config['auth'] == 2:
+            if (self.config['auth_expires'] - 2) < self.GetEpochTime(): # -2 for some lagtime
+                self.helpers(self.config).Info(Messages().Get(141))
+                self.AuthGetBearer()
+
     def Ping(self):
         """This function pings a Weaviate to see if it is online."""
 
         self.helpers(self.config).Info("Ping Weaviate...")
+        
         # get the meta endpoint
         try:
             status, _ = self.Get("/meta")
@@ -46,9 +91,12 @@ class Weaviate:
     def Delete(self, path):
         """This function deletes from a Weaviate."""
 
+        # Authenticate
+        self.Auth()
+
         # try to request
         try:
-            request = requests.delete(self.config["url"] + "/weaviate/v1" + path)
+            request = requests.delete(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest())
         except urllib.error.HTTPError as error:
             return None
 
@@ -57,9 +105,12 @@ class Weaviate:
     def Post(self, path, body):
         """This function posts to a Weaviate."""
 
+        # Authenticate
+        self.Auth()
+
         # try to request
         try:
-            request = requests.post(self.config["url"] + "/weaviate/v1" + path, json.dumps(body), headers={"content-type": "application/json"})
+            request = requests.post(self.config["url"] + "/weaviate/v1" + path, json.dumps(body), headers=self.getHeadersForRequest())
         except urllib.error.HTTPError as error:
             return 0, json.loads(error.read().decode('utf-8'))
 
@@ -72,9 +123,12 @@ class Weaviate:
     def Get(self, path):
         """This function GETS from a Weaviate Weaviate."""
 
+        # Authenticate
+        self.Auth()
+
         # try to request
         try:
-            request = requests.get(self.config["url"] + "/weaviate/v1" + path)
+            request = requests.get(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest())
         except urllib.error.HTTPError as error:
             return None, json.loads(error.read().decode('utf-8'))
 
