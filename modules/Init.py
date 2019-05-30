@@ -33,7 +33,7 @@ class Init:
         """Update a single key in the config file"""
     
         # Load and update config YAML
-        currentYaml = yaml.load(open(self.configFile))
+        currentYaml = yaml.load(open(self.configFile), Loader=yaml.FullLoader)
         currentYaml[key] = value
 
         # Store config YAML
@@ -114,7 +114,7 @@ class Init:
 
         # passed this point a valid config file should be available
         try:
-            configYaml = yaml.load(open(self.configFile))
+            configYaml = yaml.load(open(self.configFile), Loader=yaml.FullLoader)
             Helpers(configYaml).Info(Messages().Get(120))
             return configYaml
         except IOError:
