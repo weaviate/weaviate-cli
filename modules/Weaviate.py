@@ -65,6 +65,9 @@ class Weaviate:
         Init().UpdateConfigFile('auth_bearer', request.json()['access_token'])
         Init().UpdateConfigFile('auth_expires', int(self.GetEpochTime() + request.json()['expires_in'] - 2))
 
+        # sleep to process
+        time.sleep(4)
+
     def Auth(self):
         # Handle OAuth (auth type == 2)
         if self.config['auth'] == 2:
