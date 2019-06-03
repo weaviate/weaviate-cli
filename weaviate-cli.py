@@ -44,8 +44,7 @@ def main():
 
     # Get the arguments for schema export
     args.add_argument('--schema-export', help=Messages().Get(108), action="store_true")
-    args.add_argument('--schema-export-things', default="./things.json", help=Messages().Get(109))
-    args.add_argument('--schema-export-actions', default="/actions.json", help=Messages().Get(110))
+    args.add_argument('--schema-export-location', default=None, help=Messages().Get(109))
 
     # truncate the schema
     args.add_argument('--schema-truncate', help=Messages().Get(126), action="store_true")

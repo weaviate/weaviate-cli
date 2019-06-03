@@ -19,7 +19,11 @@ class SchemaExport:
     def __init__(self, c):
         """This function inits the export of schema module."""
 
+        from modules.Helpers import Helpers
+        from modules.Weaviate import Weaviate
         self.config = c
+        self.helpers = Helpers(c)
+        self.weaviate = Weaviate(c)
 
     # run schema export
     def Run(self):

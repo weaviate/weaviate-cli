@@ -73,7 +73,7 @@ class Init:
         if options.init_auth == "1":
             configVars['auth'] = None
         # OAuth selected, ask followup questions
-        if options.init_auth == "2":
+        elif options.init_auth == "2":
             # Fixed OAuth variables
             configVars["auth_bearer"] = None
             configVars["auth_expires"] = 0
