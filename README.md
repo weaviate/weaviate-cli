@@ -7,9 +7,9 @@ _CLI tool for for Weaviate_
 For installation, choose a director where you want to install the CLI tool. And follow;
 
 ```sh
-$ git clone
+$ git clone https://github.com/semi-technologies/weaviate-cli
 $ export PATH=$PATH:$(pwd)/weaviate-cli
-$ echo 'export PATH=$PATH:'$(pwd)'/weaviate-cli' >> ~/.bashrc
+$ echo 'export PATH="$PATH:'$(pwd)'/weaviate-cli"' >> ~/.bashrc
 ```
 
 After re-opening your CLI. You can use the cli-tool globally by running:
