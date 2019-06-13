@@ -4,8 +4,12 @@ _CLI tool for for Weaviate_
 
 ## Installation
 
+For installation, choose a director where you want to install the CLI tool. And follow;
+
 ```sh
-$ curl -Ls https://git.io/fj4br | bash
+$ git clone
+$ export PATH=$PATH:$(pwd)/weaviate-cli
+$ echo 'export PATH=$PATH:'$(pwd)'/weaviate-cli' >> ~/.bashrc
 ```
 
 After re-opening your CLI. You can use the cli-tool globally by running:
@@ -13,6 +17,9 @@ After re-opening your CLI. You can use the cli-tool globally by running:
 ```sh
 $ weaviate-cli --version
 ```
+
+Note:<br>
+requirements.txt is created with `pipreqs ./`
 
 ## Documentation
 
