@@ -8,6 +8,8 @@ For installation, choose a director where you want to install the CLI tool. And 
 
 ```sh
 $ git clone https://github.com/semi-technologies/weaviate-cli
+$ pip3 install -r requirements.txt
+# You can set the path to call weaviate-cli directly
 $ export PATH=$PATH:$(pwd)/weaviate-cli
 $ echo 'export PATH="$PATH:'$(pwd)'/weaviate-cli"' >> ~/.bashrc
 ```
@@ -19,7 +21,8 @@ $ weaviate-cli --version
 ```
 
 Note:<br>
-requirements.txt is created with `pipreqs ./`
+- runs with python3 and pip3
+- requirements.txt is created with `pipreqs ./`
 
 ## Documentation
 
