@@ -10,7 +10,7 @@ install:
   - pip3 install -r requirements.txt
   - export PATH=$PATH:$(pwd)/weaviate-cli
   - echo 'export PATH="$PATH:'$(pwd)'/weaviate-cli"' >> ~/.bashrc
-  - weaviate-cli --help
+  - ./weaviate-cli --help
 branches: 
   only: 
     - master
