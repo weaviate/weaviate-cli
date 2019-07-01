@@ -1,18 +1,21 @@
 language: python
 python:
   - "3.6"
-after_success:
-  - python -m twine upload dist/* -u semi-technologies -p $PYPIPASS
+# after_success:
+#   - python -m twine upload dist/* -u semi-technologies -p $PYPIPASS
 install:
-  - python -m pip install --upgrade pip setuptools wheel
-  - python -m pip install tqdm
-  - python -m pip install --user --upgrade twine
-  - pip install -r requirements.txt
+  # - python -m pip install --upgrade pip setuptools wheel
+  # - python -m pip install tqdm
+  # - python -m pip install --user --upgrade twine
+  - pip3 install -r requirements.txt
+  - export PATH=$PATH:$(pwd)/weaviate-cli
+  - echo 'export PATH="$PATH:'$(pwd)'/weaviate-cli"' >> ~/.bashrc
+  - weaviate-cli --help
 branches: 
   only: 
     - master
 dist: xenial
-script: 
-  - find . -iname "*.py" | xargs pylint --rcfile=.pylintrc
-  - python setup.py bdist_wheel
+# script: 
+#   - find . -iname "*.py" | xargs pylint --rcfile=.pylintrc
+#   - python setup.py bdist_wheel
 sudo: required

@@ -1,4 +1,4 @@
 validators==0.12.3
-requests==2.18.4
+requests>=2.20.0
 setuptools==41.0.1
 PyYAML==5.1
