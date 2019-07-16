@@ -54,52 +54,52 @@ class Init:
         }
 
         # Validate and set URL 
-        if options.init_url == None:
-            options.init_url = input(Messages().Get(130) + ": ")
-        if validators.url(options.init_url) != True:
+        if options.url == None:
+            options.url = input(Messages().Get(130) + ": ")
+        if validators.url(options.url) != True:
             Helpers(None).Error(Messages().Get(211))
 
         # Validate and set email 
-        if options.init_email == None:
-            options.init_email = input(Messages().Get(131) + ": ")
-        if validators.email(options.init_email) != True:
+        if options.email == None:
+            options.email = input(Messages().Get(131) + ": ")
+        if validators.email(options.email) != True:
             Helpers(None).Error(Messages().Get(212))
 
         # Validate and set auth 
-        if options.init_auth == None:
-            options.init_auth = input(Messages().Get(134) + ": ")
+        if options.auth == None:
+            options.auth = input(Messages().Get(134) + ": ")
 
         # No auth is selected
-        if options.init_auth == "1":
+        if options.auth == "1":
             configVars['auth'] = None
         # OAuth selected, ask followup questions
-        elif options.init_auth == "2":
+        elif options.auth == "2":
             # Fixed OAuth variables
             configVars["auth_bearer"] = None
             configVars["auth_expires"] = 0
             # Request variables
-            if options.init_auth_url == None:
-                options.init_auth_url = input(Messages().Get(139) + ": ")
-                configVars["auth_url"] = options.init_auth_url
-            if options.init_auth_clientid == None:
-                options.init_auth_clientid = input(Messages().Get(135) + ": ")
-                configVars["auth_clientid"] = options.init_auth_clientid
-            if options.init_auth_granttype == None:
-                options.init_auth_granttype = input(Messages().Get(136) + ": ")
-                configVars["auth_granttype"] = options.init_auth_granttype
-            if options.init_auth_clientsecret == None:
-                options.init_auth_clientsecret = input(Messages().Get(137) + ": ")
-                configVars["auth_clientsecret"] = options.init_auth_clientsecret
-            if options.init_auth_realmid == None:
-                options.init_auth_realmid = input(Messages().Get(138) + ": ")
-                configVars["auth_realmid"] = options.init_auth_realmid
+            if options.auth_url == None:
+                options.auth_url = input(Messages().Get(139) + ": ")
+                configVars["auth_url"] = options.auth_url
+            if options.auth_clientid == None:
+                options.auth_clientid = input(Messages().Get(135) + ": ")
+                configVars["auth_clientid"] = options.auth_clientid
+            if options.auth_granttype == None:
+                options.auth_granttype = input(Messages().Get(136) + ": ")
+                configVars["auth_granttype"] = options.auth_granttype
+            if options.auth_clientsecret == None:
+                options.auth_clientsecret = input(Messages().Get(137) + ": ")
+                configVars["auth_clientsecret"] = options.auth_clientsecret
+            if options.auth_realmid == None:
+                options.auth_realmid = input(Messages().Get(138) + ": ")
+                configVars["auth_realmid"] = options.auth_realmid
         else:
             Helpers(None).Error(Messages().Get(215))
 
         # start creating the config file
-        configVars["url"] = options.init_url
-        configVars["email"] = options.init_email
-        configVars["auth"] = int(options.init_auth)
+        configVars["url"] = options.url
+        configVars["email"] = options.email
+        configVars["auth"] = int(options.auth)
 
         # write to file
         try:

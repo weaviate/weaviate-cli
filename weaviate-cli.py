@@ -27,45 +27,55 @@ def main():
     args = argparse.ArgumentParser(description=Messages().Get(112))
 
     # Get the arguments for sinit
-    args.add_argument('--init', help=Messages().Get(100), action="store_true")
-    args.add_argument('--init-url', default=None, help=Messages().Get(101))
-    args.add_argument('--init-email', default=None, help=Messages().Get(101))
-    args.add_argument('--init-auth', default=None, help=Messages().Get(134))
-    args.add_argument('--init-auth-url', default=None, help=Messages().Get(139))
-    args.add_argument('--init-auth-clientid', default=None, help=Messages().Get(135))
-    args.add_argument('--init-auth-granttype', default=None, help=Messages().Get(136))
-    args.add_argument('--init-auth-clientsecret', default=None, help=Messages().Get(137))
-    args.add_argument('--init-auth-realmid', default=None, help=Messages().Get(138))
+    #args.add_argument('init', help=Messages().Get(100), action="store_true")
+    subparsers = args.add_subparsers()
+    parser_init = subparsers.add_parser('init', help=Messages().Get(100))
+    parser_init.add_argument('init', action="store_true")
+    parser_init.add_argument('--url', default=None, help=Messages().Get(101))
+    parser_init.add_argument('--email', default=None, help=Messages().Get(101))
+    parser_init.add_argument('--auth', default=None, help=Messages().Get(134))
+    parser_init.add_argument('--auth-url', default=None, help=Messages().Get(139))
+    parser_init.add_argument('--auth-clientid', default=None, help=Messages().Get(135))
+    parser_init.add_argument('--auth-granttype', default=None, help=Messages().Get(136))
+    parser_init.add_argument('--auth-clientsecret', default=None, help=Messages().Get(137))
+    parser_init.add_argument('--auth-realmid', default=None, help=Messages().Get(138))
 
     # Get the arguments for schema import
-    args.add_argument('--schema-import', help=Messages().Get(104), action="store_true")
-    args.add_argument('--schema-import-ontology', default=None, help=Messages().Get(104))
-    args.add_argument('--schema-import-overwrite', help=Messages().Get(107), action="store_true")
+    parser_schema_import = subparsers.add_parser('schema-import', help=Messages().Get(104))
+    parser_schema_import.add_argument('schema-import', action="store_true")
+    parser_schema_import.add_argument('--location', default=None, help=Messages().Get(104))
+    parser_schema_import.add_argument('--force', help=Messages().Get(107), action="store_true")
 
     # Get the arguments for schema export
-    args.add_argument('--schema-export', help=Messages().Get(108), action="store_true")
-    args.add_argument('--schema-export-location', default=None, help=Messages().Get(109))
+    parser_schema_export = subparsers.add_parser('schema-export', help=Messages().Get(108))
+    parser_schema_export.add_argument('schema-export', action="store_true")
+    parser_schema_export.add_argument('--location', default=None, help=Messages().Get(109))
 
     # truncate the schema
-    args.add_argument('--schema-truncate', help=Messages().Get(126), action="store_true")
-    args.add_argument('--schema-truncate-force', help=Messages().Get(127), action="store_true")
+    parser_schema_truncate = subparsers.add_parser('schema-truncate', help=Messages().Get(126))
+    parser_schema_truncate.add_argument('schema-truncate', action="store_true")
+    parser_schema_truncate.add_argument('--force', help=Messages().Get(127), action="store_true")
 
     # Empty a weaviate
-    args.add_argument('--empty', help=Messages().Get(121), action="store_true")
-    args.add_argument('--empty-force', help=Messages().Get(122), action="store_true")
+    parser_empty = subparsers.add_parser('empty', help=Messages().Get(121))
+    parser_empty.add_argument('empty', action="store_true")
+    parser_empty.add_argument('--force', help=Messages().Get(122), action="store_true")
 
     # Ping a Weaviate
-    args.add_argument('--ping', help=Messages().Get(140), action="store_true")
+    parser_ping = subparsers.add_parser('ping', help=Messages().Get(140))
+    parser_ping.add_argument('ping', action="store_true")
 
     # Show version
-    args.add_argument('--version', help=Messages().Get(121), action="store_true")
+    parser_version = subparsers.add_parser('version', help=Messages().Get(142))
+    parser_version.add_argument('version', action="store_true")
 
     options = args.parse_args()
 
     # Check init and validate if set
-    if options.init is True:
+    if 'init' in options:
         Init().setConfig(options)
-    elif options.version is True:
+        exit(0)
+    elif 'version' in options:
         with open(os.path.dirname(os.path.realpath(__file__))+"/version", "r") as fh:
             print(fh.read())
             exit(0)
@@ -74,31 +84,28 @@ def main():
     config = Init().loadConfig()
 
     # Check which items to load
-    if options.schema_import is True:
+    if 'schema-import' in options:
         from modules.SchemaImport import SchemaImport
         # Ping Weaviate to validate the connection
         Weaviate(config).Ping()
-        SchemaImport(config).Run(options.schema_import_ontology, options.schema_import_overwrite)
-    elif options.schema_export is True:
+        SchemaImport(config).Run(options.location, options.force)
+    elif 'schema-export' in options:
         from modules.SchemaExport import SchemaExport
         # Ping Weaviate to validate the connection
         Weaviate(config).Ping()
         SchemaExport(config).Run()
-    elif options.empty is True:
-        from modules.Empty import Empty
-        # Ping Weaviate to validate the connection
-        Weaviate(config).Ping()
-        Empty(config).Run(options.empty_force)
-    elif options.schema_truncate is True:
+    elif 'schema-truncate' in options:
         from modules.Truncate import Truncate
         # Ping Weaviate to validate the connection
         Weaviate(config).Ping()
-        Truncate(config).Run(options.schema_truncate_force)
-    elif options.ping is True:
+        Truncate(config).Run(options.force)
+    elif 'empty' in options:
+        from modules.Empty import Empty
+        # Ping Weaviate to validate the connection
         Weaviate(config).Ping()
-    elif options.init is not True:
-        Helpers(None).Info("\n" + Messages().Get(133))
-        exit(0)
+        Empty(config).Run(options.force)
+    elif 'ping' in options:
+        Weaviate(config).Ping()
     else:
         exit(0)
 

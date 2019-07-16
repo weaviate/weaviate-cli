@@ -44,7 +44,7 @@ class SchemaImport:
             output.write(data.decode('utf-8'))
         return outputFile
 
-    def Run(self, ontologyFile, deleteIfFound):
+    def Run(self, schemaFile, deleteIfFound):
         """This functions runs the import module."""
 
         # start the import
@@ -57,27 +57,27 @@ class SchemaImport:
                 self.helpers.Error(Messages().Get(208))
 
         # check if things files is url
-        if ontologyFile == None:
-            ontologyFile = input(Messages().Get(132) + ": ")
+        if schemaFile == None:
+            schemaFile = input(Messages().Get(132) + ": ")
 
-        if validators.url(ontologyFile) is True:
-            ontologyFile = self.downloadSchemaFiles('./ontology.json', ontologyFile)
+        if validators.url(schemaFile) is True:
+            schemaFile = self.downloadSchemaFiles('./schema.json', schemaFile)
 
         # open the thingsfile
         try:
-            with open(ontologyFile, 'r') as file:
-                ontology = json.load(file)
+            with open(schemaFile, 'r') as file:
+                schema = json.load(file)
         except IOError:
-            self.helpers.Error(Messages().Get(201) + ontologyFile)
+            self.helpers.Error(Messages().Get(201) + schemaFile)
 
-        # Set things and actions from ontology file
-        if "actions" not in ontology or "classes" not in ontology["actions"]:
+        # Set things and actions from schema file
+        if "actions" not in schema or "classes" not in schema["actions"]:
             self.helpers.Error(Messages().Get(209) + "actions")
-        elif "things" not in ontology or "classes" not in ontology["things"]:
+        elif "things" not in schema or "classes" not in schema["things"]:
             self.helpers.Error(Messages().Get(209) + "things")
 
-        actions = ontology["actions"]
-        things = ontology["things"]
+        actions = schema["actions"]
+        things = schema["things"]
 
         # Validate if delete function would work
         if deleteIfFound is True:
