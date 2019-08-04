@@ -33,12 +33,7 @@ def main():
     parser_init.add_argument('init', action="store_true")
     parser_init.add_argument('--url', default=None, help=Messages().Get(101))
     parser_init.add_argument('--email', default=None, help=Messages().Get(101))
-    parser_init.add_argument('--auth', default=None, help=Messages().Get(134))
-    parser_init.add_argument('--auth-url', default=None, help=Messages().Get(139))
-    parser_init.add_argument('--auth-clientid', default=None, help=Messages().Get(135))
-    parser_init.add_argument('--auth-granttype', default=None, help=Messages().Get(136))
     parser_init.add_argument('--auth-clientsecret', default=None, help=Messages().Get(137))
-    parser_init.add_argument('--auth-realmid', default=None, help=Messages().Get(138))
 
     # Get the arguments for schema import
     parser_schema_import = subparsers.add_parser('schema-import', help=Messages().Get(104))
@@ -61,6 +56,15 @@ def main():
     parser_empty.add_argument('empty', action="store_true")
     parser_empty.add_argument('--force', help=Messages().Get(122), action="store_true")
 
+    # Handle Sandboxes
+    parser_sandbox = subparsers.add_parser('sandbox', help=Messages().Get(143))
+    parser_sandbox.add_argument('sandbox', action="store_true")
+    parser_sandbox.add_argument('--create', help=Messages().Get(143), action="store_true")
+    parser_sandbox.add_argument('--remove', help=Messages().Get(143), action="store_true")
+    parser_sandbox.add_argument('--async', help=Messages().Get(144), action="store_true")
+    parser_sandbox.add_argument('--nodefault', help=Messages().Get(145), action="store_true")
+    parser_sandbox.add_argument('--replace', help=Messages().Get(149), action="store_true")
+
     # Ping a Weaviate
     parser_ping = subparsers.add_parser('ping', help=Messages().Get(140))
     parser_ping.add_argument('ping', action="store_true")
@@ -80,33 +84,34 @@ def main():
             print(fh.read())
             exit(0)
 
-    # Set the config
-    config = Init().loadConfig()
-
     # Check which items to load
     if 'schema-import' in options:
         from modules.SchemaImport import SchemaImport
         # Ping Weaviate to validate the connection
-        Weaviate(config).Ping()
-        SchemaImport(config).Run(options.location, options.force)
+        Weaviate(Init().loadConfig()).Ping()
+        SchemaImport(Init().loadConfig()).Run(options.location, options.force)
     elif 'schema-export' in options:
         from modules.SchemaExport import SchemaExport
         # Ping Weaviate to validate the connection
-        Weaviate(config).Ping()
-        SchemaExport(config).Run()
+        Weaviate(Init().loadConfig()).Ping()
+        SchemaExport(Init().loadConfig()).Run()
     elif 'schema-truncate' in options:
         from modules.Truncate import Truncate
         # Ping Weaviate to validate the connection
-        Weaviate(config).Ping()
-        Truncate(config).Run(options.force)
+        Weaviate(Init().loadConfig()).Ping()
+        Truncate(Init().loadConfig()).Run(options.force)
     elif 'empty' in options:
         from modules.Empty import Empty
         # Ping Weaviate to validate the connection
-        Weaviate(config).Ping()
-        Empty(config).Run(options.force)
+        Weaviate(Init().loadConfig()).Ping()
+        Empty(Init().loadConfig()).Run(options.force)
+    elif 'sandbox' in options:
+        from modules.Sandbox import Sandbox
+        Sandbox(Init().loadConfig()).Run(options.create, options.remove, options.nodefault, options.async, options.replace)
     elif 'ping' in options:
-        Weaviate(config).Ping()
+        Weaviate(Init().loadConfig()).Ping()
     else:
+        args.print_help()
         exit(0)
 
 if __name__ == '__main__':

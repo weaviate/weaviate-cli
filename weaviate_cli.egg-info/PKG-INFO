@@ -1,19 +1,25 @@
 Metadata-Version: 2.1
 Name: weaviate-cli
-Version: 0.0.6
+Version: 0.0.7
 Summary: CLI tool for Weaviate
-Home-page: https://github.com/semi-technologies/weaviate-cli
+Home-page: https://semi.technology/
 Author: SeMI Technologies
 Author-email: hello@semi.technology
-License: UNKNOWN
+License: GPLv3
 Description: # Weaviate-CLI <img alt='Weaviate logo' src='https://raw.githubusercontent.com/creativesoftwarefdn/weaviate/19de0956c69b66c5552447e84d016f4fe29d12c9/docs/assets/weaviate-logo.png' width='180' align='right' />
         
         _CLI tool for for Weaviate_
         
         ## Installation
         
+        For installation, choose a director where you want to install the CLI tool. And follow;
+        
         ```sh
-        $ curl -Ls https://git.io/fj4br | bash
+        $ git clone https://github.com/semi-technologies/weaviate-cli
+        $ pip3 install -r requirements.txt
+        # You can set the path to call weaviate-cli directly
+        $ export PATH=$PATH:$(pwd)/weaviate-cli
+        $ echo 'export PATH="$PATH:'$(pwd)'/weaviate-cli"' >> ~/.bashrc
         ```
         
         After re-opening your CLI. You can use the cli-tool globally by running:
@@ -21,6 +27,10 @@ Description: # Weaviate-CLI <img alt='Weaviate logo' src='https://raw.githubuser
         ```sh
         $ weaviate-cli --version
         ```
+        
+        Note:<br>
+        - runs with python3 and pip3
+        - requirements.txt is created with `pipreqs ./`
         
         ## Documentation
         
@@ -32,7 +42,6 @@ Description: # Weaviate-CLI <img alt='Weaviate logo' src='https://raw.githubuser
         | -------- |:-------------:|
         | Travis   | [![Build Status](https://api.travis-ci.org/semi-technologies/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
         | PyPi     | [![Build Status](https://img.shields.io/pypi/v/weaviate-cli.svg)](https://pypi.org/project/weaviate-cli/)
+Keywords: Weaviate
 Platform: UNKNOWN
-Classifier: Programming Language :: Python :: 3
-Classifier: Operating System :: OS Independent
 Description-Content-Type: text/markdown

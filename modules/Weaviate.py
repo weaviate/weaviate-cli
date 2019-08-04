@@ -34,52 +34,88 @@ class Weaviate:
         dts = datetime.datetime.utcnow()
         return round(time.mktime(dts.timetuple()) + dts.microsecond/1e6)
 
-    def getHeadersForRequest(self):
+    def getHeadersForRequest(self, shouldAuthenticate):
         """Returns the correct headers for a request"""
 
         headers = {"content-type": "application/json"}
+        # status, _ = self.Get("/.well-known/openid-configuration")
 
-        # Add bearer if OAuth (config value "2" means OAuth)
-        if self.config['auth'] == 2:
+        # Add bearer if OAuth
+        # if status == 200:
+        if shouldAuthenticate == True:
             headers["Authorization"] = "Bearer " + self.config["auth_bearer"]
 
         return headers
 
     def AuthGetBearer(self):
 
+        # collect data for the request
+        try:
+            request = requests.get(self.config['url'] + "/weaviate/v1/.well-known/openid-configuration", headers={"content-type": "application/json"})
+        except urllib.error.HTTPError as error:
+            Helpers(None).Error(Messages().Get(210))  
+        if request.status_code != 200:
+            Helpers(None).Error(Messages().Get(210))
+
+        # Set the client ID
+        clientId = request.json()['clientId']
+
+        # request additional information
+        try:
+            requestThirdParth = requests.get(request.json()['href'], headers={"content-type": "application/json"})
+        except urllib.error.HTTPError as error:
+            Helpers(None).Error(Messages().Get(219))
+        if requestThirdParth.status_code != 200:
+            Helpers(None).Error(Messages().Get(219))
+
+        # Validate third part auth info
+        if 'client_credentials' not in requestThirdParth.json()['grant_types_supported']:
+            Helpers(None).Error(Messages().Get(220))
+
         # Set the body
         requestBody = {
-            "client_id": self.config['auth_clientid'],
-            "grant_type": self.config['auth_granttype'],
-            "client_secret": self.config['auth_clientsecret'],
-            "realm_id": self.config['auth_realmid']
+            "client_id": clientId,
+            "grant_type": 'client_credentials',
+            "client_secret": self.config['auth_clientsecret']
         }
 
-        # try to request
+        # try the request
         try:
-            request = requests.post(self.config["auth_url"] + "/access_token", requestBody)
+            request = requests.post(requestThirdParth.json()['token_endpoint'], requestBody)
         except urllib.error.HTTPError as error:
             self.helpers(self.config).Error(Messages().Get(216))
+
+        # sleep to process
+        time.sleep(4)
 
         # Update the config file
         Init().UpdateConfigFile('auth_bearer', request.json()['access_token'])
         Init().UpdateConfigFile('auth_expires', int(self.GetEpochTime() + request.json()['expires_in'] - 2))
 
-        # sleep to process
-        time.sleep(4)
 
     def Auth(self):
-        # Handle OAuth (auth type == 2)
-        if self.config['auth'] == 2:
+        """Returns true if one should authenticate"""
+
+        # try to make the well known request
+        try:
+            request = requests.get(self.config["url"] + "/weaviate/v1/.well-known/openid-configuration", headers=self.getHeadersForRequest(False))
+        except urllib.error.HTTPError as error:
+            return False
+
+        if request.status_code == 200:
             if (self.config['auth_expires'] - 2) < self.GetEpochTime(): # -2 for some lagtime
                 self.helpers(self.config).Info(Messages().Get(141))
                 self.AuthGetBearer()
+            
+            return True
+
+        return False
 
     def Ping(self):
         """This function pings a Weaviate to see if it is online."""
 
         self.helpers(self.config).Info("Ping Weaviate...")
-        
+
         # get the meta endpoint
         try:
             status, _ = self.Get("/meta")
@@ -126,12 +162,11 @@ class Weaviate:
     def Get(self, path):
         """This function GETS from a Weaviate Weaviate."""
 
-        # Authenticate
-        self.Auth()
+        shouldAuthenticate = self.Auth()
 
         # try to request
         try:
-            request = requests.get(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest())
+            request = requests.get(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest(shouldAuthenticate))
         except urllib.error.HTTPError as error:
             return None, json.loads(error.read().decode('utf-8'))
 

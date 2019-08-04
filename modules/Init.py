@@ -18,6 +18,8 @@ import yaml
 from modules.Helpers import Helpers
 from modules.Messages import Messages
 import datetime, time
+import urllib
+import requests
 
 class Init:
     """This class produces the Init functions. \
@@ -49,8 +51,7 @@ class Init:
 
         configVars = {
             "url": "",
-            "email": "",
-            "auth": None
+            "email": ""
         }
 
         # Validate and set URL 
@@ -59,47 +60,41 @@ class Init:
         if validators.url(options.url) != True:
             Helpers(None).Error(Messages().Get(211))
 
+        # Check if the Weaviate can be detected
+        try:
+            request = requests.get(options.url + "/weaviate/v1/meta")
+        except urllib.error.HTTPError as error:
+            Helpers(None).Error(Messages().Get(210))
+
+        # 401 is seen as correct besides 200, because the 401 is an openID repsonse
+        if request.status_code != 401 and request.status_code != 200:
+            Helpers(None).Error(Messages().Get(210))
+
         # Validate and set email 
         if options.email == None:
             options.email = input(Messages().Get(131) + ": ")
         if validators.email(options.email) != True:
             Helpers(None).Error(Messages().Get(212))
 
-        # Validate and set auth 
-        if options.auth == None:
-            options.auth = input(Messages().Get(134) + ": ")
-
-        # No auth is selected
-        if options.auth == "1":
-            configVars['auth'] = None
-        # OAuth selected, ask followup questions
-        elif options.auth == "2":
+        # Detect openID
+        try:
+            request = requests.get(options.url + "/weaviate/v1/.well-known/openid-configuration", headers={"content-type": "application/json"})
+        except urllib.error.HTTPError as error:
+            Helpers(None).Error(Messages().Get(210))
+        
+        # OpenID is set, continue the config
+        if request.status_code == 200:
             # Fixed OAuth variables
             configVars["auth_bearer"] = None
             configVars["auth_expires"] = 0
-            # Request variables
-            if options.auth_url == None:
-                options.auth_url = input(Messages().Get(139) + ": ")
-                configVars["auth_url"] = options.auth_url
-            if options.auth_clientid == None:
-                options.auth_clientid = input(Messages().Get(135) + ": ")
-                configVars["auth_clientid"] = options.auth_clientid
-            if options.auth_granttype == None:
-                options.auth_granttype = input(Messages().Get(136) + ": ")
-                configVars["auth_granttype"] = options.auth_granttype
+            # Variable OpenID info
             if options.auth_clientsecret == None:
                 options.auth_clientsecret = input(Messages().Get(137) + ": ")
                 configVars["auth_clientsecret"] = options.auth_clientsecret
-            if options.auth_realmid == None:
-                options.auth_realmid = input(Messages().Get(138) + ": ")
-                configVars["auth_realmid"] = options.auth_realmid
-        else:
-            Helpers(None).Error(Messages().Get(215))
 
         # start creating the config file
         configVars["url"] = options.url
         configVars["email"] = options.email
-        configVars["auth"] = int(options.auth)
 
         # write to file
         try:
