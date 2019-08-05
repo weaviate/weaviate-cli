@@ -29,7 +29,7 @@ class Init:
     def __init__(self):
         """This function inits the class"""
 
-        self.configFile = expanduser("~") + "/weaviate.conf"
+        self.configFile = expanduser("~") + "/.weaviate.conf"
 
     def __writeConfigFile(self, configFile, configVars):
         """Write to a config YAML file"""

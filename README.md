@@ -4,12 +4,13 @@ _CLI tool for for Weaviate_
 
 ## Installation
 
-For installation, choose a director where you want to install the CLI tool. And follow;
+For installation, choose a director where you want to install the CLI tool and make sure Python and PIP are installed. And follow;
 
 ```sh
 $ git clone https://github.com/semi-technologies/weaviate-cli
+$ cd weaviate-cli
 $ pip install -r requirements.txt
-$ ln -s $(pwd)/weaviate-cli/weaviate-cli.py /usr/local/bin/weaviate-cli
+$ sudo ln -s $(pwd)/bin/weaviate-cli /usr/local/bin/weaviate-cli
 ```
 
 After re-opening your CLI. You can use the cli-tool globally by running:
@@ -19,7 +20,6 @@ $ weaviate-cli version
 ```
 
 Note:<br>
-- runs with python3 and pip3
 - requirements.txt is created with `pipreqs ./`
 
 ## Build Status
