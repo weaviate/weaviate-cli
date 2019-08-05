@@ -1,10 +1,10 @@
-# Weaviate-CLI <img alt='Weaviate logo' src='https://raw.githubusercontent.com/creativesoftwarefdn/weaviate/19de0956c69b66c5552447e84d016f4fe29d12c9/docs/assets/weaviate-logo.png' width='180' align='right' />
+# Weaviate-CLI (beta) <img alt='Weaviate logo' src='https://raw.githubusercontent.com/creativesoftwarefdn/weaviate/19de0956c69b66c5552447e84d016f4fe29d12c9/docs/assets/weaviate-logo.png' width='180' align='right' />
 
 _CLI tool for for Weaviate_
 
 ## Installation
 
-For installation, choose a director where you want to install the CLI tool and make sure Python and PIP are installed. And follow;
+For installation, choose a director where you want to install the CLI tool and make sure **Python 3** and **PIP 3** are installed. And follow;
 
 ```sh
 $ git clone https://github.com/semi-technologies/weaviate-cli
