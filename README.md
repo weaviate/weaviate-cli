@@ -9,7 +9,7 @@ For installation, choose a director where you want to install the CLI tool and m
 ```sh
 $ git clone https://github.com/semi-technologies/weaviate-cli
 $ cd weaviate-cli
-$ pip install -r requirements.txt
+$ pip3 install -r requirements.txt
 $ sudo ln -s $(pwd)/bin/weaviate-cli /usr/local/bin/weaviate-cli
 ```
 
