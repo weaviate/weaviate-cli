@@ -86,12 +86,15 @@ class Weaviate:
             self.helpers(self.config).Error(Messages().Get(216))
 
         # sleep to process
-        time.sleep(4)
+        time.sleep(2)
 
-        # Update the config file
-        Init().UpdateConfigFile('auth_bearer', request.json()['access_token'])
-        Init().UpdateConfigFile('auth_expires', int(self.GetEpochTime() + request.json()['expires_in'] - 2))
-
+        # Update the config file and self
+        accessToken = request.json()['access_token']
+        authExpires = int(self.GetEpochTime() + request.json()['expires_in'] - 2)
+        Init().UpdateConfigFile('auth_bearer', accessToken)
+        Init().UpdateConfigFile('auth_expires', authExpires)
+        self.config['auth_bearer'] = accessToken
+        self.config['auth_expires'] = authExpires
 
     def Auth(self):
         """Returns true if one should authenticate"""
