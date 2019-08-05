@@ -70,13 +70,14 @@ class Messages:
         self.messages[141] = "Outdated Bearer, updating now..."
         self.messages[142] = "Get the current version number"
         self.messages[143] = "Create a Weaviate sandbox on the SeMI network"
-        self.messages[144] = "Create asynchronous in the background"
+        self.messages[144] = "Asynchronous in the background"
         self.messages[145] = "Do not set as default Weaviate url"
         self.messages[146] = "Delete a sandbox"
         self.messages[147] = "Setting the sandbox not as default URL"
         self.messages[148] = "Setting the sandbox as default URL"
         self.messages[149] = "Replace and delete the current sandbox if set?"
-        self.messages[150] = "You already have a sandbox present. Do you want to replace and delete the current one (y/n)?"
+        self.messages[150] = "You already have a sandbox present. Do you want to replace and delete the current one (y/n)? "
+        self.messages[151] = "If no configuration is set, provide an email "
 
         # Whoops, unknown message
         if no not in self.messages:

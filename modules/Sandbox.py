@@ -16,6 +16,7 @@ import requests
 import urllib
 import json
 import time
+import math
 
 """This module handles creation of Weaviate Sandboxes."""
 
@@ -24,7 +25,6 @@ class Sandbox:
 
     def __init__(self, c):
         """This function inits the export of schema module."""
-
         from modules.Helpers import Helpers
         from modules.Weaviate import Weaviate
         self.config = c
@@ -73,9 +73,13 @@ class Sandbox:
                 previousState = ''
                 while isSandboxDone == False:
                     state = self.__info(sandboxId)['status']['state']
+
+                    if 'percentage' not in state:
+                        state['percentage'] = 0
+
                     if state != previousState:
-                        self.helpers.Info(state)
-                    if state[0:3] == '100':
+                        self.helpers.Info(str(math.ceil(state['percentage'])) + '% | ' + state['message'])
+                    if state['percentage'] == 100:
                         self.helpers.Info("Sandbox is available on: https://" + str(sandboxId) + ".semi.network")
                         isSandboxDone = True
                     time.sleep(2)

@@ -27,51 +27,55 @@ def main():
     args = argparse.ArgumentParser(description=Messages().Get(112))
 
     # Get the arguments for sinit
-    #args.add_argument('init', help=Messages().Get(100), action="store_true")
+    #args.add_argument('init', help=Messages().Get(100), action='store_true')
     subparsers = args.add_subparsers()
     parser_init = subparsers.add_parser('init', help=Messages().Get(100))
-    parser_init.add_argument('init', action="store_true")
+    parser_init.add_argument('init', action='store_true')
     parser_init.add_argument('--url', default=None, help=Messages().Get(101))
     parser_init.add_argument('--email', default=None, help=Messages().Get(101))
     parser_init.add_argument('--auth-clientsecret', default=None, help=Messages().Get(137))
 
     # Get the arguments for schema import
     parser_schema_import = subparsers.add_parser('schema-import', help=Messages().Get(104))
-    parser_schema_import.add_argument('schema-import', action="store_true")
+    parser_schema_import.add_argument('schema-import', action='store_true')
     parser_schema_import.add_argument('--location', default=None, help=Messages().Get(104))
-    parser_schema_import.add_argument('--force', help=Messages().Get(107), action="store_true")
+    parser_schema_import.add_argument('--force', help=Messages().Get(107), action='store_true')
 
     # Get the arguments for schema export
     parser_schema_export = subparsers.add_parser('schema-export', help=Messages().Get(108))
-    parser_schema_export.add_argument('schema-export', action="store_true")
+    parser_schema_export.add_argument('schema-export', action='store_true')
     parser_schema_export.add_argument('--location', default=None, help=Messages().Get(109))
 
     # truncate the schema
     parser_schema_truncate = subparsers.add_parser('schema-truncate', help=Messages().Get(126))
-    parser_schema_truncate.add_argument('schema-truncate', action="store_true")
-    parser_schema_truncate.add_argument('--force', help=Messages().Get(127), action="store_true")
+    parser_schema_truncate.add_argument('schema-truncate', action='store_true')
+    parser_schema_truncate.add_argument('--force', help=Messages().Get(127), action='store_true')
 
     # Empty a weaviate
     parser_empty = subparsers.add_parser('empty', help=Messages().Get(121))
-    parser_empty.add_argument('empty', action="store_true")
-    parser_empty.add_argument('--force', help=Messages().Get(122), action="store_true")
+    parser_empty.add_argument('empty', action='store_true')
+    parser_empty.add_argument('--force', help=Messages().Get(122), action='store_true')
 
     # Handle Sandboxes
-    parser_sandbox = subparsers.add_parser('sandbox', help=Messages().Get(143))
-    parser_sandbox.add_argument('sandbox', action="store_true")
-    parser_sandbox.add_argument('--create', help=Messages().Get(143), action="store_true")
-    parser_sandbox.add_argument('--remove', help=Messages().Get(143), action="store_true")
-    parser_sandbox.add_argument('--async', help=Messages().Get(144), action="store_true")
-    parser_sandbox.add_argument('--nodefault', help=Messages().Get(145), action="store_true")
-    parser_sandbox.add_argument('--replace', help=Messages().Get(149), action="store_true")
+    parser_sandboxCreate = subparsers.add_parser('sandbox-create', help=Messages().Get(143))
+    parser_sandboxCreate.add_argument('sandbox-create', action='store_true')
+    parser_sandboxCreate.add_argument('--email', help=Messages().Get(144), default=None)
+    parser_sandboxCreate.add_argument('--async', help=Messages().Get(144), action='store_true')
+    parser_sandboxCreate.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
+    parser_sandboxCreate.add_argument('--replace', help=Messages().Get(149), action='store_true')
+
+    parser_sandboxRemove = subparsers.add_parser('sandbox-remove', help=Messages().Get(146))
+    parser_sandboxRemove.add_argument('sandbox-remove', action='store_true')
+    parser_sandboxRemove.add_argument('--async', help=Messages().Get(144), action='store_true')
+    parser_sandboxRemove.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
 
     # Ping a Weaviate
     parser_ping = subparsers.add_parser('ping', help=Messages().Get(140))
-    parser_ping.add_argument('ping', action="store_true")
+    parser_ping.add_argument('ping', action='store_true')
 
     # Show version
     parser_version = subparsers.add_parser('version', help=Messages().Get(142))
-    parser_version.add_argument('version', action="store_true")
+    parser_version.add_argument('version', action='store_true')
 
     options = args.parse_args()
 
@@ -88,29 +92,33 @@ def main():
     if 'schema-import' in options:
         from modules.SchemaImport import SchemaImport
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig()).Ping()
-        SchemaImport(Init().loadConfig()).Run(options.location, options.force)
+        Weaviate(Init().loadConfig(False, None)).Ping()
+        SchemaImport(Init().loadConfig(False, None)).Run(options.location, options.force)
     elif 'schema-export' in options:
         from modules.SchemaExport import SchemaExport
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig()).Ping()
-        SchemaExport(Init().loadConfig()).Run()
+        Weaviate(Init().loadConfig(False, None)).Ping()
+        SchemaExport(Init().loadConfig(False, None)).Run()
     elif 'schema-truncate' in options:
         from modules.Truncate import Truncate
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig()).Ping()
-        Truncate(Init().loadConfig()).Run(options.force)
+        Weaviate(Init().loadConfig(False, None)).Ping()
+        Truncate(Init().loadConfig(False, None)).Run(options.force)
     elif 'empty' in options:
         from modules.Empty import Empty
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig()).Ping()
-        Empty(Init().loadConfig()).Run(options.force)
-    elif 'sandbox' in options:
+        Weaviate(Init().loadConfig(False, None)).Ping()
+        Empty(Init().loadConfig(False, None)).Run(options.force)
+    elif 'sandbox-create' in options:
         from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig()).Run(options.create, options.remove, options.nodefault, options.async, options.replace)
+        Sandbox(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.async, options.replace)
+    elif 'sandbox-remove' in options:
+        from modules.Sandbox import Sandbox
+        Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.async, None)
     elif 'ping' in options:
-        Weaviate(Init().loadConfig()).Ping()
+        Weaviate(Init().loadConfig(False, None)).Ping()
     else:
+        print(options)
         args.print_help()
         exit(0)
 

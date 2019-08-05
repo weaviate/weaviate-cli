@@ -8,29 +8,22 @@ For installation, choose a director where you want to install the CLI tool. And 
 
 ```sh
 $ git clone https://github.com/semi-technologies/weaviate-cli
-$ pip3 install -r requirements.txt
-# You can set the path to call weaviate-cli directly
-$ export PATH=$PATH:$(pwd)/weaviate-cli
-$ echo 'export PATH="$PATH:'$(pwd)'/weaviate-cli"' >> ~/.bashrc
+$ pip install -r requirements.txt
+$ ln -s $(pwd)/weaviate-cli/weaviate-cli.py /usr/local/bin/weaviate-cli
 ```
 
 After re-opening your CLI. You can use the cli-tool globally by running:
 
 ```sh
-$ weaviate-cli --version
+$ weaviate-cli version
 ```
 
 Note:<br>
 - runs with python3 and pip3
 - requirements.txt is created with `pipreqs ./`
 
-## Documentation
-
-[Documentation can be found in the Weaviate repo.](https://github.com/semi-technologies/weaviate/blob/master/docs/en/use/weaviate-cli-tool.md)
-
 ## Build Status
 
 | Badge   | Status        |
 | -------- |:-------------:|
 | Travis   | [![Build Status](https://api.travis-ci.org/semi-technologies/weaviate-cli.svg?branch=master)](https://travis-ci.org/creativesoftwarefdn/weaviate-cli/branches)
-| PyPi     | [![Build Status](https://img.shields.io/pypi/v/weaviate-cli.svg)](https://pypi.org/project/weaviate-cli/)

@@ -31,6 +31,15 @@ class Init:
 
         self.configFile = expanduser("~") + "/weaviate.conf"
 
+    def __writeConfigFile(self, configFile, configVars):
+        """Write to a config YAML file"""
+        try:
+            with open(self.configFile, 'w') as configFile:
+                yaml.dump(configVars, configFile, default_flow_style=False)
+            Helpers(None).Info(Messages().Get(119))
+        except IOError:
+            Helpers(None).Error(Messages().Get(205) + self.configFile)
+
     def UpdateConfigFile(self, key, value):
         """Update a single key in the config file"""
     
@@ -95,17 +104,13 @@ class Init:
         # start creating the config file
         configVars["url"] = options.url
         configVars["email"] = options.email
-
+        
         # write to file
-        try:
-            with open(self.configFile, 'w') as configFile:
-                yaml.dump(configVars, configFile, default_flow_style=False)
-            Helpers(None).Info(Messages().Get(119))
-        except IOError:
-            Helpers(None).Error(Messages().Get(205) + self.configFile)
+        self.__writeConfigFile(self.configFile, configVars)
 
-    def loadConfig(self):
+    def loadConfig(self, forceCreate, forceCreateEmail):
         """This function loads the config file or errors if it is not available"""
+        """forceCreate creates and empty config file"""
 
         # passed this point a valid config file should be available
         try:
@@ -113,4 +118,12 @@ class Init:
             Helpers(configYaml).Info(Messages().Get(120))
             return configYaml
         except IOError:
-            Helpers(None).Error(Messages().Get(206))
+            if forceCreate == True:
+                # check if email is set, otherwise request
+                if forceCreateEmail == None:
+                    forceCreateEmail = input(Messages().Get(131) + ": ")
+                configObj = {'url': 'http://localhost', 'email': forceCreateEmail}
+                self.__writeConfigFile(self.configFile, configObj)
+                return configObj
+            else:   
+                Helpers(None).Error(Messages().Get(206))
