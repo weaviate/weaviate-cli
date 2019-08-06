@@ -60,13 +60,13 @@ def main():
     parser_sandboxCreate = subparsers.add_parser('sandbox-create', help=Messages().Get(143))
     parser_sandboxCreate.add_argument('sandbox-create', action='store_true')
     parser_sandboxCreate.add_argument('--email', help=Messages().Get(144), default=None)
-    parser_sandboxCreate.add_argument('--async', help=Messages().Get(144), action='store_true')
+    parser_sandboxCreate.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
     parser_sandboxCreate.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
     parser_sandboxCreate.add_argument('--replace', help=Messages().Get(149), action='store_true')
 
     parser_sandboxRemove = subparsers.add_parser('sandbox-remove', help=Messages().Get(146))
     parser_sandboxRemove.add_argument('sandbox-remove', action='store_true')
-    parser_sandboxRemove.add_argument('--async', help=Messages().Get(144), action='store_true')
+    parser_sandboxRemove.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
     parser_sandboxRemove.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
 
     # Ping a Weaviate
@@ -111,10 +111,10 @@ def main():
         Empty(Init().loadConfig(False, None)).Run(options.force)
     elif 'sandbox-create' in options:
         from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.async, options.replace)
+        Sandbox(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.asyncr, options.replace)
     elif 'sandbox-remove' in options:
         from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.async, None)
+        Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.asyncr, None)
     elif 'ping' in options:
         Weaviate(Init().loadConfig(False, None)).Ping()
     else:
