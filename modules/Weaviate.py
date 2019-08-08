@@ -15,6 +15,7 @@
 import urllib
 import json
 import requests
+from modules.Helpers import Helpers
 from modules.Messages import Messages
 from modules.Init import Init
 import datetime, time
@@ -134,11 +135,11 @@ class Weaviate:
         """This function deletes from a Weaviate."""
 
         # Authenticate
-        self.Auth()
+        shouldAuthenticate = self.Auth()
 
         # try to request
         try:
-            request = requests.delete(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest())
+            request = requests.delete(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest(shouldAuthenticate))
         except urllib.error.HTTPError as error:
             return None
 
@@ -148,11 +149,11 @@ class Weaviate:
         """This function posts to a Weaviate."""
 
         # Authenticate
-        self.Auth()
+        shouldAuthenticate = self.Auth()
 
         # try to request
         try:
-            request = requests.post(self.config["url"] + "/weaviate/v1" + path, json.dumps(body), headers=self.getHeadersForRequest())
+            request = requests.post(self.config["url"] + "/weaviate/v1" + path, json.dumps(body), headers=self.getHeadersForRequest(shouldAuthenticate))
         except urllib.error.HTTPError as error:
             return 0, json.loads(error.read().decode('utf-8'))
 
