@@ -52,7 +52,7 @@ class Weaviate:
 
         # collect data for the request
         try:
-            request = requests.get(self.config['url'] + "/weaviate/v1/.well-known/openid-configuration", headers={"content-type": "application/json"})
+            request = requests.get(self.config['url'] + "/v1/.well-known/openid-configuration", headers={"content-type": "application/json"})
         except urllib.error.HTTPError as error:
             Helpers(None).Error(Messages().Get(210))  
         if request.status_code != 200:
@@ -102,7 +102,7 @@ class Weaviate:
 
         # try to make the well known request
         try:
-            request = requests.get(self.config["url"] + "/weaviate/v1/.well-known/openid-configuration", headers=self.getHeadersForRequest(False))
+            request = requests.get(self.config["url"] + "/v1/.well-known/openid-configuration", headers=self.getHeadersForRequest(False))
         except urllib.error.HTTPError as error:
             return False
 
@@ -139,7 +139,7 @@ class Weaviate:
 
         # try to request
         try:
-            request = requests.delete(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest(shouldAuthenticate))
+            request = requests.delete(self.config["url"] + "/v1" + path, headers=self.getHeadersForRequest(shouldAuthenticate))
         except urllib.error.HTTPError as error:
             return None
 
@@ -153,7 +153,7 @@ class Weaviate:
 
         # try to request
         try:
-            request = requests.post(self.config["url"] + "/weaviate/v1" + path, json.dumps(body), headers=self.getHeadersForRequest(shouldAuthenticate))
+            request = requests.post(self.config["url"] + "/v1" + path, json.dumps(body), headers=self.getHeadersForRequest(shouldAuthenticate))
         except urllib.error.HTTPError as error:
             return 0, json.loads(error.read().decode('utf-8'))
 
@@ -170,7 +170,7 @@ class Weaviate:
 
         # try to request
         try:
-            request = requests.get(self.config["url"] + "/weaviate/v1" + path, headers=self.getHeadersForRequest(shouldAuthenticate))
+            request = requests.get(self.config["url"] + "/v1" + path, headers=self.getHeadersForRequest(shouldAuthenticate))
         except urllib.error.HTTPError as error:
             return None, json.loads(error.read().decode('utf-8'))
 
