@@ -122,7 +122,7 @@ class Weaviate:
 
         # get the meta endpoint
         try:
-            status, _ = self.Get("/meta")
+            status, _ = self.Get("/schema")
         except:
             self.helpers(self.config).Error(Messages().Get(210))
         # throw error if failed
