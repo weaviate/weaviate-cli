@@ -71,7 +71,7 @@ class Init:
 
         # Check if the Weaviate can be detected
         try:
-            request = requests.get(options.url + "/weaviate/v1/meta")
+            request = requests.get(options.url + "/v1/meta")
         except urllib.error.HTTPError as error:
             Helpers(None).Error(Messages().Get(210))
 
