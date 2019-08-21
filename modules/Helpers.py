@@ -168,17 +168,17 @@ class Helpers:
         success = True
 
         # Get the meta tags
-        status, results = self.weaviate.Get("/meta")
+        status, results = self.weaviate.Get("/schema")
 
         if status != 200:
             self.Error("Connection to Weaviate is lost.")
 
         # Loop over the results for things
-        for remote in results["thingsSchema"]["classes"]:
+        for remote in results["things"]["classes"]:
             success = self.compareJSON(remote["class"], remote["properties"], things)
 
         # Loop over the results for actions
-        for remote in results["actionsSchema"]["classes"]:
+        for remote in results["actions"]["classes"]:
             success = self.compareJSON(remote["class"], remote["properties"], actions)
 
         #
