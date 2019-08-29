@@ -78,6 +78,8 @@ class Messages:
         self.messages[149] = "Replace and delete the current sandbox if set?"
         self.messages[150] = "You already have a sandbox present. Do you want to replace and delete the current one (y/n)? "
         self.messages[151] = "If no configuration is set, provide an email "
+        self.messages[152] = "There are no sandboxes active for this email"
+        self.messages[153] = "The following sandboxes have been found:"
 
         # Whoops, unknown message
         if no not in self.messages:
@@ -114,6 +116,7 @@ class Messages:
         self.messages[219] = "Can't connect to the third party authentication service. Validate that it's running"
         self.messages[220] = "The grant_types supported by the thirdparty authentication service are insufficient. Please add 'client_credentials'"
         self.messages[221] = "You should set --create or --remove. Need help? Try `weaviate-cli sandbox --help`"
+        self.messages[222] = "Failed to request sandboxes, possible API change?"
 
         # Whoops, unknown message
         if no not in self.messages:

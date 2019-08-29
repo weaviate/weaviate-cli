@@ -69,6 +69,11 @@ def main():
     parser_sandboxRemove.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
     parser_sandboxRemove.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
 
+    parser_sandboxList = subparsers.add_parser('sandbox-list', help=Messages().Get(146))
+    parser_sandboxList.add_argument('sandbox-list', action='store_true')
+    parser_sandboxList.add_argument('--email', help=Messages().Get(144), default=None)
+
+
     # Ping a Weaviate
     parser_ping = subparsers.add_parser('ping', help=Messages().Get(140))
     parser_ping.add_argument('ping', action='store_true')
@@ -115,6 +120,9 @@ def main():
     elif 'sandbox-remove' in options:
         from modules.Sandbox import Sandbox
         Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.asyncr, None)
+    elif 'sandbox-list' in options:
+        from modules.Sandbox import Sandbox
+        Sandbox(Init().loadConfig(True, options.email)).ListSandboxes(options.email)
     elif 'ping' in options:
         Weaviate(Init().loadConfig(False, None)).Ping()
     else:

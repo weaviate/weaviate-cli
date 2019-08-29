@@ -91,9 +91,19 @@ class Sandbox:
                 self.__delete(self.config['sandbox'])
         else:
             self.helpers.Info(self.__info(sandboxId)['status']['state'])
-        
+
         # done
         exit(0)
+
+    def ListSandboxes(self, email):
+        listOfSandboxes = self.__list(email)
+        if len(listOfSandboxes) == 0:
+            self.helpers.Info(Messages().Get(152))
+        else:
+            self.helpers.Info(Messages().Get(153))
+            for i, id in enumerate(listOfSandboxes):
+                print(str(i+1) + ":\t" + id)
+
 
     # Run API request
     def __APIcall(self, action, bodyOrQuery, runAsync):
@@ -117,6 +127,12 @@ class Sandbox:
                 return request.status_code
             except urllib.error.HTTPError as _:
                 Messages().Get(Messages().Get(218))
+        elif action == 'list':
+            try:
+                request = requests.get('http://sandbox.api.semi.technology/v1/sandboxes/' + bodyOrQuery)
+                return request.json()
+            except urllib.error.HTTPError as _:
+                Messages().Get(Messages().Get(218))
         else: # assume info
             try:
                 request = requests.get('http://sandbox.api.semi.technology/v1/sandboxes/' + bodyOrQuery)
@@ -136,6 +152,20 @@ class Sandbox:
     def __delete(self, id):
         """Function to delete a sandbox"""
         return self.__APIcall('delete', id, None)
+
+    # list semi sandboxes, return a list of all sandboxIDs for that email
+    def __list(self, email):
+        path = 'list?email=' + email
+        result = self.__APIcall('list', path, None)
+        try:
+            IDs = result['sandboxIDs']
+            if IDs is None:
+                return []
+            return IDs
+        except KeyError as e:
+            Messages().Get(Messages().Get(222))
+            return []
+
 
     # list info of a sandbox
     def __info(self, id):
