@@ -95,8 +95,9 @@ class Sandbox:
         # done
         exit(0)
 
-    def ListSandboxes(self, email):
-        listOfSandboxes = self.__list(email)
+    def ListSandboxes(self):
+        self.config
+        listOfSandboxes = self.__list()
         if len(listOfSandboxes) == 0:
             self.helpers.Info(Messages().Get(152))
         else:
@@ -154,8 +155,8 @@ class Sandbox:
         return self.__APIcall('delete', id, None)
 
     # list semi sandboxes, return a list of all sandboxIDs for that email
-    def __list(self, email):
-        path = 'list?email=' + email
+    def __list(self):
+        path = 'list?email=' + self.config['email']
         result = self.__APIcall('list', path, None)
         try:
             IDs = result['sandboxIDs']
