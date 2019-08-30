@@ -69,6 +69,7 @@ def main():
     parser_sandboxRemove.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
     parser_sandboxRemove.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
     parser_sandboxRemove.add_argument('--all', help=Messages().Get(154), action='store_true')
+    parser_sandboxRemove.add_argument('--force', help=Messages().Get(122), action='store_true')
 
     parser_sandboxList = subparsers.add_parser('sandbox-list', help=Messages().Get(146))
     parser_sandboxList.add_argument('sandbox-list', action='store_true')
@@ -115,10 +116,10 @@ def main():
         Empty(Init().loadConfig(False, None)).Run(options.force)
     elif 'sandbox-create' in options:
         from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.asyncr, options.replace, None)
+        Sandbox(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.asyncr, options.replace, None, None)
     elif 'sandbox-remove' in options:
         from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.asyncr, None, options.all)
+        Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.asyncr, None, options.all, options.force)
     elif 'sandbox-list' in options:
         from modules.Sandbox import Sandbox
         Sandbox(Init().loadConfig(True, None)).ListSandboxes()
