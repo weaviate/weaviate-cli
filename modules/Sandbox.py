@@ -32,7 +32,7 @@ class Sandbox:
         self.weaviate = Weaviate(c)
 
     # run the sandbox service
-    def Run(self, create, remove, setNotAsDefault, runAsync, replace):
+    def Run(self, create, remove, setNotAsDefault, runAsync, replace, all):
 
         # can't both create and remove sandboxes. Error...
         if create == True and remove == True:
@@ -86,9 +86,17 @@ class Sandbox:
                     previousState = state
             return
         elif remove == True:
-            if 'sandbox' in self.config:
-                self.helpers.Info("Delete sandbox: " + str(self.config['sandbox']))
-                self.__delete(self.config['sandbox'])
+            if all:
+                var = input(Messages().Get(155))
+                if var == "y" or var == "Y":
+                    sandboxes = self.__list()
+                    for box in sandboxes:
+                        self.helpers.Info("Delete sandbox: " + box)
+                        self.__delete(box)
+            else:
+                if 'sandbox' in self.config:
+                    self.helpers.Info("Delete sandbox: " + str(self.config['sandbox']))
+                    self.__delete(self.config['sandbox'])
         else:
             self.helpers.Info(self.__info(sandboxId)['status']['state'])
 

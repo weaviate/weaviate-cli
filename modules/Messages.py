@@ -80,6 +80,8 @@ class Messages:
         self.messages[151] = "If no configuration is set, provide an email "
         self.messages[152] = "There are no sandboxes active for this email"
         self.messages[153] = "The following sandboxes have been found:"
+        self.messages[154] = "Remove all sandboxes"
+        self.messages[155] = "Are you sure (y/N)? "
 
         # Whoops, unknown message
         if no not in self.messages:
