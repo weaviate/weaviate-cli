@@ -30,6 +30,15 @@ class Sandbox:
         self.config = c
         self.helpers = Helpers(c)
         self.weaviate = Weaviate(c)
+        try:
+            if self.config['developer']:
+                self.sandboxAPI = "http://dev.sandbox.api.semi.technology/v1/sandboxes/"
+            else:
+                self.sandboxAPI = "http://sandbox.api.semi.technology/v1/sandboxes/"
+        except KeyError:
+            self.sandboxAPI = "http://sandbox.api.semi.technology/v1/sandboxes/"
+
+
 
     # run the sandbox service
     def Run(self, create, remove, setNotAsDefault, runAsync, replace, all, force):
@@ -122,31 +131,31 @@ class Sandbox:
         """Returns the ID"""
         if action == 'create':
             try:
-                request = requests.post('http://sandbox.api.semi.technology/v1/sandboxes', json.dumps(bodyOrQuery), headers={"content-type": "application/json"})
+                request = requests.post(self.sandboxAPI, json.dumps(bodyOrQuery), headers={"content-type": "application/json"})
                 return request.json()
             except urllib.error.HTTPError as _:
                 Messages().Get(Messages().Get(218))
         elif action == 'delete':
             try:
-                request = requests.delete('http://sandbox.api.semi.technology/v1/sandboxes/' + bodyOrQuery)
+                request = requests.delete(self.sandboxAPI + bodyOrQuery)
                 return None
             except urllib.error.HTTPError as _:
                 Messages().Get(Messages().Get(218))
         elif action == 'status':
             try:
-                request = requests.get('http://sandbox.api.semi.technology/v1/sandboxes/' + bodyOrQuery)
+                request = requests.get(self.sandboxAPI + bodyOrQuery)
                 return request.status_code
             except urllib.error.HTTPError as _:
                 Messages().Get(Messages().Get(218))
         elif action == 'list':
             try:
-                request = requests.get('http://sandbox.api.semi.technology/v1/sandboxes/' + bodyOrQuery)
+                request = requests.get(self.sandboxAPI + bodyOrQuery)
                 return request.json()
             except urllib.error.HTTPError as _:
                 Messages().Get(Messages().Get(218))
         else: # assume info
             try:
-                request = requests.get('http://sandbox.api.semi.technology/v1/sandboxes/' + bodyOrQuery)
+                request = requests.get(self.sandboxAPI + bodyOrQuery)
                 return request.json()
             except urllib.error.HTTPError as _:
                 Messages().Get(Messages().Get(218))
