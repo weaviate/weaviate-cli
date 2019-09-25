@@ -33,11 +33,13 @@ class Sandbox:
         try:
             if self.config['developer']:
                 self.sandboxAPI = "http://dev.sandbox.api.semi.technology/v1/sandboxes/"
+                self.sandboxInstanceDomain = ".dev.semi.network"
             else:
                 self.sandboxAPI = "http://sandbox.api.semi.technology/v1/sandboxes/"
+                self.sandboxInstanceDomain = ".semi.network"
         except KeyError:
             self.sandboxAPI = "http://sandbox.api.semi.technology/v1/sandboxes/"
-
+            self.sandboxInstanceDomain = ".semi.network"
 
 
     # run the sandbox service
@@ -66,14 +68,14 @@ class Sandbox:
                             Init().UpdateConfigFile('sandbox', '')
 
             sandboxId = self.__create(setNotAsDefault, runAsync)
-            self.helpers.Info("Sandbox will be available on: https://" + str(sandboxId) + ".semi.network")
+            self.helpers.Info("Sandbox will be available on: https://" + str(sandboxId) + self.sandboxInstanceDomain)
 
             # Set not as default url
             if setNotAsDefault == True:
                 self.helpers.Info(Messages().Get(147))
             else:
                 self.helpers.Info(Messages().Get(148))
-                Init().UpdateConfigFile('url', 'https://' + str(sandboxId) + '.semi.network')
+                Init().UpdateConfigFile('url', 'https://' + str(sandboxId) + self.sandboxInstanceDomain)
                 Init().UpdateConfigFile('sandbox', str(sandboxId))
 
             # run async service
@@ -89,7 +91,7 @@ class Sandbox:
                     if state != previousState:
                         self.helpers.Info(str(math.ceil(state['percentage'])) + '% | ' + state['message'])
                     if state['percentage'] == 100:
-                        self.helpers.Info("Sandbox is available on: https://" + str(sandboxId) + ".semi.network")
+                        self.helpers.Info("Sandbox is available on: https://" + str(sandboxId) + self.sandboxInstanceDomain)
                         isSandboxDone = True
                     time.sleep(2)
                     previousState = state
