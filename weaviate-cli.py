@@ -56,23 +56,23 @@ def main():
     parser_empty.add_argument('empty', action='store_true')
     parser_empty.add_argument('--force', help=Messages().Get(122), action='store_true')
 
-    # Handle Sandboxes
-    parser_sandboxCreate = subparsers.add_parser('sandbox-create', help=Messages().Get(143))
-    parser_sandboxCreate.add_argument('sandbox-create', action='store_true')
-    parser_sandboxCreate.add_argument('--email', help=Messages().Get(144), default=None)
-    parser_sandboxCreate.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
-    parser_sandboxCreate.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
-    parser_sandboxCreate.add_argument('--replace', help=Messages().Get(149), action='store_true')
+    # Handle Clusters
+    parser_clusterCreate = subparsers.add_parser('cluster-create', help=Messages().Get(143))
+    parser_clusterCreate.add_argument('cluster-create', action='store_true')
+    parser_clusterCreate.add_argument('--email', help=Messages().Get(144), default=None)
+    parser_clusterCreate.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
+    parser_clusterCreate.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
+    parser_clusterCreate.add_argument('--replace', help=Messages().Get(149), action='store_true')
 
-    parser_sandboxRemove = subparsers.add_parser('sandbox-remove', help=Messages().Get(146))
-    parser_sandboxRemove.add_argument('sandbox-remove', action='store_true')
-    parser_sandboxRemove.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
-    parser_sandboxRemove.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
-    parser_sandboxRemove.add_argument('--all', help=Messages().Get(154), action='store_true')
-    parser_sandboxRemove.add_argument('--force', help=Messages().Get(122), action='store_true')
+    parser_clusterRemove = subparsers.add_parser('cluster-remove', help=Messages().Get(146))
+    parser_clusterRemove.add_argument('cluster-remove', action='store_true')
+    parser_clusterRemove.add_argument('--asyncr', help=Messages().Get(144), action='store_true')
+    parser_clusterRemove.add_argument('--nodefault', help=Messages().Get(145), action='store_true')
+    parser_clusterRemove.add_argument('--all', help=Messages().Get(154), action='store_true')
+    parser_clusterRemove.add_argument('--force', help=Messages().Get(122), action='store_true')
 
-    parser_sandboxList = subparsers.add_parser('sandbox-list', help=Messages().Get(146))
-    parser_sandboxList.add_argument('sandbox-list', action='store_true')
+    parser_clusterList = subparsers.add_parser('cluster-list', help=Messages().Get(146))
+    parser_clusterList.add_argument('cluster-list', action='store_true')
 
     # Ping a Weaviate
     parser_ping = subparsers.add_parser('ping', help=Messages().Get(140))
@@ -114,15 +114,15 @@ def main():
         # Ping Weaviate to validate the connection
         Weaviate(Init().loadConfig(False, None)).Ping()
         Empty(Init().loadConfig(False, None)).Run(options.force)
-    elif 'sandbox-create' in options:
-        from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.asyncr, options.replace, None, None)
-    elif 'sandbox-remove' in options:
-        from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.asyncr, None, options.all, options.force)
-    elif 'sandbox-list' in options:
-        from modules.Sandbox import Sandbox
-        Sandbox(Init().loadConfig(True, None)).ListSandboxes()
+    elif 'cluster-create' in options:
+        from modules.Clusters import Cluster
+        Cluster(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.asyncr, options.replace, None, None)
+    elif 'cluster-remove' in options:
+        from modules.Clusters import Cluster
+        Cluster(Init().loadConfig(False, None)).Run(False, True, options.nodefault, options.asyncr, None, options.all, options.force)
+    elif 'cluster-list' in options:
+        from modules.Clusters import Cluster
+        Cluster(Init().loadConfig(True, None)).ListClusters()
     elif 'ping' in options:
         Weaviate(Init().loadConfig(False, None)).Ping()
     else:
