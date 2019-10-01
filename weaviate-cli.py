@@ -71,7 +71,7 @@ def main():
     parser_clusterRemove.add_argument('--all', help=Messages().Get(154), action='store_true')
     parser_clusterRemove.add_argument('--force', help=Messages().Get(122), action='store_true')
 
-    parser_clusterList = subparsers.add_parser('cluster-list', help=Messages().Get(146))
+    parser_clusterList = subparsers.add_parser('cluster-list', help=Messages().Get(156))
     parser_clusterList.add_argument('cluster-list', action='store_true')
 
     # Ping a Weaviate

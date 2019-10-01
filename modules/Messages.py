@@ -82,6 +82,7 @@ class Messages:
         self.messages[153] = "The following clusters have been found:"
         self.messages[154] = "Remove all clusters"
         self.messages[155] = "Are you sure (y/N)? "
+        self.messages[156] = "List all clusters connected to configured email"
 
         # Whoops, unknown message
         if no not in self.messages:
