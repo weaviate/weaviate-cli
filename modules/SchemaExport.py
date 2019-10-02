@@ -12,6 +12,9 @@
 ##
 
 """This module handles the export of a Weaviate schema."""
+import os
+import json
+
 
 class SchemaExport:
     """This class handles the export of a Weaviate schema."""
@@ -29,5 +32,21 @@ class SchemaExport:
     def Run(self):
         """This module handles the import of a Weaviate instance."""
 
-        print("SCHEMA Export")
+        status_code, schema = self.weaviate.Get("/schema")
+
+        if status_code != 200:
+            print("Schema loading did not succeed")
+            print(schema)
+
+        file_name = 'weaviate_schema_export'
+        schema_file = file_name + '.json'
+        i = 1
+
+        while os.path.isfile(schema_file):
+            schema_file = file_name+str(i)+'.json'
+            i += 1
+
+        json.dump(schema, open(schema_file, "w"))
+
+        print("Schema succesfully exported to " + schema_file)
         exit(0)
