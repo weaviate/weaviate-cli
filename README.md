@@ -4,7 +4,7 @@ _CLI tool for for Weaviate_
 
 ## Documentation
 
-- [Click here for the documentation](https://semi.technology/guides/weaviate-cli/current/)
+- [Click here for the documentation](https://semi.technology/documentation/weaviate-cli/current/)
 
 ## Build Status
 
