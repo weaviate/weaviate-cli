@@ -117,6 +117,9 @@ def main():
         print(cli_version)
         exit(0)
     elif 'upgrade' in options:
+        if cli_remote_version == cli_version:
+            print("Already up to date")
+            exit(0)
         upgrade_weaviate_cli(sys.argv[0])
 
     # Check which items to load
