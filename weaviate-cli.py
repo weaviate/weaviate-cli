@@ -15,7 +15,6 @@
 """This is the main module for the Weaviate-cli tool."""
 import argparse
 import os
-import sys
 
 import requests
 
@@ -121,7 +120,7 @@ def main():
         if cli_remote_version == cli_version:
             print("Already up to date")
             exit(0)
-        upgrade_weaviate_cli(sys.argv[0])
+        upgrade_weaviate_cli()
 
     # Check which items to load
     if 'schema-import' in options:
