@@ -15,10 +15,15 @@
 """This is the main module for the Weaviate-cli tool."""
 import argparse
 import os
+import sys
+
+import requests
+
 from modules.Init import Init
 from modules.Weaviate import Weaviate
 from modules.Messages import Messages
 from modules.Helpers import Helpers
+from modules.upgrade import upgrade_weaviate_cli
 
 def main():
     """This class reads the command line arguments and loads the correct modules."""
@@ -82,16 +87,37 @@ def main():
     parser_version = subparsers.add_parser('version', help=Messages().Get(142))
     parser_version.add_argument('version', action='store_true')
 
+    # Upgrade weaviate cli
+    parser_version = subparsers.add_parser('upgrade', help=Messages().Get(157))
+    parser_version.add_argument('upgrade', action='store_true')
+
     options = args.parse_args()
+
+    # Check if new version is available
+    cli_version = ''
+    with open(os.path.dirname(os.path.realpath(__file__)) + "/version", "r") as fh:
+        cli_version = fh.read()
+    cli_version = cli_version.rstrip()
+
+    try:
+        resp = requests.get("https://raw.githubusercontent.com/semi-technologies/weaviate-cli/master/version")
+    except Exception:
+        pass  # If request not successful then just ignore it for now.
+    else:
+        if resp.status_code == 200:
+            cli_remote_version = resp.text.rstrip()
+            if cli_remote_version != cli_version:
+                print("Version "+cli_remote_version+" is available. Use weaviate-cli upgrade to get the new version")
 
     # Check init and validate if set
     if 'init' in options:
         Init().setConfig(options)
         exit(0)
     elif 'version' in options:
-        with open(os.path.dirname(os.path.realpath(__file__))+"/version", "r") as fh:
-            print(fh.read())
-            exit(0)
+        print(cli_version)
+        exit(0)
+    elif 'upgrade' in options:
+        upgrade_weaviate_cli(sys.argv[0])
 
     # Check which items to load
     if 'schema-import' in options:

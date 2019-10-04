@@ -83,6 +83,7 @@ class Messages:
         self.messages[154] = "Remove all clusters"
         self.messages[155] = "Are you sure (y/N)? "
         self.messages[156] = "List all clusters connected to configured email"
+        self.messages[157] = "Upgrade weaviate-cli to most current version"
 
         # Whoops, unknown message
         if no not in self.messages:
