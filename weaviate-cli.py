@@ -87,6 +87,7 @@ def main():
     parser_version = subparsers.add_parser('version', help=Messages().Get(142))
     parser_version.add_argument('version', action='store_true')
 
+
     # Upgrade weaviate cli
     parser_version = subparsers.add_parser('upgrade', help=Messages().Get(157))
     parser_version.add_argument('upgrade', action='store_true')
