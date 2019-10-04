@@ -85,6 +85,7 @@ class Cluster:
             if runAsync == False:
                 isClusterDone = False
                 previousState = ''
+                cluster_ready_components_percentage = 0
                 while isClusterDone == False:
                     state = self.__info(clusterId)['status']['state']
 
@@ -92,7 +93,10 @@ class Cluster:
                         state['percentage'] = 0
 
                     if state != previousState:
-                        self.helpers.Info(str(math.ceil(state['percentage'])) + '% | ' + state['message'])
+                        if math.ceil(state['percentage']) > cluster_ready_components_percentage:
+                            # Only show when cluster has gotten bigger
+                            cluster_ready_components_percentage = math.ceil(state['percentage'])
+                        self.helpers.Info(str(cluster_ready_components_percentage) + '% | ' + state['message'])
                     if state['percentage'] == 100:
                         self.helpers.Info("Cluster is available on: " + self.clusterProtocoll + str(clusterId) + self.clusterInstanceDomain)
                         isClusterDone = True
