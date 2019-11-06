@@ -23,12 +23,12 @@ import datetime, time
 class Weaviate:
     """This class handles the communication with Weaviate."""
 
-    def __init__(self, c):
+    def __init__(self, config):
         """This function inits the class."""
 
         # make the config available in this class
         from modules.Helpers import Helpers
-        self.config = c
+        self.config = config
         self.helpers = Helpers
 
     def GetEpochTime(self):

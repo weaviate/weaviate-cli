@@ -122,11 +122,19 @@ def main():
             exit(0)
         upgrade_weaviate_cli()
 
+
+    # TODO all of the following commands need to read a config
+    # TODO all of these commands need the client
+    from modules.config import load_config
+    config = load_config()
+
     # Check which items to load
     if 'schema-import' in options:
         from modules.SchemaImport import SchemaImport
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig(False, None)).Ping()
+        # config = Init().loadConfig(False, None)
+        Weaviate(config).Ping()
+        #Weaviate(Init().loadConfig(False, None)).Ping()
         SchemaImport(Init().loadConfig(False, None)).Run(options.location, options.force)
     elif 'schema-export' in options:
         from modules.SchemaExport import SchemaExport
