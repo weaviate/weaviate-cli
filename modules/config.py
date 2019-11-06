@@ -6,6 +6,10 @@ import validators
 import weaviate
 import weaviate.connect
 
+CONFIG_KEY_URL = "url"
+CONFIG_KEY_EMAIL = "email"
+CONFIG_KEY_AUTH_CLIENTSECRET = "auth_clientsecret"
+
 def load_config():
     """ Read the config from the users home folder
     If the config does not exist the user is asked to create it
@@ -39,21 +43,21 @@ def _create_config_dialog():
     """
     config = {}
 
-    config["url"] = input(Messages().Get(130) + ": ")
-    if not validators.url(config["url"]):
+    config[CONFIG_KEY_URL] = input(Messages().Get(130) + ": ")
+    if not validators.url(config[CONFIG_KEY_URL]):
         Helpers(None).Error(Messages().Get(211))
 
     # Check if the Weaviate can be detected
-    client = weaviate.Client(config["url"])
+    client = weaviate.Client(config[CONFIG_KEY_URL])
     if not client.is_reachable():
         Helpers(None).Error(Messages().Get(210))
 
-    config["email"] = input(Messages().Get(131) + ": ")
-    if not validators.email(config["email"]):
+    config[CONFIG_KEY_EMAIL] = input(Messages().Get(131) + ": ")
+    if not validators.email(config[CONFIG_KEY_EMAIL]):
         Helpers(None).Error(Messages().Get(212))
 
     # Detect openID
-    conn = weaviate.connect.Connection(config["url"])
+    conn = weaviate.connect.Connection(config[CONFIG_KEY_URL])
     try:
         response = conn.run_rest(".well-known/openid-configuration", weaviate.connect.REST_METHOD_GET)
 
@@ -63,9 +67,9 @@ def _create_config_dialog():
     # OpenID is set, continue the config
     if response.status_code == 200:
         # Fixed OAuth variables
-        config["auth_bearer"] = None
-        config["auth_expires"] = 0
+        config["auth_bearer"] = None # TODO test if really still necessary
+        config["auth_expires"] = 0 # TODO test if really still necessary
         # Variable OpenID info
-        config["auth_clientsecret"] = input(Messages().Get(137) + ": ")
+        config[CONFIG_KEY_AUTH_CLIENTSECRET] = input(Messages().Get(137) + ": ")
 
     return config

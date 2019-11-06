@@ -19,9 +19,9 @@ import os
 import requests
 
 from modules.Init import Init
-from modules.Weaviate import Weaviate
+from modules.commands import Commands
 from modules.Messages import Messages
-from modules.Helpers import Helpers
+from modules.Helpers import *
 from modules.upgrade import upgrade_weaviate_cli
 
 def main():
@@ -122,34 +122,26 @@ def main():
             exit(0)
         upgrade_weaviate_cli()
 
-
-    # TODO all of the following commands need to read a config
-    # TODO all of these commands need the client
-    from modules.config import load_config
-    config = load_config()
+    commands = Commands()
 
     # Check which items to load
     if 'schema-import' in options:
-        from modules.SchemaImport import SchemaImport
-        # Ping Weaviate to validate the connection
-        # config = Init().loadConfig(False, None)
-        Weaviate(config).Ping()
-        #Weaviate(Init().loadConfig(False, None)).Ping()
-        SchemaImport(Init().loadConfig(False, None)).Run(options.location, options.force)
+        #SchemaImport(config).Run(options.location, options.force)
+        commands.schema_import(options.location, options.force)
     elif 'schema-export' in options:
         from modules.SchemaExport import SchemaExport
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig(False, None)).Ping()
+        #Weaviate(Init().loadConfig(False, None)).Ping()
         SchemaExport(Init().loadConfig(False, None)).Run()
     elif 'schema-truncate' in options:
         from modules.Truncate import Truncate
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig(False, None)).Ping()
+        #Weaviate(Init().loadConfig(False, None)).Ping()
         Truncate(Init().loadConfig(False, None)).Run(options.force)
     elif 'empty' in options:
         from modules.Empty import Empty
         # Ping Weaviate to validate the connection
-        Weaviate(Init().loadConfig(False, None)).Ping()
+        #Weaviate(Init().loadConfig(False, None)).Ping()
         Empty(Init().loadConfig(False, None)).Run(options.force)
     elif 'cluster-create' in options:
         from modules.Clusters import Cluster
@@ -161,7 +153,8 @@ def main():
         from modules.Clusters import Cluster
         Cluster(Init().loadConfig(True, None)).ListClusters()
     elif 'ping' in options:
-        Weaviate(Init().loadConfig(False, None)).Ping()
+        pass
+        #Weaviate(Init().loadConfig(False, None)).Ping()
     else:
         print(options)
         args.print_help()
