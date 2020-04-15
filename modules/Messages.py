@@ -84,6 +84,10 @@ class Messages:
         self.messages[155] = "Are you sure (y/N)? "
         self.messages[156] = "List all clusters connected to configured email"
         self.messages[157] = "Upgrade weaviate-cli to most current version"
+        self.messages[158] = "Load a data file in Weaviate"
+        self.messages[159] = "What is the path to the data file"
+        self.messages[160] = "Start a data file import"
+        self.messages[161] = "Provide a valid path or URL to the data file"
 
         # Whoops, unknown message
         if no not in self.messages:
@@ -121,6 +125,10 @@ class Messages:
         self.messages[220] = "The grant_types supported by the thirdparty authentication service are insufficient. Please add 'client_credentials'"
         self.messages[221] = "You should set --create or --remove. Need help? Try `weaviate-cli cluster --help`"
         self.messages[222] = "Failed to request clusters, possible API change?"
+        self.messages[223] = "No schema found"
+        self.messages[224] = "The data file can not be found. Check: "
+        self.messages[225] = "The data file is not properly formatted, can't find: "
+        self.messages[226] = "Schema loading did not succeed"
 
         # Whoops, unknown message
         if no not in self.messages:

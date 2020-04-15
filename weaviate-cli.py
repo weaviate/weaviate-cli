@@ -60,6 +60,11 @@ def main():
     parser_empty.add_argument('empty', action='store_true')
     parser_empty.add_argument('--force', help=Messages().Get(122), action='store_true')
 
+    # import a data file
+    parser_data_import = subparsers.add_parser('data-import', help=Messages().Get(158))
+    parser_data_import.add_argument('data-import', action='store_true')
+    parser_data_import.add_argument('--location', default=None, help=Messages().Get(159))
+
     # Handle Clusters
     parser_clusterCreate = subparsers.add_parser('cluster-create', help=Messages().Get(143))
     parser_clusterCreate.add_argument('cluster-create', action='store_true')
@@ -143,6 +148,11 @@ def main():
         # Ping Weaviate to validate the connection
         Weaviate(Init().loadConfig(False, None)).Ping()
         Empty(Init().loadConfig(False, None)).Run(options.force)
+    elif 'data-import' in options:
+        from modules.DataImport import DataImport
+        # Ping Weaviate to validate the connection
+        Weaviate(Init().loadConfig(False, None)).Ping()
+        DataImport(Init().loadConfig(False, None)).Run(options.location)
     elif 'cluster-create' in options:
         from modules.Clusters import Cluster
         Cluster(Init().loadConfig(True, options.email)).Run(True, False, options.nodefault, options.asyncr, options.replace, None, None)
