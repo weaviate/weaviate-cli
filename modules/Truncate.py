@@ -36,7 +36,6 @@ class Truncate:
                 self.helpers.Error("Error while deleting property `" + singletonClass["class"] + "`. Error code: " + str(statusCode))
 
     def truncateSchema(self):
-
         # check if there is a schema
         thingCount, actionsCount = self.helpers.SchemaCount()
         if thingCount == 0 and actionsCount == 0:
