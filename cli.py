@@ -1,6 +1,8 @@
 import click
 from semi.config.configuration import Configuration
-import json
+from semi.commands.schema import import_schema, export_schema, truncate_schema
+
+
 
 @click.group()
 @click.pass_context
@@ -34,29 +36,22 @@ def main_ping():
 
 
 # schema
-
-
 @schema_group.command("import")
 @click.pass_context
 @click.argument('filename')
 def schema_import(ctx, filename):
-    print("Importing file: ", filename)
-    cfg = _get_config_from_context(ctx)
-    cfg.client.schema.create(filename)
+    import_schema(_get_config_from_context(ctx), filename)
 
 @schema_group.command("export")
 @click.pass_context
 @click.argument('filename')
 def schema_export(ctx, filename):
-    print("Exporting to file: ", filename)
-    cfg = _get_config_from_context(ctx)
-    schema = cfg.client.schema.get()
-    with open(filename, 'w') as output_file:
-        json.dump(schema, output_file, indent=4)
+    export_schema(_get_config_from_context(ctx), filename)
 
 @schema_group.command("truncate")
-def schema_truncate():
-    click.echo("TODO impl")
+@click.pass_context
+def schema_truncate(ctx):
+    truncate_schema(_get_config_from_context(ctx))
 
 
 # config
