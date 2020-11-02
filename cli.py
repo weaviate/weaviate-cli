@@ -1,7 +1,7 @@
 import click
 from semi.config.configuration import Configuration
 from semi.commands.schema import import_schema, export_schema, truncate_schema
-
+from semi.commands.ping import ping
 
 
 @click.group()
@@ -31,9 +31,9 @@ def cloud_group():
 
 
 @main.command("ping")
-def main_ping():
-    click.echo("TODO impl")
-
+@click.pass_context
+def main_ping(ctx):
+    ping(_get_config_from_context(ctx))
 
 # schema
 @schema_group.command("import")
