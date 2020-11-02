@@ -51,8 +51,7 @@ def schema_truncate():
 @config_group.command("view")
 @click.pass_context
 def config_view(ctx):
-    print(ctx.obj)
-    click.echo("TODO impl")
+    print(ctx.obj["config"])
 
 @config_group.command("set")
 def config_set():
