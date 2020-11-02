@@ -1,22 +1,13 @@
-#!/usr/bin/env python3
-##                          _       _
-##__      _____  __ ___   ___  __ _| |_ ___
-##\ \ /\ / / _ \/ _` \ \ / / |/ _` | __/ _ \
-## \ V  V /  __/ (_| |\ V /| | (_| | ||  __/
-##  \_/\_/ \___|\__,_| \_/ |_|\__,_|\__\___|
-##
-## Copyright © 2016 - 2020 Weaviate. All rights reserved.
-## LICENSE: https://github.com/semi-technologies/weaviate/blob/master/LICENSE
-## AUTHOR: Bob van Luijt (bob@semi.technology)
-##
-
 import click
+from semi.config.configuration import Configuration
 
 
 @click.group()
 @click.pass_context
 def main(ctx):
-    pass
+    ctx.obj = {
+        "config": Configuration()
+    }
 
 # First order commands
 @main.group("schema")
@@ -58,7 +49,9 @@ def schema_truncate():
 
 # config
 @config_group.command("view")
-def config_view():
+@click.pass_context
+def config_view(ctx):
+    print(ctx.obj)
     click.echo("TODO impl")
 
 @config_group.command("set")
@@ -85,5 +78,4 @@ def cloud_delete():
 
 
 if __name__ == "__main__":
-    print("main")
     main()
