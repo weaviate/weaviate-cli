@@ -19,6 +19,7 @@ class Configuration:
         self._config_path = os.path.join(self._config_folder, _cli_config_file_name)
 
         if not os.path.isfile(self._config_path):
+            print("No config was found, creating a new one.")
             self.init()
 
         with open(self._config_path, 'r') as config_file:
@@ -42,13 +43,13 @@ class Configuration:
         # if user_input != '' and user_input is not None:
         #     config_name = user_input
 
-        print("No config was found, creating a new one.")
         cfg = create_new_config()
         with open(self._config_path, 'w') as new_config_file:
             json.dump(cfg, new_config_file)
 
     def __str__(self):
         return str(json.dumps(self.config, indent=4))
+
 
 
 def _creat_client_from_config(config:dict):

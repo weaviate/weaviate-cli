@@ -3,7 +3,13 @@ from semi.config.configuration import Configuration
 from semi.prompt import is_question_answer_yes
 
 
-def import_schema(cfg:Configuration, file_name:str):
+def import_schema(cfg:Configuration, file_name: str, force: bool):
+    if cfg.client.schema.contains(file_name):
+        if not force:
+            print("The schema or part of it is already present! Use --force to force replace it.")
+            exit(1)
+        cfg.client.schema.delete_all()
+
     print("Importing file: ", file_name)
     cfg.client.schema.create(file_name)
 
