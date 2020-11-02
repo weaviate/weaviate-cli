@@ -26,7 +26,6 @@ class Configuration:
 
         self.client = _creat_client_from_config(self.config)
 
-
     def init(self):
         """ Create the config folder and prompt user for an inital config
 
@@ -43,6 +42,7 @@ class Configuration:
         # if user_input != '' and user_input is not None:
         #     config_name = user_input
 
+        print("No config was found, creating a new one.")
         cfg = create_new_config()
         with open(self._config_path, 'w') as new_config_file:
             json.dump(cfg, new_config_file)

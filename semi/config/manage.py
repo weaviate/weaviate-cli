@@ -11,11 +11,10 @@ def create_new_config():
 
     config = {
         "url": input("Please give a weaviate url: "),
-        "auth": None
+        "auth": _get_authentication_config()
     }
 
-    if is_question_answer_yes("Does this config require authentication? "):
-        config["auth"] = _get_authentication_config()
+    print("Config creation complete\n\n")
 
     return config
 
