@@ -55,8 +55,9 @@ def schema_export(ctx, filename):
 
 @schema_group.command("truncate", help="Remove the entire schema and all the data associated with it.")
 @click.pass_context
-def schema_truncate(ctx):
-    truncate_schema(_get_config_from_context(ctx))
+@click.option('--force', required=False, default=False, is_flag=True)
+def schema_truncate(ctx, force):
+    truncate_schema(_get_config_from_context(ctx), force)
 
 
 # config
