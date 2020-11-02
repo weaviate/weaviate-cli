@@ -1,6 +1,6 @@
 import json
 from semi.config.configuration import Configuration
-from semi.commands.prompt import prompt_yes_no
+from semi.prompt import is_question_answer_yes
 
 
 def import_schema(cfg:Configuration, file_name:str):
@@ -18,6 +18,6 @@ def export_schema(cfg:Configuration, file_name:str):
 def truncate_schema(cfg:Configuration):
     data = cfg.client.data_object.get()
     if len(data) > 0:
-        if not prompt_yes_no("Weaviate contains data, truncating the schema will delete all data do you want to continue? "):
+        if not is_question_answer_yes("Weaviate contains data, truncating the schema will delete all data do you want to continue? "):
             exit()
     cfg.client.schema.delete_all()

@@ -1,10 +1,15 @@
 import os.path
 import json
 import weaviate
+from semi.config.manage import create_new_config
 
 
-_cli_config_sub_path = ".config/semi_technologies/weaviate_cli.json"
-_cli_config_file_name = "weaviate_cli.json"
+_cli_config_sub_path = ".config/semi_technologies/"
+_cli_config_file_name = "configs.json"
+
+config_value_auth_type_client_secret = "client_secret"
+config_value_auth_type_username_pass = "username_and_password"
+
 
 class Configuration:
 
@@ -19,7 +24,8 @@ class Configuration:
         with open(self._config_path, 'r') as config_file:
             self.config = json.load(config_file)
 
-        self.client = weaviate.Client(self.config["url"])
+        self.client = _creat_client_from_config(self.config)
+
 
     def init(self):
         """ Create the config folder and prompt user for an inital config
@@ -31,6 +37,12 @@ class Configuration:
         except:
             pass  # Folders already exist
 
+        #     # Ask the user for a config name
+        # config_name = "default"
+        # user_input = input("Please give a config name (default): ")
+        # if user_input != '' and user_input is not None:
+        #     config_name = user_input
+
         cfg = create_new_config()
         with open(self._config_path, 'w') as new_config_file:
             json.dump(cfg, new_config_file)
@@ -39,13 +51,15 @@ class Configuration:
         return str(json.dumps(self.config, indent=4))
 
 
-def create_new_config():
-    """
+def _creat_client_from_config(config:dict):
+    if config["auth"] is None:
+        return weaviate.Client(config["url"])
+    if config["auth"]["type"] == config_value_auth_type_client_secret:
+        cred = weaviate.AuthClientCredentials(config["auth"]["secret"])
+        return weaviate.Client(config["url"], cred)
+    if config["auth"]["type"] == config_value_auth_type_username_pass:
+        cred = weaviate.AuthClientPassword(config["auth"]["user"], config["auth"]["pass"])
+        return weaviate.Client(config["url"], cred)
 
-    :return: config as prompted from the user
-    :rtype: json
-    """
-    cfg = {
-        "url": input("Please give a weaviate url: ")
-    }
-    return cfg
+    print("Fatal error unknown authentication type in config!")
+    exit(1)
