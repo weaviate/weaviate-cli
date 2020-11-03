@@ -76,10 +76,11 @@ def config_set(ctx):
 # def concept_import():
 #     click.echo("TODO impl")
 
-@data_group.command("empty")
+@data_group.command("empty", help="Delete all data objects in weaviate.")
 @click.pass_context
-def concept_empty(ctx):
-    delete_all_data(_get_config_from_context(ctx))
+@click.option('--force', required=False, default=False, is_flag=True)
+def concept_empty(ctx, force):
+    delete_all_data(_get_config_from_context(ctx), force)
 
 # @cloud_group.command("create")
 # def cloud_create():

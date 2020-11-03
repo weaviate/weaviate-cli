@@ -26,7 +26,7 @@ def truncate_schema(cfg:Configuration, force:bool):
     if len(data) == 0 or force:
         cfg.client.schema.delete_all()
         exit(0)
-    if not is_question_answer_yes("Weaviate contains data, truncating the schema will delete all data do you want to continue? "):
+    if not is_question_answer_yes("Weaviate contains data, truncating the schema will delete all data do you want to continue?"):
         exit(1)
     cfg.client.schema.delete_all()
 

@@ -5,7 +5,7 @@ def is_question_answer_yes(question):
     :return: true if the user answers yes
     :rtype: bool
     """
-    answer = input(question)
+    answer = input(question+" [y/N] ")
     answer = answer.lower()
     if answer == "y" or answer == "yes":
         return True
