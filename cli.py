@@ -4,6 +4,7 @@ from semi.commands.schema import import_schema, export_schema, truncate_schema
 from semi.commands.ping import ping
 from semi.commands.data import delete_all_data
 
+
 @click.group()
 @click.pass_context
 def main(ctx):
@@ -11,14 +12,17 @@ def main(ctx):
         "config": Configuration()
     }
 
+
 # First order commands
 @main.group("schema", help="Importing and exporting schema files.")
 def schema_group():
     pass
 
+
 @main.group("config", help="Configuration of the CLI.")
 def config_group():
     pass
+
 
 @main.group("data", help="Data object manipulation in weaviate.")
 def data_group():
@@ -34,9 +38,11 @@ def data_group():
 def main_ping(ctx):
     ping(_get_config_from_context(ctx))
 
+
 @main.command("version", help="Version of the CLI")
 def main_version():
     print("TODO impl")
+
 
 # schema
 @schema_group.command("import", help="Import a weaviate schema from a json file.")
@@ -47,11 +53,13 @@ def main_version():
 def schema_import(ctx, filename, force):
     import_schema(_get_config_from_context(ctx), filename, force)
 
+
 @schema_group.command("export", help="Export a weaviate schema to into a json file.")
 @click.pass_context
 @click.argument('filename')
 def schema_export(ctx, filename):
     export_schema(_get_config_from_context(ctx), filename)
+
 
 @schema_group.command("truncate", help="Remove the entire schema and all the data associated with it.")
 @click.pass_context
@@ -66,6 +74,7 @@ def schema_truncate(ctx, force):
 def config_view(ctx):
     print(ctx.obj["config"])
 
+
 @config_group.command("set", help="Set a new CLI configuration.")
 @click.pass_context
 def config_set(ctx):
@@ -75,6 +84,7 @@ def config_set(ctx):
 # @data_group.command("import")
 # def concept_import():
 #     click.echo("TODO impl")
+
 
 @data_group.command("empty", help="Delete all data objects in weaviate.")
 @click.pass_context
