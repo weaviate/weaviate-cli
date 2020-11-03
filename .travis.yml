@@ -1,13 +1,16 @@
-sudo: required
 language: python
-python:
-  - "3.6"
-dist: xenial
-branches:
-  only:
-    - master
-install:
-  - pip3 install -r requirements.txt
-  - sudo ln -s $(pwd)/bin/weaviate-cli /usr/local/bin/weaviate-cli
-script:
-  - weaviate-cli --help
+os: linux
+notifications:
+  email:
+    on_success: change
+
+jobs:
+  include:
+    - stage: "test"
+      name: "3.6"
+      python: "3.6"
+      install:
+        - pip install -r requirements.txt
+      script:
+        - ./test/create_test_config.bash
+        - python cli.py version

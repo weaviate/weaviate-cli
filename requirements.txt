@@ -1,4 +1,1 @@
-requests==2.22.0
-validators==0.14.0
-PyYAML==5.1.2
-weaviate-client
+weaviate-client==1.2.0

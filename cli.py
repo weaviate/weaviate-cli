@@ -79,7 +79,7 @@ def config_set(ctx):
 @data_group.command("empty", help="Delete all data objects in weaviate.")
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
-def concept_empty(ctx, force):
+def data_empty(ctx, force):
     delete_all_data(_get_config_from_context(ctx), force)
 
 # @cloud_group.command("create")
