@@ -2,9 +2,10 @@
 
 _CLI tool for for Weaviate_
 
-## Documentation
+## Installation
 
-- [Click here for the documentation](https://semi.technology/documentation/weaviate-cli/current/)
+Install using: `pip install weaviate-cli`\
+Run using: `weaviate-cli --help`
 
 ## Build Status
 
