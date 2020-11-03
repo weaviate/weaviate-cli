@@ -13,4 +13,4 @@ jobs:
         - pip install -r requirements.txt
       script:
         - ./test/create_test_config.bash
-        - python cli.py version
+        - python cli.py config view

@@ -1,7 +1,7 @@
 import click
 from semi.config.configuration import Configuration
 from semi.commands.schema import import_schema, export_schema, truncate_schema
-from semi.commands.ping import ping
+from semi.commands.misc import ping, version
 from semi.commands.data import delete_all_data
 
 
@@ -41,7 +41,7 @@ def main_ping(ctx):
 
 @main.command("version", help="Version of the CLI")
 def main_version():
-    print("TODO impl")
+    version()
 
 
 # schema
