@@ -8,10 +8,10 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name="weaviate-cli",
-      version="0.1.0rc0", # 0.1.0rc0
+      version="0.1.0rc1", # 0.1.0rc0
       description="Comand line interface to interact with weaviate",
-      #long_description=long_description,
-      #long_description_content_type='text/markdown',
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       author="SeMI Technologies",
       author_email="hello@semi.technology",
       packages=["semi", "semi.config", "semi.commands"],

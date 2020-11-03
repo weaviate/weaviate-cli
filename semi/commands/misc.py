@@ -17,8 +17,7 @@ def version():
 
 
 def _parse_version_from_output(output:str):
-    pre_processed = output.replace("\n", " ")
-    pre_processed = pre_processed.lower()
+    pre_processed = output.replace('\n', ' ').replace('\r', '').lower()
     version_start = pre_processed.find("version: ")
     if version_start == -1:
         return _version_failed_answer
@@ -32,4 +31,4 @@ def _parse_version_from_output(output:str):
 
 def _get_pip_output():
     result = subprocess.run(['pip', 'show', 'weaviate-cli'], stdout=subprocess.PIPE)
-    return result.stdout
+    return result.stdout.decode("utf-8")
