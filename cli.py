@@ -2,7 +2,7 @@ import click
 from semi.config.configuration import Configuration
 from semi.commands.schema import import_schema, export_schema, truncate_schema
 from semi.commands.misc import ping, version
-from semi.commands.data import delete_all_data
+from semi.commands.data import delete_all_data, import_data_from_file
 
 
 @click.group()
@@ -80,10 +80,13 @@ def config_view(ctx):
 def config_set(ctx):
     _get_config_from_context(ctx).init()
 
-# concept
-# @data_group.command("import")
-# def concept_import():
-#     click.echo("TODO impl")
+# data
+@data_group.command("import", help="Import data from json file.")
+@click.pass_context
+@click.argument('file')
+@click.option('--fail-on-error', required=False, default=False, is_flag=True, help="Fail if entity loading throws an error")
+def concept_import(ctx, file, fail_on_error):
+    import_data_from_file(_get_config_from_context(ctx), file, fail_on_error)
 
 
 @data_group.command("empty", help="Delete all data objects in weaviate.")

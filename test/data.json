@@ -1,0 +1,44 @@
+{
+    "things": [
+        {
+            "class": "Person",
+            "creationTimeUnix": 1604405489224,
+            "id": "1c9cd584-88fe-5010-83d0-017cb3fcb446",
+            "lastUpdateTimeUnix": 1604405489224,
+            "schema": {
+                "name": "Alan Turing"
+            },
+            "vectorWeights": null
+        },
+        {
+            "class": "Person",
+            "creationTimeUnix": 1604405488877,
+            "id": "b36268d4-a6b5-5274-985f-45f13ce0c642",
+            "lastUpdateTimeUnix": 1604405488877,
+            "schema": {
+                "name": "John von Neumann"
+            },
+            "vectorWeights": null
+        },
+        {
+            "class": "Group",
+            "creationTimeUnix": 1604405489315,
+            "id": "2db436b5-0557-5016-9c5f-531412adf9c6",
+            "lastUpdateTimeUnix": 1604405489315,
+            "schema": {
+                "members": [
+                    {
+                        "beacon": "weaviate://localhost/things/b36268d4-a6b5-5274-985f-45f13ce0c642",
+                        "href": "/v1/things/b36268d4-a6b5-5274-985f-45f13ce0c642"
+                    },
+                    {
+                        "beacon": "weaviate://localhost/things/1c9cd584-88fe-5010-83d0-017cb3fcb446",
+                        "href": "/v1/things/1c9cd584-88fe-5010-83d0-017cb3fcb446"
+                    }
+                ],
+                "name": "Legends"
+            },
+            "vectorWeights": null
+        }
+    ]
+}
