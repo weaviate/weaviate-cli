@@ -13,17 +13,20 @@ config_value_auth_type_username_pass = "username_and_password"
 
 class Configuration:
 
-    def __init__(self):
+    def __init__(self, user_specified_config_file):
         home = os.getenv("HOME")
         self._config_folder = os.path.join(home, _cli_config_sub_path)
         self._config_path = os.path.join(self._config_folder, _cli_config_file_name)
+
+        if user_specified_config_file is not None:
+            self._config_path = user_specified_config_file
 
         if not os.path.isfile(self._config_path):
             print("No config was found, creating a new one.")
             self.init()
 
-        with open(self._config_path, 'r') as config_file:
-            self.config = json.load(config_file)
+        with open(self._config_path, 'r') as user_specified_config_file:
+            self.config = json.load(user_specified_config_file)
 
         self.client = _creat_client_from_config(self.config)
 

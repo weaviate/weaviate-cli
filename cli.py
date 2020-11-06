@@ -7,9 +7,11 @@ from semi.commands.data import delete_all_data, import_data_from_file
 
 @click.group()
 @click.pass_context
-def main(ctx):
+@click.option('--config-file', required=False, default=None, type=str, is_flag=False,
+              help="If specified cli uses the config specified with this path.")
+def main(ctx: click.Context, config_file):
     ctx.obj = {
-        "config": Configuration()
+        "config": Configuration(config_file)
     }
 
 
@@ -64,8 +66,9 @@ def schema_export(ctx, filename):
 @schema_group.command("truncate", help="Remove the entire schema and all the data associated with it.")
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
-def schema_truncate(ctx, force):
+def schema_truncate(ctx: click.Context, force):
     truncate_schema(_get_config_from_context(ctx), force)
+
 
 
 # config
