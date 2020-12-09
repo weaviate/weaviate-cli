@@ -1,4 +1,6 @@
+from getpass import getpass
 from semi.prompt import let_user_pick
+import semi.config.configuration as cfg
 
 
 def create_new_config():
@@ -23,13 +25,13 @@ def _get_authentication_config():
     selection_index = let_user_pick(auth_options)
     if selection_index == 1:
         return {
-            "type": "client_secret",  # TODO why are variables not defined?? config_value_auth_type_client_secret
-            "secret": input("Please specify the client secret: ")
+            "type": cfg.config_value_auth_type_client_secret,
+            "secret": getpass("Please specify the client secret: ") # Hide Secret
         }
     if selection_index == 2:
         return {
-            "type": "username_and_password",  # TODO why are variables not defined?? config_value_auth_type_username_pass
+            "type": cfg.config_value_auth_type_username_pass,
             "user": input("Please specify the user name: "),
-            "pass": input("Please specify the user password: ")
+            "pass": getpass("Please specify the user password: ") # Hide Password
         }
     return None

@@ -68,7 +68,7 @@ class ValidateAndSplitData:
         self.data_references = []
 
     def validate_and_split(self):
-        """ Go through the entire data and validate it agains a schema
+        """ Go through the entire data and validate it against a schema
             if not valid exit with error
             if valid split it into the primitive object and the references
 
