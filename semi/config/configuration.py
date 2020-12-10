@@ -2,13 +2,11 @@ import os.path
 import json
 import weaviate
 from semi.config.manage import create_new_config
-
+import semi.config.config_values as cfg_vals
 
 _cli_config_sub_path = ".config/semi_technologies/"
 _cli_config_file_name = "configs.json"
 
-config_value_auth_type_client_secret = "client_secret"
-config_value_auth_type_username_pass = "username_and_password"
 
 
 class Configuration:
@@ -58,10 +56,10 @@ class Configuration:
 def _creat_client_from_config(config:dict):
     if config["auth"] is None:
         return weaviate.Client(config["url"])
-    if config["auth"]["type"] == config_value_auth_type_client_secret:
+    if config["auth"]["type"] == cfg_vals.config_value_auth_type_client_secret:
         cred = weaviate.AuthClientCredentials(config["auth"]["secret"])
         return weaviate.Client(config["url"], cred)
-    if config["auth"]["type"] == config_value_auth_type_username_pass:
+    if config["auth"]["type"] == cfg_vals.config_value_auth_type_username_pass:
         cred = weaviate.AuthClientPassword(config["auth"]["user"], config["auth"]["pass"])
         return weaviate.Client(config["url"], cred)
 
