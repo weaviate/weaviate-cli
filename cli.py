@@ -1,6 +1,6 @@
 import click
 from semi.config.configuration import Configuration
-from semi.commands.schema import import_schema, export_schema, truncate_schema
+from semi.commands.schema import import_schema, export_schema, delete_schema
 from semi.commands.misc import ping, version
 from semi.commands.data import delete_all_data, import_data_from_file
 
@@ -63,11 +63,11 @@ def schema_export(ctx, filename):
     export_schema(_get_config_from_context(ctx), filename)
 
 
-@schema_group.command("truncate", help="Remove the entire schema and all the data associated with it.")
+@schema_group.command("delete", help="Delete the entire schema and all the data associated with it.")
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
 def schema_truncate(ctx: click.Context, force):
-    truncate_schema(_get_config_from_context(ctx), force)
+    delete_schema(_get_config_from_context(ctx), force)
 
 
 
@@ -92,7 +92,7 @@ def concept_import(ctx, file, fail_on_error):
     import_data_from_file(_get_config_from_context(ctx), file, fail_on_error)
 
 
-@data_group.command("empty", help="Delete all data objects in weaviate.")
+@data_group.command("delete", help="Delete all data objects in weaviate.")
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
 def data_empty(ctx, force):

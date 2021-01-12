@@ -5,7 +5,7 @@ _CLI tool for for Weaviate_
 ## Installation
 
 Install using: `pip install weaviate-cli`\
-Run using: `weaviate-cli --help`
+Run using: `weaviate --help`
 
 ## Build Status
 
