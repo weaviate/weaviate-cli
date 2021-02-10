@@ -46,6 +46,12 @@ def main_version():
     version()
 
 
+@main.command("init", help="Initialize a new CLI configuration.")
+@click.pass_context
+def config_set(ctx):
+    _get_config_from_context(ctx).init()
+
+
 # schema
 @schema_group.command("import", help="Import a weaviate schema from a json file.")
 @click.pass_context

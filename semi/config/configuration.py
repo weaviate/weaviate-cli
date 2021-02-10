@@ -25,9 +25,10 @@ class Configuration:
 
         home = os.getenv("HOME")
         self._config_folder = os.path.join(home, _cli_config_sub_path)
-        self._config_path = os.path.join(self._config_folder, _cli_config_file_name)
 
-        if user_specified_config_file is not None:
+        if user_specified_config_file is None:
+            self._config_path = os.path.join(self._config_folder, _cli_config_file_name) 
+        else:
             self._config_path = user_specified_config_file
 
         if not os.path.isfile(self._config_path):

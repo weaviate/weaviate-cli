@@ -20,9 +20,9 @@ def delete_all_data(cfg: Configuration, force: bool) -> None:
 
     if force:
         _delete_all(cfg.client)
-        sys.exit()
+        sys.exit(0)
     if not is_question_answer_yes("Do you really want to delete all data?"):
-        sys.exit()
+        sys.exit(0)
     _delete_all(cfg.client)
 
 
@@ -211,13 +211,14 @@ def dissect_reference(refs: list, from_class: str, from_id: str, from_prop: str)
     for ref in refs:
         beacon_split = ref.get('beacon', 'e').split('/')
         ref_batch_parameters = {
-            "from_object_class_name": from_class,
             "from_object_uuid": from_id,
+            "from_object_class_name": from_class,
             "from_property_name": from_prop,
             "to_object_uuid": beacon_split[-1]
         }
         result.append(ref_batch_parameters)
     return result
+
 
 def dissect_schema(schema: dict) -> dict:
     """ 
@@ -285,4 +286,5 @@ def is_primitive_prop(data_type: str) -> bool:
         True if 'data_type' is of a primitive property.
     """
 
-    return data_type in ['text', 'string', 'int', 'boolean', 'number', 'date', 'geoCoordinates', 'phoneNumber']
+    return data_type in ['text', 'string', 'int', 'boolean', 'number', 'date', 'geoCoordinates',\
+        'phoneNumber']

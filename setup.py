@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name="weaviate-cli",
-      version="2.0.0", # 0.1.0rc0
+      version="2.1.0", # 0.1.0rc0
       description="Comand line interface to interact with weaviate",
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -18,7 +18,7 @@ setup(name="weaviate-cli",
       py_modules=['cli'],
       python_requires='>=3.6',
       install_requires=[
-          "weaviate-client==2.0",
+          "weaviate-client>=2.1.0",
           "click==7.1.2"],
       entry_points='''
       [console_scripts]
