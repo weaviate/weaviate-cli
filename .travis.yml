@@ -4,9 +4,6 @@ notifications:
   email:
     on_success: change
 
-env:
-  - DOCKER_COMPOSE_VERSION=1.27.4
-
 jobs:
   include:
     - stage: "test"
@@ -15,10 +12,4 @@ jobs:
       install:
         - pip install -r requirements.txt
       script:
-        - ./test/create_test_config.bash
-        - python -m unittest test/unit_test.py 
-        - docker-compose -f test/docker-compose.yaml up -d
-        - sleep 5
-        - python -m unittest test/integration_test.py
-        - docker-compose -f test/docker-compose.yaml down 
-        - python cli.py config view
+        - ./test/run_integration_test.sh

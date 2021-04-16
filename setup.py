@@ -4,14 +4,14 @@ from builtins import open
 # read the contents of your README file
 from os import path
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name="weaviate-cli",
-      version="2.1.0", # 0.1.0rc0
+      version="2.1.1rc0", # 0.1.0rc0
       description="Comand line interface to interact with weaviate",
       long_description=long_description,
-      long_description_content_type='text/markdown',
+      long_description_content_type='text/x-rst',
       author="SeMI Technologies",
       author_email="hello@semi.technology",
       packages=["semi", "semi.config", "semi.commands"],

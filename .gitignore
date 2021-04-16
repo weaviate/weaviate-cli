@@ -5,3 +5,4 @@ dist/
 build/
 .idea
 *.egg-info
+check_weaviate_client_python_version.sh
