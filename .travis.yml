@@ -1,15 +1,23 @@
-language: python
-os: linux
 notifications:
   email:
     on_success: change
+language: python
 
 jobs:
   include:
-    - stage: "test"
-      name: "3.6"
+    - stage: "Test"
+      name: "With weaviate-client version 2.*.*"
       python: "3.6"
       install:
         - pip install -r requirements.txt
+        - pip install "weaviate-client>=2.0.0,<3.0.0"
+      script:
+        - ./test/run_integration_test.sh
+
+    - name: "With weaviate-client version 3.*.*"
+      python: "3.6"
+      install:
+        - pip install -r requirements.txt
+        - pip install "weaviate-client>=3.0.0"
       script:
         - ./test/run_integration_test.sh

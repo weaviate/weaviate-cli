@@ -7,12 +7,12 @@ echo '{"url": "http://localhost:8080", "auth": null}' > "$HOME/.config/semi_tech
 
 python -m unittest test/unit_test.py 
 
-docker-compose -f test/docker-compose.yaml up -d
+docker-compose -f test/docker-compose.yml up -d
 
 sleep 5
 
 python -m unittest test/integration_test.py
 
-docker-compose -f test/docker-compose.yaml down 
+docker-compose -f test/docker-compose.yml down 
 
 python cli.py config view

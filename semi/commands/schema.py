@@ -11,12 +11,12 @@ def import_schema(cfg: Configuration, file_name: str, force: bool) -> None:
     Parameters
     ----------
     cfg : Configuration
-        A CLI configuration.
+        The CLI configuration.
     file_name : str
-        Path to a schema file or URL.
+        The path to a schema file or URL.
     force : bool
-        If True replaces the the schema from weaviate (if one present),
-        if False imports the schema only if no schema is present in weaviate.
+        If True replaces the the schema from weaviate (if one present), if False imports the schema
+        only if no schema is present in weaviate.
     """
 
     if cfg.client.schema.contains(file_name):
@@ -55,9 +55,8 @@ def delete_schema(cfg: Configuration, force: bool) -> None:
     cfg : Configuration
         A CLI configuration.
     force : bool
-        If True deletes all objects and schema from weaviate,
-        if False deletes schema only if weaviate does not have any objects or
-        asks permision to delete all the objects and schema.
+        If True deletes all objects and schema from weaviate, if False deletes schema only if
+        weaviate does not have any objects or asks permission to delete all the objects and schema.
     """
 
     data = cfg.client.data_object.get()

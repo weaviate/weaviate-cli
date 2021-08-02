@@ -1,13 +1,15 @@
-1. Make sure you set the right version in the `setup.py`
-2. Then build the new package:\
+1. Set the new version in the `weaviate/version.py` and `test/test_version.py`.
+2. Run all tests. (Check `test/README.md`)
+3. Then build the new package:\
 `python setup.py sdist bdist_wheel`
-3. And check it:\
+4. And check it:\
 `twine check dist/*`
-4. Check if you are on **Master** in case of full release.
-5. **Commit** the most current version to GitHub if this has not been done yet.
-6. Make sure you gave the commit of the current version a proper tag:\
+5. Check if you are on correct **GitBranch**.
+6. **Commit** the most current version to GitHub if this has not been done yet.
+7. Check TravisCI status to be `OK!`, if not `OK!` fix it.
+8. Give the commit of the current version a proper tag:\
 `git tag -a '<your tag>' -m '<some message for the tag>' && git push --tags`
 tags are either in the form of `v0.2.5` or `v0.2.5rc0`.
-7. Finally publish:\
+9. Optional: install package locally by running `pip install .` and check if the version is set correctly.
+10. Finally publish:\
 `twine upload dist/*`
-8. After publishing change the version in `setup.py` to the next developement number.

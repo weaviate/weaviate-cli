@@ -1,7 +1,10 @@
 import json
 import sys
 import weaviate
-import weaviate.tools
+# import Batcher for weaviate-client version < 3.0.0
+VERSION_2 = (int(weaviate.__version__.split('.')[0]) < 3)
+if VERSION_2:
+    from weaviate.tools import Batcher
 from semi.config.configuration import Configuration
 from semi.prompt import is_question_answer_yes
 
@@ -15,7 +18,7 @@ def delete_all_data(cfg: Configuration, force: bool) -> None:
     cfg : Configuration
         A CLI configuration.
     force : bool
-        If True force delete all objects, if False ask for permision.
+        If True force delete all objects, if False ask for permission.
     """
 
     if force:
@@ -52,8 +55,9 @@ def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) ->
     file : str
         The data file path.
     fail_on_error : bool
-        # TODO:
+        If True exits at the first error, if False prints the error only.
     """
+
     importer = DataFileImporter(cfg.client, file, fail_on_error)
     importer.load()
 
@@ -76,14 +80,23 @@ class DataFileImporter:
 
         self.client = client
         self.fail_on_error = fail_on_error
-        self.batcher = weaviate.tools.Batcher(client, return_values_callback=self._exit_on_error)
-
+        if VERSION_2:
+            self.batcher = Batcher(
+                client,
+                batch_size=512,
+                return_values_callback=self._exit_on_error,
+            )
+        else:
+            self.batcher = client.batch(
+                batch_size=512,
+                callback=self._exit_on_error,
+            )
         with open(data_path, 'r') as data_io:
             self.data = json.load(data_io)
 
     def _exit_on_error(self, batch_results: list):
         """
-        Exit if an error occured.
+        Exit if an error occurred.
 
         Parameters
         ----------
@@ -113,7 +126,10 @@ class DataFileImporter:
             self.batcher.add_data_object(**obj)
         for ref in vasd.data_references:
             self.batcher.add_reference(**ref)
-        self.batcher.close()
+        if VERSION_2:
+            self.batcher.close()
+        else:
+            self.batcher.flush()
 
 class ValidateAndSplitData:
 
@@ -248,7 +264,7 @@ def dissect_schema(schema: dict) -> dict:
 
 def _get_schema_properties(properties: list) -> tuple:
     """
-    Split properties into references and primmitive types.
+    Split properties into references and primitive types.
 
     Parameters
     ----------

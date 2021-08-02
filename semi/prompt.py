@@ -1,4 +1,6 @@
-
+"""
+Command line prompt helper functions!
+"""
 
 def is_question_answer_yes(question: str) -> bool:
     """
@@ -10,6 +12,7 @@ def is_question_answer_yes(question: str) -> bool:
         The question to print on stdout.
 
     Returns
+    -------
     bool
         True if the user answers "yes", False otherwise.
     """

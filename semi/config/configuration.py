@@ -38,16 +38,16 @@ class Configuration:
         with open(self._config_path, 'r') as user_specified_config_file:
             self.config = json.load(user_specified_config_file)
 
-        self.client = _creat_client_from_config(self.config)
+        self.client = _create_client_from_config(self.config)
 
     def init(self):
         """
-        Create the config folder and prompt user for an inital config.
+        Create the config folder and prompt user for an initial config.
         """
 
         try:
             os.makedirs(self._config_folder)
-        except:
+        except FileExistsError:
             pass  # Folders already exist
 
         cfg = create_new_config()
@@ -59,7 +59,7 @@ class Configuration:
 
 
 
-def _creat_client_from_config(config: dict) -> weaviate.Client:
+def _create_client_from_config(config: dict) -> weaviate.Client:
     """
     Create weaviate client from a config.
 
