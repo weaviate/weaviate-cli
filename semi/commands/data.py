@@ -175,6 +175,11 @@ class ValidateAndSplitData:
             'data_object': {},
         }
 
+        # Support for custom vectors
+        vector = obj.get('vector')
+        if vector is not None:
+            import_object_parameter['vector'] = vector
+
         for obj_property_name, obj_property_val in obj.get('properties', {}).items():
             if obj_property_name in schema_definition['primitive']:
                 # property is primitive -> add to data import list
