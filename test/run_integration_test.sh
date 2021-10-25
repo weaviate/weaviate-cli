@@ -13,6 +13,6 @@ sleep 5
 
 python -m unittest test/integration_test.py
 
-docker-compose -f test/docker-compose.yml down 
-
 python cli.py config view
+
+docker-compose -f test/docker-compose.yml down 

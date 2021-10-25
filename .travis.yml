@@ -8,7 +8,9 @@ env:
     - secure: "Fe517q4l4PH6TzLzqqo6dG2EAy6kRDZv2HDFHltStbXNBGYkoba8eq/99PW01KhyrjCAxo41KNKvEsSvlxRc9PNNI8E0PQGNrgs8N+ah5NzUTd9f+LvVt7KyWhUro2HVJQZECA1TH54B1ScLFIRAUVSBwSuCqLuBHn5q4J7li8IDRph0grrA6LEF2dm/H4ZNfF3NG0U2kSlHrNCGtJxKlXiAb5F5VKEFE96LtqkzRAiYbKey1T2sEX77ODtofBAucJ2SrVF97Id700CBOHrnHyDDFg4OGAuGRrS5GglJb/btc5BnPl231/NUxbOQMKCBk1dQxS072TOz2CH6yBh2T3bcna9+wmmPys4lZmAVerXRvhf9SeAfQOiL+rGx2j7V1tpP8HHUbWK6WQ6Dh8+Vw+GO0b0ShIwZ0jXLVhtJSI+Hl5oeHHpBWR4p23Nq/h7Tg7PoCubyHRBiqk58HnEvAFetmIVZX5A5CDFNHbIehDOxws1ayhWjZhBDPb5kvvnT3oPUgD9xMpaGqIjyxGvP/7jX0sDiwbTLHA8NBb3Q617kszPh76ZTMXzY3m+tvSNsQlFJu218SEbXrUtHLcy0Ihqa0EHf3HUEr733Y3NGF8HUkwJwdo6Nl15XFYknCM9dUNzk8mIbkdCB65Fe7xe6p566NUskgMO5BF0ASTaTEDE="
     - secure: "bNt9tseI05LIrO7hDDNoaXXhRYKLUv6NNFw+d3K6tMZyYzIgixolozcJ1UOiuFfffEyhlzsvSHqB7jdM39bKw0j2gMd9c1dRiFPFpdSeYh5AKNOd/yI0rLRnLqifO6x8aSPqSRXvQcXbXnb0fcr0nB5HdsTqXsOAcD3+6kJWNkaG2Dtg3aLAnLbPAgqc2D6f490EqKQKfntLZPHbfAgGDCwcbNCKML5BURsjG3t6FcjvB5HFQsJN7dl7Rsg9mhBFWLNQBCpu5fVX5ibzZWQ/Iqw369GLr7l4h3EXR2LvkHRri03NdWzkdsQhuNSTs/0mwYr0tUsEZsG9cTaInIVGubmMrmkfjCNOLrZu5KU9xg0CdGMKO5hkhrd/X0F4mA6pA4kB3f99e6p2BoXm1m6OBT1p5Mq6A/GBXaot0HXkK3jDpKC7DUBNcp/uQiXy7qKEqaISkDqBdOKOGrFKZb9KlN6YybcoC8pJaQ7nA2lObRpKJfmMlsLxke7Tc2Rb74tiBmpjU4Zo1n1flhVfhNTJFpVMblferOnGyR8R8mMb28JDDWJbwH651kYE5xOFybWEbroJvlFsn4KsKjuTr9+57uxrRvP0/7SaISNkJztOr82vvDvcRTuT8Kqrt30EGy7+u7Ena5jQ5CVbIxyxzyBX2ePJ7LCGPrTv+fHOi8M9Rr0="
 
-
+before_script:
+  # login to docker at the very beginning, so we don't run into rate-limiting
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 jobs:
   include:
@@ -29,6 +31,3 @@ jobs:
       script:
         - ./test/run_integration_test.sh
 
-before_script:
-  # login to docker at the very beginning, so we don't run into rate-limiting
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
