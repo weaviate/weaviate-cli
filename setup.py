@@ -1,3 +1,8 @@
+from sys import version_info, exit
+#check python version
+if version_info.major < 3:
+    exit("Python 3.x is required to run this program")
+
 from os import path
 from builtins import open
 from setuptools import setup
