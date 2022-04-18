@@ -3,60 +3,100 @@ from semi.config.configuration import Configuration
 from semi.commands.schema import import_schema, export_schema, delete_schema
 from semi.commands.misc import ping, version
 from semi.commands.data import delete_all_data, import_data_from_file
+import semi.config.config_values as cfg_vals
+
+
+class NotRequiredIf(click.Option):
+    def __init__(self, *args, **kwargs):
+        self.not_required_if = kwargs.pop('not_required_if')
+        assert self.not_required_if, "'not_required_if' parameter required"
+        kwargs['help'] = (kwargs.get('help', '') +
+                          ' NOTE: This argument is mutually exclusive with %s' %
+                          self.not_required_if).strip()
+        super(NotRequiredIf, self).__init__(*args, **kwargs)
+
+    def handle_parse_result(self, ctx, opts, args):
+        we_are_present = self.name in opts
+        other_present = self.not_required_if in opts
+
+        if other_present:
+            if we_are_present:
+                raise click.UsageError(
+                    "Illegal usage: `%s` is mutually exclusive with `%s`" % (
+                        self.name, self.not_required_if))
+            else:
+                self.prompt = None
+
+        return super(NotRequiredIf, self).handle_parse_result(
+            ctx, opts, args)
 
 
 @click.group()
+def main():
+    pass
+
+
+@main.group("schema", help="Importing and exporting schema files.")
 @click.pass_context
-@click.option('--config-file', required=False, default=None, type=str, is_flag=False,
-              help="If specified cli uses the config specified with this path.")
-def main(ctx: click.Context, config_file):
+def schema_group(ctx: click.Context):
     ctx.obj = {
-        "config": Configuration(config_file)
+        "config": Configuration()
     }
 
 
-# First order commands
-@main.group("schema", help="Importing and exporting schema files.")
-def schema_group():
-    pass
-
-
 @main.group("config", help="Configuration of the CLI.")
-def config_group():
-    pass
+@click.pass_context
+def config_group(ctx: click.Context):
+    ctx.obj = {
+        "config": Configuration()
+    }
 
 
 @main.group("data", help="Data object manipulation in weaviate.")
-def data_group():
-    pass
-
-# @main.group("cloud")
-# def cloud_group():
-#     pass
-
-
-@main.command("ping", help="Check if the configured weaviate is reachable.")
 @click.pass_context
-def main_ping(ctx):
-    ping(_get_config_from_context(ctx))
+def data_group(ctx: click.Context):
+    ctx.obj = {
+        "config": Configuration()
+    }
 
 
-@main.command("version", help="Version of the CLI")
+@main.command('version', help="Print the version of the CLI.")
 def main_version():
     version()
 
 
-@main.command("init", help="Initialize a new CLI configuration.")
-@click.pass_context
-def config_set(ctx):
-    _get_config_from_context(ctx).init()
+@main.command("ping", help="Check if the configured weaviate is reachable.")
+def main_ping():
+    ping(Configuration())
 
 
-# schema
+@main.command(help="Initialize a new weaviate instance configuration.")
+@click.option('--url', type=str, help='Weaviate URL', required=True)
+@click.option('--user', type=str, help='Weaviate user', cls=NotRequiredIf,
+              not_required_if='secret')
+@click.option('--password', type=str, help='Weaviate password', cls=NotRequiredIf,
+              not_required_if='secret')
+@click.option('--secret', type=str, help='Weaviate secret')
+def init(url, user, password, secret):
+    print("Initializing configuration")
+    cfg = {'url': url, 'auth': None}
+    if not user and not password and not secret:
+        print('No authentication provided')
+    elif secret:
+        cfg['auth'] = {'type': cfg_vals.config_value_auth_type_client_secret,
+                       'secret': secret}
+        print('Using client secret authentication')
+    else:
+        cfg['auth'] = {'type': cfg_vals.config_value_auth_type_username_pass,
+                       'user': user,
+                       'pass': password}
+        print('Using basic authentication')
+    print(cfg)
+
+
 @schema_group.command("import", help="Import a weaviate schema from a json file.")
 @click.pass_context
 @click.argument('filename')
-#@click.option('--force', required=False, default=False, type=bool, nargs=0)
 @click.option('--force', required=False, default=False, is_flag=True)
 def schema_import(ctx, filename, force):
     import_schema(_get_config_from_context(ctx), filename, force)
@@ -76,8 +116,6 @@ def schema_truncate(ctx: click.Context, force):
     delete_schema(_get_config_from_context(ctx), force)
 
 
-
-# config
 @config_group.command("view", help="Print the current CLI configuration.")
 @click.pass_context
 def config_view(ctx):
@@ -89,7 +127,7 @@ def config_view(ctx):
 def config_set(ctx):
     _get_config_from_context(ctx).init()
 
-# data
+
 @data_group.command("import", help="Import data from json file.")
 @click.pass_context
 @click.argument('file')
@@ -104,14 +142,6 @@ def concept_import(ctx, file, fail_on_error):
 def data_empty(ctx, force):
     delete_all_data(_get_config_from_context(ctx), force)
 
-# @cloud_group.command("create")
-# def cloud_create():
-#     click.echo("TODO impl")
-#
-# @cloud_group.command("delete")
-# def cloud_delete():
-#     click.echo("TODO impl")
-
 
 def _get_config_from_context(ctx):
     """
@@ -123,5 +153,5 @@ def _get_config_from_context(ctx):
     return ctx.obj["config"]
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

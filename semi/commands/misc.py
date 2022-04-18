@@ -12,7 +12,7 @@ def ping(cfg: Configuration) -> None:
         A CLI configuration. 
     """
 
-    if (cfg.client.is_ready()):
+    if cfg.client.is_ready():
         print("Weaviate is reachable!")
     else:
         print("Weaviate not reachable!")

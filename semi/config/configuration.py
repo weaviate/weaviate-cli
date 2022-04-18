@@ -10,10 +10,9 @@ _cli_config_sub_path = ".config/semi_technologies/"
 _cli_config_file_name = "configs.json"
 
 
-
 class Configuration:
 
-    def __init__(self, user_specified_config_file: Optional[str]):
+    def __init__(self, user_specified_config_file: Optional[str] = None, user_specified_config: Optional[dict] = None):
         """
         Initialize a Configuration class instance.
 
@@ -27,13 +26,17 @@ class Configuration:
         self._config_folder = os.path.join(home, _cli_config_sub_path)
 
         if user_specified_config_file is None:
-            self._config_path = os.path.join(self._config_folder, _cli_config_file_name) 
+            self._config_path = os.path.join(self._config_folder, _cli_config_file_name)
         else:
             self._config_path = user_specified_config_file
 
         if not os.path.isfile(self._config_path):
             print("No config was found, creating a new one.")
-            self.init()
+            if user_specified_config is None:
+                self.init()
+            else:
+                with open(self._config_path, 'w') as new_config_file:
+                    json.dump(user_specified_config, new_config_file)
 
         with open(self._config_path, 'r') as user_specified_config_file:
             self.config = json.load(user_specified_config_file)
@@ -56,7 +59,6 @@ class Configuration:
 
     def __str__(self):
         return str(json.dumps(self.config, indent=4))
-
 
 
 def _create_client_from_config(config: dict) -> weaviate.Client:
