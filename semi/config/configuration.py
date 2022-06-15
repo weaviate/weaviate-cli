@@ -40,7 +40,7 @@ class Configuration:
 
         self.client = _create_client_from_config(self.config)
 
-    def init(self):
+    def init(self, url: Optional[str] = None, user: Optional[str] = None, password: Optional[str] = None, client_secret: Optional[str] = None):
         """
         Create the config folder and prompt user for an initial config.
         """
@@ -50,7 +50,24 @@ class Configuration:
         except FileExistsError:
             pass  # Folders already exist
 
-        cfg = create_new_config()
+        if url is None:
+            cfg = create_new_config()
+        else:
+            cfg = { "url": url }
+            if user is not None:
+                cfg["auth"] = {
+                    "type": cfg_vals.config_value_auth_type_username_pass,
+                    "user": user,
+                    "pass": password
+                }
+            elif client_secret is not None:
+                cfg["auth"] = {
+                    "type": cfg_vals.config_value_auth_type_client_secret,
+                    "secret": client_secret
+                }
+            else:
+                cfg["auth"] = None
+
         with open(self._config_path, 'w') as new_config_file:
             json.dump(cfg, new_config_file)
 
