@@ -1,7 +1,7 @@
 import click
 from semi.config.configuration import Configuration
 from semi.commands.schema import import_schema, export_schema, delete_schema
-from semi.commands.misc import ping, version
+from semi.commands.misc import ping, version, Mutex
 from semi.commands.data import delete_all_data, import_data_from_file
 from semi.commands.wcs import create_new_wcs_account, get_wcs_client
 
@@ -12,7 +12,7 @@ from semi.commands.wcs import create_new_wcs_account, get_wcs_client
               help="If specified cli uses the config specified with this path.")
 def main(ctx: click.Context, config_file):
     ctx.obj = {
-        "config": Configuration(config_file)
+        "config-file": config_file
     }
 
 
@@ -49,16 +49,21 @@ def main_version():
 
 
 @main.command("init", help="Initialize a new CLI configuration.")
-@click.pass_context
-def config_set(ctx):
-    _get_config_from_context(ctx).init()
+@click.option('--url', required=False, default=None, type=str, is_flag=False,)
+@click.option('--user', required=False, default=None, type=str, is_flag=False,
+                cls=Mutex, not_required_if=['client_secret'])
+@click.option('--password', required=False, default=None, type=str, is_flag=False,
+                cls=Mutex, not_required_if=['client_secret'])
+@click.option('--client-secret', required=False, default=None, type=str, is_flag=False,
+                cls=Mutex, not_required_if=['user', 'password'])
+def main_init(url, user, password, client_secret):
+    Configuration(url, user, password, client_secret)
 
 
 # schema
 @schema_group.command("import", help="Import a weaviate schema from a json file.")
 @click.pass_context
 @click.argument('filename')
-#@click.option('--force', required=False, default=False, type=bool, nargs=0)
 @click.option('--force', required=False, default=False, is_flag=True)
 def schema_import(ctx, filename, force):
     import_schema(_get_config_from_context(ctx), filename, force)
@@ -78,7 +83,6 @@ def schema_truncate(ctx: click.Context, force):
     delete_schema(_get_config_from_context(ctx), force)
 
 
-
 # config
 @config_group.command("view", help="Print the current CLI configuration.")
 @click.pass_context
@@ -89,7 +93,7 @@ def config_view(ctx):
 @config_group.command("set", help="Set a new CLI configuration.")
 @click.pass_context
 def config_set(ctx):
-    _get_config_from_context(ctx).init()
+    Configuration()
 
 # data
 @data_group.command("import", help="Import data from json file.")
@@ -156,7 +160,7 @@ def _get_config_from_context(ctx):
     :return:
     :rtype: semi.config.configuration.Configuration
     """
-    return ctx.obj["config"]
+    return Configuration(user_specified_config_file=ctx.obj["config-file"])
 
 
 if __name__ == "__main__":
