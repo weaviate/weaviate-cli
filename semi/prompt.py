@@ -24,7 +24,7 @@ def is_question_answer_yes(question: str) -> bool:
     return False
 
 
-def let_user_pick(options: list) -> int:
+def let_user_pick(options: list, query: str) -> int:
     """
     Present a list of options to the user for selection.
 
@@ -39,7 +39,7 @@ def let_user_pick(options: list) -> int:
         The index of the users selection.
     """
 
-    print("Please choose:")
+    print(query)
     for idx, element in enumerate(options):
         print(f"{idx + 1}) {element}")
     choice = input("Enter number: ")

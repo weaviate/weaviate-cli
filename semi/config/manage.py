@@ -35,7 +35,7 @@ def _get_authentication_config() -> Optional[dict]:
     """
 
     auth_options = ["No authentication", "Client secret", "Username and password"]
-    selection_index = let_user_pick(auth_options)
+    selection_index = let_user_pick(auth_options, "Please select the authentication method:")
     if selection_index == 1:
         return {
             "type": cfg_vals.config_value_auth_type_client_secret,

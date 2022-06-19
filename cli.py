@@ -3,6 +3,7 @@ from semi.config.configuration import Configuration
 from semi.commands.schema import import_schema, export_schema, delete_schema
 from semi.commands.misc import ping, version
 from semi.commands.data import delete_all_data, import_data_from_file
+from semi.commands.wcs import create_new_wcs_account, get_wcs_client
 
 
 @click.group()
@@ -30,9 +31,10 @@ def config_group():
 def data_group():
     pass
 
-# @main.group("cloud")
-# def cloud_group():
-#     pass
+@main.group("cloud", help="Manage WCS cluster instances.")
+@click.pass_context
+def cloud_group(ctx: click.Context):
+    ctx.obj["cloud_client"] = get_wcs_client()
 
 
 @main.command("ping", help="Check if the configured weaviate is reachable.")
@@ -104,13 +106,47 @@ def concept_import(ctx, file, fail_on_error):
 def data_empty(ctx, force):
     delete_all_data(_get_config_from_context(ctx), force)
 
-# @cloud_group.command("create")
-# def cloud_create():
-#     click.echo("TODO impl")
-#
-# @cloud_group.command("delete")
-# def cloud_delete():
-#     click.echo("TODO impl")
+
+@cloud_group.command("add", help="Add a new WCS account.")
+def cloud_add():
+    create_new_wcs_account()
+
+
+@cloud_group.command("list", help="List all WCS accounts.")
+@click.pass_context
+def cloud_list(ctx):
+    all_clusters = ctx.obj["cloud_client"].get_clusters()
+    if all_clusters:
+        print("Available clusters:")
+        for idx in range(len(all_clusters)):
+            print(f"{idx + 1}. {all_clusters[idx]}")
+    else:
+        print("No clusters available.")
+
+
+@cloud_group.command("create", help="Create a new WCS cluster.")
+@click.pass_context
+@click.option('--name', required=True, type=str, help="Name of the cluster.")
+# @click.option('--active', '-a', required=False, default=False, is_flag=True, help="Activate the cluster.")
+def cloud_create(ctx, name):
+    ctx.obj["cloud_client"].create(name)
+
+
+@cloud_group.command("delete", help="Delete a WCS cluster.")
+@click.pass_context
+@click.argument('cluster_id')
+def cloud_delete(ctx, cluster_id):
+    ctx.obj["cloud_client"].delete_cluster(cluster_id)
+
+
+@cloud_group.command("status", help="Get the status of a WCS cluster.")
+@click.pass_context
+@click.argument('cluster_id')
+def cloud_status(ctx, cluster_id):
+    if ctx.obj["cloud_client"].is_ready(cluster_id):
+        print("Ready.")
+    else:
+        print("Not ready.")
 
 
 def _get_config_from_context(ctx):
