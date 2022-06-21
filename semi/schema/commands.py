@@ -1,7 +1,43 @@
-import json
+import click
 import sys
-from semi.config.configuration import Configuration
+import json
+
 from semi.prompt import is_question_answer_yes
+from semi.utils import get_config_from_context
+from semi.config.configuration import Configuration
+
+
+@click.group("schema", help="Importing and exporting schema files.")
+def schema_group():
+    pass
+
+
+@schema_group.command("import", help="Import a weaviate schema from a json file.")
+@click.pass_context
+@click.argument('filename')
+@click.option('--force', required=False, default=False, is_flag=True)
+def schema_import(ctx, filename, force):
+    import_schema(get_config_from_context(ctx), filename, force)
+
+
+@schema_group.command("export", help="Export a weaviate schema to into a json file.")
+@click.pass_context
+@click.argument('filename')
+def schema_export(ctx, filename):
+    export_schema(get_config_from_context(ctx), filename)
+
+
+@schema_group.command("delete", help="Delete the entire schema and all the data associated with it.")
+@click.pass_context
+@click.option('--force', required=False, default=False, is_flag=True)
+def schema_truncate(ctx: click.Context, force):
+    delete_schema(get_config_from_context(ctx), force)
+
+
+
+####################################################################################################
+# Helper functions
+####################################################################################################
 
 
 def import_schema(cfg: Configuration, file_name: str, force: bool) -> None:

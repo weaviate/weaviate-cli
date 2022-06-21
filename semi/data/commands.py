@@ -1,12 +1,40 @@
-import json
+import click
 import sys
+import json
 import weaviate
-# import Batcher for weaviate-client version < 3.0.0
+
 VERSION_2 = (int(weaviate.__version__.split('.')[0]) < 3)
 if VERSION_2:
     from weaviate.tools import Batcher
-from semi.config.configuration import Configuration
+
+from semi.utils import get_config_from_context
 from semi.prompt import is_question_answer_yes
+from semi.config.configuration import Configuration
+
+
+@click.group("data", help="Data object manipulation in weaviate.")
+def data_group():
+    pass
+
+
+@data_group.command("import", help="Import data from json file.")
+@click.pass_context
+@click.argument('file')
+@click.option('--fail-on-error', required=False, default=False, is_flag=True, help="Fail if entity loading throws an error")
+def concept_import(ctx, file, fail_on_error):
+    import_data_from_file(get_config_from_context(ctx), file, fail_on_error)
+
+
+@data_group.command("delete", help="Delete all data objects in weaviate.")
+@click.pass_context
+@click.option('--force', required=False, default=False, is_flag=True)
+def data_empty(ctx, force):
+    delete_all_data(get_config_from_context(ctx), force)
+
+
+########################################################################################################################
+# Helper functions
+########################################################################################################################
 
 
 def delete_all_data(cfg: Configuration, force: bool) -> None:
@@ -60,6 +88,11 @@ def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) ->
 
     importer = DataFileImporter(cfg.client, file, fail_on_error)
     importer.load()
+
+
+########################################################################################################################
+# DataFileImporter
+########################################################################################################################
 
 
 class DataFileImporter:

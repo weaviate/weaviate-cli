@@ -1,30 +1,15 @@
 import click
-from semi.config.configuration import Configuration
-from semi.version import __version__
+from semi.config.commands import Configuration
 
 
-def ping(cfg: Configuration) -> None:
-    """
-    Get weaviate ping status.
-
-    Parameters
-    ----------
-    cfg : Configuration
-        A CLI configuration. 
+def get_config_from_context(ctx):
     """
 
-    if (cfg.client.is_ready()):
-        print("Weaviate is reachable!")
-    else:
-        print("Weaviate not reachable!")
-
-
-def version() -> None:
+    :param ctx:
+    :return:
+    :rtype: semi.config.configuration.Configuration
     """
-    Print weaviate CLI version.
-    """
-
-    print(__version__)
+    return Configuration(ctx.obj["config-file"])
 
 
 class Mutex(click.Option):
