@@ -1,10 +1,14 @@
-import click
+"""
+Weaviate CLI schema group functions.
+"""
+
 import sys
 import json
+import click
 
 from semi.prompt import is_question_answer_yes
 from semi.utils import get_config_from_context
-from semi.config.configuration import Configuration
+from semi.config.commands import Configuration
 
 
 @click.group("schema", help="Importing and exporting schema files.")
@@ -17,6 +21,9 @@ def schema_group():
 @click.argument('filename')
 @click.option('--force', required=False, default=False, is_flag=True)
 def schema_import(ctx, filename, force):
+    """
+        Import a weaviate schema from a file.
+    """
     import_schema(get_config_from_context(ctx), filename, force)
 
 
@@ -24,6 +31,9 @@ def schema_import(ctx, filename, force):
 @click.pass_context
 @click.argument('filename')
 def schema_export(ctx, filename):
+    """
+        Export Weaviate schema to a file.
+    """
     export_schema(get_config_from_context(ctx), filename)
 
 
@@ -31,6 +41,9 @@ def schema_export(ctx, filename):
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
 def schema_truncate(ctx: click.Context, force):
+    """
+        Delete entire schema and data associated with it.
+    """
     delete_schema(get_config_from_context(ctx), force)
 
 

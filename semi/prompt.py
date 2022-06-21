@@ -19,7 +19,7 @@ def is_question_answer_yes(question: str) -> bool:
 
     answer = input(question + " [y/N] ")
     answer = answer.lower()
-    if answer == "y" or answer == "yes":
+    if answer in ("y", "yes"):
         return True
     return False
 
@@ -32,6 +32,9 @@ def let_user_pick(options: list, query: str) -> int:
     ----------
     options : list
         A list of options to be printed and user to choose from.
+
+    query : str
+        Query string to present to user.
 
     Returns
     -------
@@ -46,7 +49,7 @@ def let_user_pick(options: list, query: str) -> int:
     try:
         if 0 < int(choice) <= len(options):
             return int(choice) - 1
-    except:
+    except TypeError:
         pass
     print("Not a valid choice choose again!")
-    return let_user_pick(options)
+    return let_user_pick(options, query)

@@ -1,27 +1,38 @@
-import imp
-import json
+"""
+Miscellaneous helper function/command/classes.
+"""
+
 import os
-import sys
+import json
 import click
-from semi.config.commands import Configuration
-import semi.config.config_values as cfg_vals
-from semi.utils import get_config_from_context, Mutex
+from click_params import URL
+
 from semi.version import __version__
+import semi.config.config_values as cfg_vals
+from semi.config.commands import Configuration
+from semi.utils import get_config_from_context, Mutex
 
 
 @click.command("ping", help="Check if the configured weaviate is reachable.")
 @click.pass_context
 def main_ping(ctx):
+    """
+    Ping the active configuration.
+    """
+
     ping(get_config_from_context(ctx))
 
 
 @click.command("version", help="Version of the CLI")
 def main_version():
+    """
+    Get Version of Weaviate CLI.
+    """
     version()
 
 
 @click.command("init", help="Initialize a new CLI configuration.")
-@click.option('--url', required=False, default=None, type=str, is_flag=False,)
+@click.option('--url', required=False, default=None, type=URL, is_flag=False,)
 @click.option('--user', required=False, default=None, type=str, is_flag=False,
                 cls=Mutex, not_required_if=['client_secret'])
 @click.option('--password', required=False, default=None, type=str, is_flag=False,
@@ -29,6 +40,9 @@ def main_version():
 @click.option('--client-secret', required=False, default=None, type=str, is_flag=False,
                 cls=Mutex, not_required_if=['user', 'password'])
 def main_init(url, user, password, client_secret):
+    """
+    Create a new user configuration using CLI command options.
+    """
     UserConfiguration(url, user, password, client_secret)
 
 
@@ -39,10 +53,10 @@ def ping(cfg: Configuration) -> None:
     Parameters
     ----------
     cfg : Configuration
-        A CLI configuration. 
+        A CLI configuration.
     """
 
-    if (cfg.client.is_ready()):
+    if cfg.client.is_ready():
         print("Weaviate is reachable!")
     else:
         print("Weaviate not reachable!")
@@ -72,7 +86,7 @@ class UserConfiguration(Configuration):
                 pass  # Folders already exist
 
         self.config = {"url": url}
-        
+
         if user:
             self.config["auth"] = {
                     "type": cfg_vals.config_value_auth_type_username_pass,
@@ -88,12 +102,8 @@ class UserConfiguration(Configuration):
             self.config["auth"] = None
 
         with open(self._config_path, 'w') as new_config_file:
-                    json.dump(self.config, new_config_file)
+            json.dump(self.config, new_config_file)
 
         print("Config creation complete\n\n")
 
-        try:
-            self.client = self.get_client()
-        except ConnectionError:
-            print("Fatal error: Connection to the specified weaviate url failed!")
-            sys.exit(1)
+        super().__init__()

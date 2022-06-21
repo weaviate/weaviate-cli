@@ -1,12 +1,19 @@
-import json
+"""
+Weaviate CLI config group functions.
+"""
+
 import os
-from typing import Optional
-import click
-import weaviate
-from getpass import getpass
-import semi.config.config_values as cfg_vals
-from semi.prompt import let_user_pick
 import sys
+import json
+import click
+import requests
+import weaviate
+from typing import Optional
+from getpass import getpass
+
+from semi.prompt import let_user_pick
+import semi.config.config_values as cfg_vals
+
 
 @click.group("config", help="Configuration of the CLI.")
 def config_group():
@@ -54,11 +61,8 @@ class Configuration:
 
         try:
             self.client = self.get_client()
-        except ValueError:
-            print("Fatal error: Authentication type not specified in config!")
-            sys.exit(1)
-        except ConnectionError:
-            print("Fatal error: Connection to the specified weaviate url failed!")
+        except requests.exceptions.ConnectionError:
+            click.echo("Fatal error: Connection to the specified weaviate url failed!")
             sys.exit(1)
 
 

@@ -1,15 +1,19 @@
-import click
+"""
+Weaviate CLI data group functions.
+"""
+
 import sys
 import json
+import click
 import weaviate
-
-VERSION_2 = (int(weaviate.__version__.split('.')[0]) < 3)
-if VERSION_2:
-    from weaviate.tools import Batcher
 
 from semi.utils import get_config_from_context
 from semi.prompt import is_question_answer_yes
-from semi.config.configuration import Configuration
+from semi.config.commands import Configuration
+
+VERSION_2 = (int(weaviate.__version__.split('.', maxsplit=1)[0]) < 3)
+if VERSION_2:
+    from weaviate.tools import Batcher
 
 
 @click.group("data", help="Data object manipulation in weaviate.")
@@ -32,9 +36,9 @@ def data_empty(ctx, force):
     delete_all_data(get_config_from_context(ctx), force)
 
 
-########################################################################################################################
+####################################################################################################
 # Helper functions
-########################################################################################################################
+####################################################################################################
 
 
 def delete_all_data(cfg: Configuration, force: bool) -> None:
@@ -90,9 +94,9 @@ def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) ->
     importer.load()
 
 
-########################################################################################################################
+####################################################################################################
 # DataFileImporter
-########################################################################################################################
+####################################################################################################
 
 
 class DataFileImporter:
@@ -184,9 +188,9 @@ class ValidateAndSplitData:
         self.data_references = []
 
     def validate_and_split(self) -> None:
-        """ 
+        """
         Go through the entire data and validate it against a schema
-        if not valid exit with error, if valid split it into the 
+        if not valid exit with error, if valid split it into the
         primitive object and the references.
         """
 
@@ -249,7 +253,7 @@ def dissect_reference(refs: list, from_class: str, from_id: str, from_prop: str)
     refs : list
         A list of references to be dissected.
     from_class : str
-        The object's class name. 
+        The object's class name.
     from_id : str
         The id of the object.
     from_prop : str
@@ -275,7 +279,7 @@ def dissect_reference(refs: list, from_class: str, from_id: str, from_prop: str)
 
 
 def dissect_schema(schema: dict) -> dict:
-    """ 
+    """
     Dissect the schema into a dict listing all classes with their name as key to have faster
     validation access.
 

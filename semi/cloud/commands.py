@@ -1,10 +1,14 @@
-import click
+"""
+Weaviate CLI data group functions.
+"""
+
 import os
 import json
-
-from semi.prompt import let_user_pick
+import click
 from weaviate.wcs import WCS
 from weaviate.auth import AuthClientCredentials, AuthClientPassword
+
+from semi.prompt import let_user_pick
 
 
 @click.group("cloud", help="Manage WCS cluster instances.")
@@ -59,6 +63,7 @@ def cloud_status(ctx, cluster_id):
 # Helper functions
 ########################################################################################################################
 
+# TODO: Move all functions to a class
 
 cli_wcs_sub_path = ".config/semi_technologies/"
 cli_wcs_filename = "wcs.json"
@@ -76,7 +81,7 @@ def create_new_wcs_account():
             json.dump(wcs_config, new_config_file)
 
 
-def create_new_user():
+def create_new_user() -> dict:
     wcs_auth_options = ["Client Secret", "Username and Password"]
     selection_index = let_user_pick(wcs_auth_options, "Please select the authentication method:") + 1
     if selection_index == 1:
@@ -91,7 +96,7 @@ def create_new_user():
             "password": input("Please specify the user password: ")
         }
 
-def get_wcs_config():
+def get_wcs_config() -> dict:
     home = os.getenv("HOME")
     config_folder = os.path.join(home, cli_wcs_sub_path)
     wcs_path = os.path.join(config_folder, cli_wcs_filename)
@@ -103,7 +108,7 @@ def get_wcs_config():
         return json.load(config_file)
 
 
-def get_wcs_client():
+def get_wcs_client() -> WCS:
     wcs_config = get_wcs_config()
     if wcs_config["type"] == "client_secret":
         return WCS(AuthClientCredentials(wcs_config["secret"]))
