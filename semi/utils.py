@@ -7,7 +7,7 @@ import click
 from semi.config.commands import Configuration
 
 
-def get_config_from_context(ctx):
+def get_config_from_context(ctx) -> Configuration:
     """
         Get Configuration object from the specified file.
     :param ctx:
