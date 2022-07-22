@@ -32,7 +32,7 @@ def main_version():
 
 
 @click.command("init", help="Initialize a new CLI configuration.")
-@click.option('--url', required=False, default=None, type=URL, is_flag=False,)
+@click.option('--url', required=True, default=None, type=URL, is_flag=False,)
 @click.option('--user', required=False, default=None, type=str, is_flag=False,
                 cls=Mutex, not_required_if=['client_secret'])
 @click.option('--password', required=False, default=None, type=str, is_flag=False,
