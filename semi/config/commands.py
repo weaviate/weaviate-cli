@@ -23,12 +23,12 @@ def config_group():
 @config_group.command("view", help="Print the current CLI configuration.")
 @click.pass_context
 def config_view(ctx):
-    print(Configuration(ctx.obj['config-file']))
+    print(Configuration())
 
 
 @config_group.command("set", help="Set a new CLI configuration.")
 def config_set():
-    Configuration().create_new_config()
+    Configuration()
 
 
 ########################################################################################################################
