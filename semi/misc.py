@@ -10,7 +10,7 @@ from click_params import URL
 from semi.version import __version__
 import semi.config.config_values as cfg_vals
 from semi.config.commands import Configuration
-from semi.utils import get_config_from_context, Mutex
+from semi.utils import get_client_from_context, Mutex
 
 
 @click.command("ping", help="Check if the configured weaviate is reachable.")
@@ -20,7 +20,7 @@ def main_ping(ctx):
     Ping the active configuration.
     """
 
-    ping(get_config_from_context(ctx))
+    ping(get_client_from_context(ctx))
 
 
 @click.command("version", help="Version of the CLI")
@@ -46,7 +46,7 @@ def main_init(url, user, password, client_secret):
     UserConfiguration(url, user, password, client_secret)
 
 
-def ping(cfg: Configuration) -> None:
+def ping(client) -> None:
     """
     Get weaviate ping status.
 
@@ -56,7 +56,7 @@ def ping(cfg: Configuration) -> None:
         A CLI configuration.
     """
 
-    if cfg.client.is_ready():
+    if client.is_ready():
         print("Weaviate is reachable!")
     else:
         print("Weaviate not reachable!")

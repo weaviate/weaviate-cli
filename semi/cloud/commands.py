@@ -83,7 +83,8 @@ def create_new_wcs_account():
 
 def create_new_user() -> dict:
     wcs_auth_options = ["Client Secret", "Username and Password"]
-    selection_index = let_user_pick(wcs_auth_options, "Please select the authentication method:") + 1
+    selection_index = let_user_pick(wcs_auth_options,
+                                "Please select the authentication method:") + 1
     if selection_index == 1:
         return {
             "type": "client_secret",

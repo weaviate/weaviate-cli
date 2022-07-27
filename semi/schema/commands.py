@@ -7,8 +7,8 @@ import json
 import click
 
 from semi.prompt import is_question_answer_yes
-from semi.utils import get_config_from_context
-from semi.config.commands import Configuration
+from semi.utils import get_client_from_context
+from weaviate import Client
 
 
 @click.group("schema", help="Importing and exporting schema files.")
@@ -16,7 +16,7 @@ def schema_group():
     pass
 
 
-@schema_group.command("import", help="Import a weaviate schema from a json file.")
+@schema_group.command("import")
 @click.pass_context
 @click.argument('filename')
 @click.option('--force', required=False, default=False, is_flag=True)
@@ -24,27 +24,27 @@ def schema_import(ctx, filename, force):
     """
         Import a weaviate schema from a file.
     """
-    import_schema(get_config_from_context(ctx), filename, force)
+    import_schema(get_client_from_context(ctx), filename, force)
 
 
-@schema_group.command("export", help="Export a weaviate schema to into a json file.")
+@schema_group.command("export")
 @click.pass_context
 @click.argument('filename')
 def schema_export(ctx, filename):
     """
         Export Weaviate schema to a file.
     """
-    export_schema(get_config_from_context(ctx), filename)
+    export_schema(get_client_from_context(ctx), filename)
 
 
-@schema_group.command("delete", help="Delete the entire schema and all the data associated with it.")
+@schema_group.command("delete")
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
 def schema_truncate(ctx: click.Context, force):
     """
         Delete entire schema and data associated with it.
     """
-    delete_schema(get_config_from_context(ctx), force)
+    delete_schema(get_client_from_context(ctx), force)
 
 
 
@@ -53,7 +53,7 @@ def schema_truncate(ctx: click.Context, force):
 ####################################################################################################
 
 
-def import_schema(cfg: Configuration, file_name: str, force: bool) -> None:
+def import_schema(client: Client, file_name: str, force: bool) -> None:
     """
     Import schema into weaviate.
 
@@ -68,16 +68,16 @@ def import_schema(cfg: Configuration, file_name: str, force: bool) -> None:
         only if no schema is present in weaviate.
     """
 
-    if cfg.client.schema.contains(file_name):
+    if client.schema.contains(file_name):
         if not force:
             print("The schema or part of it is already present! Use --force to force replace it.")
             sys.exit(1)
-        cfg.client.schema.delete_all()
+        client.schema.delete_all()
     print("Importing file: ", file_name)
-    cfg.client.schema.create(file_name)
+    client.schema.create(file_name)
 
 
-def export_schema(cfg: Configuration, file_name: str) -> None:
+def export_schema(client: Client, file_name: str) -> None:
     """
     Export schema from weaviate to a file.
 
@@ -90,12 +90,12 @@ def export_schema(cfg: Configuration, file_name: str) -> None:
     """
 
     print("Exporting to file: ", file_name)
-    schema = cfg.client.schema.get()
+    schema = client.schema.get()
     with open(file_name, 'w') as output_file:
         json.dump(schema, output_file, indent=4)
 
 
-def delete_schema(cfg: Configuration, force: bool) -> None:
+def delete_schema(client: Client, force: bool) -> None:
     """
     Delete the weaviate schema.
 
@@ -108,10 +108,10 @@ def delete_schema(cfg: Configuration, force: bool) -> None:
         weaviate does not have any objects or asks permission to delete all the objects and schema.
     """
 
-    data = cfg.client.data_object.get()
+    data = client.data_object.get()
     if len(data) == 0 or force:
-        cfg.client.schema.delete_all()
+        client.schema.delete_all()
         sys.exit(0)
     if not is_question_answer_yes("Weaviate contains data, deleting the schema will delete all data do you want to continue?"):
         sys.exit(1)
-    cfg.client.schema.delete_all()
+    client.schema.delete_all()

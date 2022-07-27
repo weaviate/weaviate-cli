@@ -2,7 +2,9 @@
 Weaviate CLI config group functions.
 """
 
+from genericpath import exists
 import os
+from pathlib import Path
 import sys
 import json
 import click
@@ -23,12 +25,13 @@ def config_group():
 @config_group.command("view", help="Print the current CLI configuration.")
 @click.pass_context
 def config_view(ctx):
-    print(Configuration())
+    print(ctx.obj["config"])
 
 
 @config_group.command("set", help="Set a new CLI configuration.")
-def config_set():
-    Configuration()
+@click.pass_context
+def config_set(ctx):
+    ctx.obj["config"].create_new_config()
 
 
 ########################################################################################################################
@@ -36,34 +39,32 @@ def config_set():
 ########################################################################################################################
 
 
-_cli_config_sub_path = ".config/semi_technologies/"
-_cli_config_file_name = "configs.json"
-
-
 class Configuration:
+    default_file_path = ".config/semi_technologies/"
+    default_file_name = "configs.json"
 
     def __init__(self, config_file: Optional[str] = None):
-        self._config_folder = os.path.join(os.getenv("HOME"), _cli_config_sub_path)
-        if config_file is None:
-            self._config_path = os.path.join(self._config_folder, _cli_config_file_name) 
-        else:
-            self._config_path = config_file
-        if not os.path.isfile(self._config_path):
-            try:
-                os.makedirs(self._config_folder)
-            except FileExistsError:
-                pass  # Folders already exist
-            self._config_path = os.path.join(self._config_folder, _cli_config_file_name)
-            self.config = self.create_new_config()
-        else:
-            with open(self._config_path, 'r') as user_specified_config_file:
-                self.config = json.load(user_specified_config_file)
+        if config_file:
+            assert os.path.isfile(config_file), "Config file does not exist!"
+            self.config_path = config_file
+            with open(self.config_path, 'r') as config_file:
+                try:
+                    self.config = json.load(config_file)
+                except:
+                    click.echo("Fatal Error: Config file is not valid JSON!")
+                    sys.exit(1)
 
-        try:
-            self.client = self.get_client()
-        except requests.exceptions.ConnectionError:
-            click.echo("Fatal error: Connection to the specified weaviate url failed!")
-            sys.exit(1)
+        else:
+            self.config_path = Path(os.path.join(os.getenv("HOME"),
+                                            self.default_file_path,
+                                            self.default_file_name))
+            self.config_path.touch(exist_ok=True)
+            with open(self.config_path, 'r') as config_file:
+                try:
+                    self.config = json.load(config_file)
+                except:
+                    click.echo("No existing configuration found, creating new one.")
+                    self.create_new_config()
 
 
     def get_client(self) -> weaviate.Client:
@@ -77,23 +78,20 @@ class Configuration:
             cred = weaviate.AuthClientPassword(self.config["auth"]["user"], self.config["auth"]["pass"])
             return weaviate.Client(self.config["url"], cred)
 
-        print("Fatal error unknown authentication type in config!")
+        click.echo("Fatal Error: Unknown authentication type in config!")
         sys.exit(1)
 
 
     def create_new_config(self) -> dict:
-
-        config = {
+        self.config = {
             "url": input("Please give a weaviate url: "),
             "auth": self.get_authentication_config()
         }
 
-        with open(self._config_path, 'w') as new_config_file:
-                    json.dump(config, new_config_file)
+        with open(self.config_path, 'w') as new_config_file:
+                    json.dump(self.config, new_config_file)
 
-        print("Config creation complete\n\n")
-
-        return config
+        print("Config creation complete\n")
 
 
     def get_authentication_config(self) -> Optional[dict]:
@@ -103,13 +101,13 @@ class Configuration:
         if selection_index == 1:
             return {
                 "type": cfg_vals.config_value_auth_type_client_secret,
-                "secret": getpass("Please specify the client secret: ") # Hide Secret
+                "secret": getpass("Please specify the client secret: ")
             }
         if selection_index == 2:
             return {
                 "type": cfg_vals.config_value_auth_type_username_pass,
                 "user": input("Please specify the user name: "),
-                "pass": getpass("Please specify the user password: ") # Hide Password
+                "pass": getpass("Please specify the user password: ")
             }
         return None
 

@@ -1,5 +1,5 @@
 import click
-from semi.config.commands import config_group
+from semi.config.commands import Configuration, config_group
 from semi.cloud.commands import cloud_group
 from semi.data.commands import data_group
 from semi.schema.commands import schema_group
@@ -13,7 +13,7 @@ from semi.misc import main_init, main_ping, main_version
               help="If specified cli uses the config specified with this path.")
 def main(ctx: click.Context, config_file):
     ctx.obj = {
-        "config-file": config_file
+        "config": Configuration(config_file)
     }
 
 

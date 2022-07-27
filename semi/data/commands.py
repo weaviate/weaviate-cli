@@ -7,9 +7,8 @@ import json
 import click
 import weaviate
 
-from semi.utils import get_config_from_context
+from semi.utils import get_client_from_context
 from semi.prompt import is_question_answer_yes
-from semi.config.commands import Configuration
 
 VERSION_2 = (int(weaviate.__version__.split('.', maxsplit=1)[0]) < 3)
 if VERSION_2:
@@ -26,14 +25,14 @@ def data_group():
 @click.argument('file')
 @click.option('--fail-on-error', required=False, default=False, is_flag=True, help="Fail if entity loading throws an error")
 def concept_import(ctx, file, fail_on_error):
-    import_data_from_file(get_config_from_context(ctx), file, fail_on_error)
+    import_data_from_file(get_client_from_context(ctx), file, fail_on_error)
 
 
 @data_group.command("delete", help="Delete all data objects in weaviate.")
 @click.pass_context
 @click.option('--force', required=False, default=False, is_flag=True)
 def data_empty(ctx, force):
-    delete_all_data(get_config_from_context(ctx), force)
+    delete_all_data(get_client_from_context(ctx), force)
 
 
 ####################################################################################################
@@ -41,7 +40,7 @@ def data_empty(ctx, force):
 ####################################################################################################
 
 
-def delete_all_data(cfg: Configuration, force: bool) -> None:
+def delete_all_data(client: weaviate.Client, force: bool) -> None:
     """
     Delete all weaviate objects.
 
@@ -54,11 +53,11 @@ def delete_all_data(cfg: Configuration, force: bool) -> None:
     """
 
     if force:
-        _delete_all(cfg.client)
+        _delete_all(client)
         sys.exit(0)
     if not is_question_answer_yes("Do you really want to delete all data?"):
         sys.exit(0)
-    _delete_all(cfg.client)
+    _delete_all(client)
 
 
 def _delete_all(client: weaviate.Client):
@@ -76,7 +75,7 @@ def _delete_all(client: weaviate.Client):
     client.schema.create(schema)
 
 
-def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) -> None:
+def import_data_from_file(client: weaviate.Client, file: str, fail_on_error: bool) -> None:
     """
     Import data from a file.
 
@@ -90,7 +89,7 @@ def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) ->
         If True exits at the first error, if False prints the error only.
     """
 
-    importer = DataFileImporter(cfg.client, file, fail_on_error)
+    importer = DataFileImporter(client, file, fail_on_error)
     importer.load()
 
 

@@ -7,14 +7,14 @@ import click
 from semi.config.commands import Configuration
 
 
-def get_config_from_context(ctx) -> Configuration:
+def get_client_from_context(ctx) -> Configuration:
     """
         Get Configuration object from the specified file.
     :param ctx:
     :return:
     :rtype: semi.config.configuration.Configuration
     """
-    return Configuration(ctx.obj["config-file"])
+    return ctx.obj["config"].get_client()
 
 
 class Mutex(click.Option):
