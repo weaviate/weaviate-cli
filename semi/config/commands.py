@@ -2,17 +2,15 @@
 Weaviate CLI config group functions.
 """
 
-from genericpath import exists
 import os
-from pathlib import Path
 import sys
 import json
-import click
-import requests
-import weaviate
+from pathlib import Path
 from typing import Optional
 from getpass import getpass
 
+import click
+import weaviate
 from semi.prompt import let_user_pick
 import semi.config.config_values as cfg_vals
 
@@ -34,9 +32,9 @@ def config_set(ctx):
     ctx.obj["config"].create_new_config()
 
 
-########################################################################################################################
+####################################################################################################
 # Helper class
-########################################################################################################################
+####################################################################################################
 
 
 class Configuration:
@@ -47,9 +45,9 @@ class Configuration:
         if config_file:
             assert os.path.isfile(config_file), "Config file does not exist!"
             self.config_path = config_file
-            with open(self.config_path, 'r') as config_file:
+            with open(self.config_path, 'r') as config_data:
                 try:
-                    self.config = json.load(config_file)
+                    self.config = json.load(config_data)
                 except:
                     click.echo("Fatal Error: Config file is not valid JSON!")
                     sys.exit(1)
@@ -89,7 +87,7 @@ class Configuration:
         }
 
         with open(self.config_path, 'w') as new_config_file:
-                    json.dump(self.config, new_config_file)
+            json.dump(self.config, new_config_file)
 
         print("Config creation complete\n")
 

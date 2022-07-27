@@ -11,25 +11,34 @@ from weaviate.auth import AuthClientCredentials, AuthClientPassword
 from semi.prompt import let_user_pick
 
 
-@click.group("cloud", help="Manage WCS cluster instances.")
+@click.group("cloud")
 @click.pass_context
 def cloud_group(ctx: click.Context):
+    """
+        Manage WCS cluster instances.
+    """
     ctx.obj["cloud_client"] = get_wcs_client()
 
 
 @cloud_group.command("add", help="Add a new WCS account.")
 def cloud_add():
+    """
+        Add a new WCS account.
+    """
     create_new_wcs_account()
 
 
 @cloud_group.command("list", help="List all WCS accounts.")
 @click.pass_context
 def cloud_list(ctx):
+    """
+        List all WCS accounts.
+    """
     all_clusters = ctx.obj["cloud_client"].get_clusters()
     if all_clusters:
         print("Available clusters:")
-        for idx in range(len(all_clusters)):
-            print(f"{idx + 1}. {all_clusters[idx]}")
+        for index, cluster_name in enumerate(all_clusters, start=1):
+            click.echo(f"{index}. {cluster_name}")
     else:
         print("No clusters available.")
 
@@ -37,8 +46,10 @@ def cloud_list(ctx):
 @cloud_group.command("create", help="Create a new WCS cluster.")
 @click.pass_context
 @click.option('--name', required=True, type=str, help="Name of the cluster.")
-# @click.option('--active', '-a', required=False, default=False, is_flag=True, help="Activate the cluster.")
 def cloud_create(ctx, name):
+    """
+        Create a new WCS cluster.
+    """
     ctx.obj["cloud_client"].create(name)
 
 
@@ -46,6 +57,9 @@ def cloud_create(ctx, name):
 @click.pass_context
 @click.argument('cluster_id')
 def cloud_delete(ctx, cluster_id):
+    """
+        Delete a WCS cluster.
+    """
     ctx.obj["cloud_client"].delete_cluster(cluster_id)
 
 
@@ -53,15 +67,18 @@ def cloud_delete(ctx, cluster_id):
 @click.pass_context
 @click.argument('cluster_id')
 def cloud_status(ctx, cluster_id):
+    """
+        Get the status of a WCS cluster.
+    """
     if ctx.obj["cloud_client"].is_ready(cluster_id):
         print("Ready.")
     else:
         print("Not ready.")
 
 
-########################################################################################################################
+####################################################################################################
 # Helper functions
-########################################################################################################################
+####################################################################################################
 
 # TODO: Move all functions to a class
 
@@ -96,6 +113,8 @@ def create_new_user() -> dict:
             "username": input("Please specify the user name: "),
             "password": input("Please specify the user password: ")
         }
+    click.echo("Invalid selection.")
+    return create_new_user()
 
 def get_wcs_config() -> dict:
     home = os.getenv("HOME")
