@@ -91,7 +91,7 @@ def export_schema(client: Client, file_name: str) -> None:
 
     print("Exporting to file: ", file_name)
     schema = client.schema.get()
-    with open(file_name, 'w') as output_file:
+    with open(file_name, 'w', encoding="utf-8") as output_file:
         json.dump(schema, output_file, indent=4)
 
 

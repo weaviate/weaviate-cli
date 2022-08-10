@@ -13,6 +13,7 @@ def classification_group(ctx : click.Context):
     """
         Classification of data.
     """
+
     ctx.obj["classification"] = get_classification_from_ctx(ctx)
 
 
@@ -20,7 +21,10 @@ def classification_group(ctx : click.Context):
 @click.pass_context
 @click.argument('classification_id')
 def get_classification(ctx, classification_id):
-    """Get a classification info by id."""
+    """
+    Get a classification info by id.
+    """
+
     show_classification_info(ctx.obj["classification"], classification_id)
 
 
@@ -28,7 +32,10 @@ def get_classification(ctx, classification_id):
 @click.pass_context
 @click.argument('classification_id')
 def get_classification_status(ctx, classification_id):
-    """Get a classification status by id."""
+    """
+    Get a classification status by id.
+    """
+
     show_classification_status(ctx.obj["classification"], classification_id)
 
 
@@ -44,7 +51,10 @@ def get_classification_status(ctx, classification_id):
 @click.option('-k', '--k', required = False, type = int,
                                 help = "Use kNN classification with value k")
 def start_classification(ctx, class_name, based_on, property, k):
-    """Start a classification."""
+    """
+    Start a classification.
+    """
+
     if k:
         start_knn_classification(ctx.obj["classification"], class_name,
                                                             [based_on], [property], k)
@@ -59,6 +69,17 @@ def start_classification(ctx, class_name, based_on, property, k):
 
 
 def show_classification_status(classification, classification_id : str):
+    """
+    Get a classification status by id.
+
+    Parameters
+    ----------
+    classification : Classification
+        Classification client.
+    classification_id : str
+        Classification id.
+    """
+
     if classification.is_running(classification_id):
         click.echo("Classification is running.")
     elif classification.is_failed(classification_id):
@@ -68,11 +89,37 @@ def show_classification_status(classification, classification_id : str):
 
 
 def show_classification_info(classification, classification_id : str):
+    """
+    Get a classification info by id.
+
+    Parameters
+    ----------
+    classification : Classification
+        Classification client.
+    classification_id : str
+        Classification id.
+    """
+
     result = classification.get(classification_id)
     click.echo(json.dumps(result, indent=4))
 
 
 def start_contextionary_classification(classification, class_name : str, based_on : list, properties : list):
+    """
+    Start a contextionary classification.
+
+    Parameters
+    ----------
+    classification : Classification
+        Classification client.
+    class_name : str
+        Object type to classify.
+    based_on : list
+        Properties to base classification on.
+    properties : list
+        Properties to classify.
+    """
+
     result = classification.schedule()\
         .with_type("text2vec-contextionary-contextual")\
         .with_class_name(class_name)\
@@ -83,6 +130,23 @@ def start_contextionary_classification(classification, class_name : str, based_o
 
 
 def start_knn_classification(classification, class_name : str, based_on : list, properties : list, k : int):
+    """
+    Start a kNN classification.
+
+    Parameters
+    ----------
+    classification : Classification
+        Classification client.
+    class_name : str
+        Object type to classify.
+    based_on : list
+        Properties to base classification on.
+    properties : list
+        Properties to classify.
+    k : int
+        kNN value.
+    """
+
     result = classification.schedule()\
         .with_type("knn")\
         .with_class_name(class_name)\
