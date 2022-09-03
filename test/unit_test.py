@@ -1,5 +1,5 @@
 import unittest
-from semi.commands.data import ValidateAndSplitData, dissect_reference
+from semi.data.commands import ValidateAndSplitData, dissect_reference
 
 class TestCLI(unittest.TestCase):
 
