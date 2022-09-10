@@ -45,12 +45,19 @@ def cloud_list(ctx):
 
 @cloud_group.command("create", help="Create a new WCS cluster.")
 @click.pass_context
-@click.option('--name', required=True, type=str, help="Name of the cluster.")
-def cloud_create(ctx, name):
+@click.option('--name', required=False, type=str, help="Name of the cluster.")
+@click.option('--config', required=False, type=str, help="Path to the cluster config file.")
+def cloud_create(ctx, name, config):
     """
         Create a new WCS cluster.
     """
-    ctx.obj["cloud_client"].create(name)
+    #read graphql query from file
+    if config:
+        with open(config, 'r', encoding='utf-8') as f:
+            query = f.read()
+            ctx.obj["cloud_client"].create(config=query)
+    else:
+        ctx.obj["cloud_client"].create(name)
 
 
 @cloud_group.command("delete", help="Delete a WCS cluster.")
