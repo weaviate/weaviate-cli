@@ -10,10 +10,6 @@ import weaviate
 from semi.utils import get_client_from_context
 from semi.prompt import is_question_answer_yes
 
-VERSION_2 = (int(weaviate.__version__.split('.', maxsplit=1)[0]) < 3)
-if VERSION_2:
-    from weaviate.tools import Batcher
-
 
 @click.group("data", help="Data object manipulation in weaviate.")
 def data_group():
@@ -116,17 +112,12 @@ class DataFileImporter:
 
         self.client = client
         self.fail_on_error = fail_on_error
-        if VERSION_2:
-            self.batcher = Batcher(
-                client,
-                batch_size=512,
-                return_values_callback=self._exit_on_error,
-            )
-        else:
-            self.batcher = client.batch(
-                batch_size=512,
-                callback=self._exit_on_error,
-            )
+
+        self.batcher = client.batch(
+            batch_size=512,
+            callback=self._exit_on_error,
+        )
+
         with open(data_path, 'r') as data_io:
             self.data = json.load(data_io)
 
@@ -162,10 +153,7 @@ class DataFileImporter:
             self.batcher.add_data_object(**obj)
         for ref in vasd.data_references:
             self.batcher.add_reference(**ref)
-        if VERSION_2:
-            self.batcher.close()
-        else:
-            self.batcher.flush()
+        self.batcher.flush()
 
 class ValidateAndSplitData:
 
