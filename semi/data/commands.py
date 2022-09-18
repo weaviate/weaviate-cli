@@ -1,15 +1,42 @@
-import json
+"""
+Weaviate CLI data group functions.
+"""
+
 import sys
+import json
+import click
 import weaviate
-# import Batcher for weaviate-client version < 3.0.0
-VERSION_2 = (int(weaviate.__version__.split('.')[0]) < 3)
-if VERSION_2:
-    from weaviate.tools import Batcher
-from semi.config.configuration import Configuration
+
+from semi.utils import get_client_from_context
 from semi.prompt import is_question_answer_yes
 
 
-def delete_all_data(cfg: Configuration, force: bool) -> None:
+@click.group("data", help="Data object manipulation in weaviate.")
+def data_group():
+    pass
+
+
+@data_group.command("import", help="Import data from json file.")
+@click.pass_context
+@click.argument('file')
+@click.option('--fail-on-error', required=False, default=False, is_flag=True, help="Fail if entity loading throws an error")
+def concept_import(ctx, file, fail_on_error):
+    import_data_from_file(get_client_from_context(ctx), file, fail_on_error)
+
+
+@data_group.command("delete", help="Delete all data objects in weaviate.")
+@click.pass_context
+@click.option('--force', required=False, default=False, is_flag=True)
+def data_empty(ctx, force):
+    delete_all_data(get_client_from_context(ctx), force)
+
+
+####################################################################################################
+# Helper functions
+####################################################################################################
+
+
+def delete_all_data(client: weaviate.Client, force: bool) -> None:
     """
     Delete all weaviate objects.
 
@@ -22,11 +49,11 @@ def delete_all_data(cfg: Configuration, force: bool) -> None:
     """
 
     if force:
-        _delete_all(cfg.client)
+        _delete_all(client)
         sys.exit(0)
     if not is_question_answer_yes("Do you really want to delete all data?"):
         sys.exit(0)
-    _delete_all(cfg.client)
+    _delete_all(client)
 
 
 def _delete_all(client: weaviate.Client):
@@ -44,7 +71,7 @@ def _delete_all(client: weaviate.Client):
     client.schema.create(schema)
 
 
-def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) -> None:
+def import_data_from_file(client: weaviate.Client, file: str, fail_on_error: bool) -> None:
     """
     Import data from a file.
 
@@ -58,8 +85,13 @@ def import_data_from_file(cfg: Configuration, file: str, fail_on_error: bool) ->
         If True exits at the first error, if False prints the error only.
     """
 
-    importer = DataFileImporter(cfg.client, file, fail_on_error)
+    importer = DataFileImporter(client, file, fail_on_error)
     importer.load()
+
+
+####################################################################################################
+# DataFileImporter
+####################################################################################################
 
 
 class DataFileImporter:
@@ -80,17 +112,12 @@ class DataFileImporter:
 
         self.client = client
         self.fail_on_error = fail_on_error
-        if VERSION_2:
-            self.batcher = Batcher(
-                client,
-                batch_size=512,
-                return_values_callback=self._exit_on_error,
-            )
-        else:
-            self.batcher = client.batch(
-                batch_size=512,
-                callback=self._exit_on_error,
-            )
+
+        self.batcher = client.batch(
+            batch_size=512,
+            callback=self._exit_on_error,
+        )
+
         with open(data_path, 'r') as data_io:
             self.data = json.load(data_io)
 
@@ -126,10 +153,7 @@ class DataFileImporter:
             self.batcher.add_data_object(**obj)
         for ref in vasd.data_references:
             self.batcher.add_reference(**ref)
-        if VERSION_2:
-            self.batcher.close()
-        else:
-            self.batcher.flush()
+        self.batcher.flush()
 
 class ValidateAndSplitData:
 
@@ -151,9 +175,9 @@ class ValidateAndSplitData:
         self.data_references = []
 
     def validate_and_split(self) -> None:
-        """ 
+        """
         Go through the entire data and validate it against a schema
-        if not valid exit with error, if valid split it into the 
+        if not valid exit with error, if valid split it into the
         primitive object and the references.
         """
 
@@ -216,7 +240,7 @@ def dissect_reference(refs: list, from_class: str, from_id: str, from_prop: str)
     refs : list
         A list of references to be dissected.
     from_class : str
-        The object's class name. 
+        The object's class name.
     from_id : str
         The id of the object.
     from_prop : str
@@ -242,7 +266,7 @@ def dissect_reference(refs: list, from_class: str, from_id: str, from_prop: str)
 
 
 def dissect_schema(schema: dict) -> dict:
-    """ 
+    """
     Dissect the schema into a dict listing all classes with their name as key to have faster
     validation access.
 

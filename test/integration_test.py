@@ -1,6 +1,6 @@
 import unittest
 import weaviate
-from semi.commands.data import DataFileImporter
+from semi.data.commands import DataFileImporter
 
 
 class IntegrationTest(unittest.TestCase):

@@ -21,12 +21,13 @@ setup(
     long_description_content_type='text/x-rst',
     author="SeMI Technologies",
     author_email="hello@semi.technology",
-    packages=["semi", "semi.config", "semi.commands"],
+    packages=["semi", "semi.config", "semi.cloud", "semi.data", "semi.schema", "semi.classification"],
     py_modules=['cli'],
     python_requires='>=3.6',
     install_requires=[
-        "weaviate-client>=2.1.0",
-        "click==7.1.2"],
+        "weaviate-client>=3.7.0",
+        "click==7.1.2",
+        "click-params==0.3.0"],
     entry_points='''
     [console_scripts]
     weaviate=cli:main
