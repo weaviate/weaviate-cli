@@ -1,0 +1,27 @@
+name: Main
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  pull_request:
+
+jobs:
+  unit-tests:
+
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [ "3.8", "3.9", "3.10", "3.11" ]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.version }}
+        cache: 'pip' # caching pip dependencies
+    - run: pip install -r requirements.txt
+    - name: Run unittests
+      run: ./test/run_integration_test.sh

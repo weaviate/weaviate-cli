@@ -1,6 +1,5 @@
 import click
 from semi.config.commands import Configuration, config_group
-from semi.cloud.commands import cloud_group
 from semi.data.commands import data_group
 from semi.schema.commands import schema_group
 from semi.classification.commands import classification_group
@@ -18,7 +17,6 @@ def main(ctx: click.Context, config_file):
 
 
 main.add_command(config_group)
-main.add_command(cloud_group)
 main.add_command(data_group)
 main.add_command(schema_group)
 main.add_command(classification_group)
