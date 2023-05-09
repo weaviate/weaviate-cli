@@ -21,7 +21,7 @@ setup(
     long_description_content_type='text/x-rst',
     author="SeMI Technologies",
     author_email="hello@semi.technology",
-    packages=["semi", "semi.config", "semi.cloud", "semi.data", "semi.schema", "semi.classification"],
+    packages=["semi", "semi.config",  "semi.data", "semi.schema", "semi.classification"],
     py_modules=['cli'],
     python_requires='>=3.6',
     install_requires=[
