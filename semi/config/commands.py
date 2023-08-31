@@ -104,6 +104,9 @@ class Configuration:
             if self.config["auth"]["type"] == cfg_vals.config_value_auth_type_username_pass:
                 cred = weaviate.AuthClientPassword(self.config["auth"]["user"], self.config["auth"]["pass"])
                 return weaviate.Client(self.config["url"], cred)
+            if self.config["auth"]["type"] == cfg_vals.config_value_auth_type_api_key:
+                cred = weaviate.AuthApiKey(self.config["auth"]["api_key"])
+                return weaviate.Client(self.config["url"], cred)
         except requests.exceptions.ConnectionError:
             click.echo("Fatal Error: Could not connect to the weaviate instance!")
             sys.exit(1)
