@@ -76,6 +76,7 @@ class Configuration:
             self.config_path = Path(os.path.join(os.getenv("HOME"),
                                             self.default_file_path,
                                             self.default_file_name))
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
             self.config_path.touch(exist_ok=True)
             with open(self.config_path, 'r', encoding="utf-8") as configuration_file:
                 try:
