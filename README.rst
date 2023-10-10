@@ -46,4 +46,4 @@ Support
 Contributing
 ------------
 
-- Do you want to contribute to `Weaviate`, read `How to Contribute <https://github.com/semi-technologies/weaviate/blob/master/CONTRIBUTE.md>`_.
+- Do you want to contribute to `Weaviate`, read `How to Contribute <https://github.com/weaviate/weaviate/blob/master/CONTRIBUTING.md>`_.
