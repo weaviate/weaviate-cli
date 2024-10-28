@@ -9,10 +9,10 @@ class TenantManager:
         self.client = client
 
     def create_tenants(
-        self, 
-        collection: str, 
-        tenant_suffix: str, 
-        number_tenants: int, 
+        self,
+        collection: str,
+        tenant_suffix: str,
+        number_tenants: int,
         state: str
     ) -> None:
         """
@@ -213,7 +213,7 @@ class TenantManager:
                 f"{len(tenants):<20}{len(inactive_tenants):<20}{len(active_tenants):<20}{len(offoaded_tenants):<20}"
             )
         return tenants
-    
+
     def update_tenants(self, collection: str, tenant_suffix: str, number_tenants: int, state: str) -> None:
         """
         Updates the activity status of a specified number of tenants in a collection.
@@ -222,7 +222,7 @@ class TenantManager:
             collection (str): The name of the collection to update tenants in.
             tenant_suffix (str): The suffix used to filter tenants by name.
             number_tenants (int): The number of tenants to update.
-            state (str): The desired activity status for the tenants. 
+            state (str): The desired activity status for the tenants.
                  Must be one of "hot", "active", "cold", "inactive", "frozen", or "offloaded".
 
         Raises:
@@ -312,4 +312,4 @@ class TenantManager:
                 )
         click.echo(
             f"{len(tenants_list)} tenants updated with tenant status '{tenant.activity_status}' for class '{collection.name}'."
-        )    
+        )

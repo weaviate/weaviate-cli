@@ -8,8 +8,6 @@ from pathlib import Path
 from typing import Dict, Optional, Union
 
 
-
-
 class ConfigManager:
     """
     Weaviate CLI config manager for handling configuration files.

@@ -1,8 +1,8 @@
 import sys
 import click
-from lib.managers.tenant_manager import TenantManager
-from lib.utils import get_client_from_context
-from lib.managers.collection_manager import CollectionManager
+from weaviate_cli.managers.tenant_manager import TenantManager
+from weaviate_cli.utils import get_client_from_context
+from weaviate_cli.managers.collection_manager import CollectionManager
 
 # Get Group
 @click.group()
@@ -43,7 +43,6 @@ def get_tenants_cli(ctx, collection, verbose):
         client = get_client_from_context(ctx)
         tenant_manager = TenantManager(client)
         tenant_manager.get_tenants(
-            client=client,
             collection=collection,
             verbose=verbose,
         )

@@ -1,9 +1,9 @@
 import sys
 import click
 from typing import Optional, Union
-from lib.managers.tenant_manager import TenantManager
-from lib.utils import get_client_from_context
-from lib.managers.collection_manager import CollectionManager
+from weaviate_cli.managers.tenant_manager import TenantManager
+from weaviate_cli.utils import get_client_from_context
+from weaviate_cli.managers.collection_manager import CollectionManager
 
 # Update Group
 @click.group()

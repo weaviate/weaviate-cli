@@ -38,7 +38,7 @@ class CollectionManager:
                 col_obj = self.client.collections.get(single_collection)
                 schema = col_obj.config.get()
                 click.echo(
-                    f"{single_collection:<29} {'True' if schema.multi_tenancy_config.enabled else 'False':<15} {len(col_obj.tenants.get()) if schema.multi_tenancy_config.enabled else 0:<15} {self.__get_total_objects_with_multitenant(col_obj, schema.multi_tenancy_config.auto) if schema.multi_tenancy_config.enabled else len(col_obj):<15} {schema.replication_config.factor:<19} {schema.vector_index_type if schema.vector_index_type else 'None':<15} {schema.vectorizer if schema.vectorizer else 'None':<15}"
+                    f"{single_collection:<29} {'True' if schema.multi_tenancy_config.enabled else 'False':<15} {len(col_obj.tenants.get()) if schema.multi_tenancy_config.enabled else 0:<15} {self.__get_total_objects_with_multitenant(col_obj) if schema.multi_tenancy_config.enabled else len(col_obj):<15} {schema.replication_config.factor:<19} {schema.vector_index_type if schema.vector_index_type else 'None':<15} {schema.vectorizer if schema.vectorizer else 'None':<15}"
                 )
             click.echo(f"{'':<30}{'':<16}{'':<16}{'':<16}{'':<20}{'':<16}{'':<16}")
             click.echo(f"Total: {len(all_collections)} collections")

@@ -1,11 +1,11 @@
 import click
-from lib.managers.config_manager import ConfigManager
-from lib.commands.create import create
-from lib.commands.delete import delete
-from lib.commands.get import get
-from lib.commands.update import update
-from lib.commands.query import query
-from lib.commands.restore import restore
+from weaviate_cli.managers.config_manager import ConfigManager
+from weaviate_cli.commands.create import create
+from weaviate_cli.commands.delete import delete
+from weaviate_cli.commands.get import get
+from weaviate_cli.commands.update import update
+from weaviate_cli.commands.query import query
+from weaviate_cli.commands.restore import restore
 
 
 @click.group()
