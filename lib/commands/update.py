@@ -1,6 +1,7 @@
 import sys
 import click
 from typing import Optional, Union
+from lib.managers.tenant_manager import TenantManager
 from lib.utils import get_client_from_context
 from lib.managers.collection_manager import CollectionManager
 
@@ -75,3 +76,43 @@ def update_collection_cli(
         sys.exit(1)  # Return a non-zero exit code on failure
 
     client.close()
+
+
+@update.command("tenants")
+@click.option(
+    "--collection", default="Movies", help="The name of the collection to update."
+)
+@click.option(
+    "--tenant_suffix",
+    default="Tenant--",
+    help="The suffix to add to the tenant name (default: 'Tenant--').",
+)
+@click.option(
+    "--number_tenants", default=100, help="Number of tenants to update (default: 100)."
+)
+@click.option(
+    "--state",
+    default="active",
+    type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
+)
+@click.pass_context
+def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
+    """Update tenants in Weaviate."""
+
+    try:
+        client = get_client_from_context(ctx)
+        tenant_manager = TenantManager(client)
+        tenant_manager.update_tenants(
+            client=client,
+            collection=collection,
+            tenant_suffix=tenant_suffix,
+            number_tenants=number_tenants,
+            state=state,
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        client.close()
+        sys.exit(1)  # Return a non-zero exit code on failure
+
+    client.close()
+

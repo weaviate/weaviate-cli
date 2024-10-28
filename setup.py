@@ -26,7 +26,8 @@ setup(
     python_requires='>=3.8',
     install_requires=[
         "weaviate-client>=4.9.0",
-        "click==8.1.7"],
+        "click==8.1.7",
+        "semver==3.0.2",],
     entry_points='''
     [console_scripts]
     weaviate=cli:main

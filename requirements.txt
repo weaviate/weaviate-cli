@@ -2,3 +2,4 @@ weaviate-client>=4.9.0
 click==8.1.7
 twine
 pytest
+semver==3.0.2
