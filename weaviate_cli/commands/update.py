@@ -4,6 +4,7 @@ from typing import Optional, Union
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
+from weaviate_cli.managers.shard_manager import ShardManager
 
 # Update Group
 @click.group()
@@ -103,7 +104,6 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
         client = get_client_from_context(ctx)
         tenant_manager = TenantManager(client)
         tenant_manager.update_tenants(
-            client=client,
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
@@ -116,3 +116,53 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
 
     client.close()
 
+
+@update.command("shards")
+@click.option(
+    "--collection",
+    default=None,
+    help="The name of the collection to update.",
+)
+@click.option(
+    "--status",
+    default="READY",
+    type=click.Choice(["READY", "READONLY"]),
+    help="The status of the shards.",
+)
+@click.option(
+    "--shards",
+    default=None,
+    help="Comma separated list of shards to update.",
+)
+@click.option(
+    "--all",
+    is_flag=True,
+    help="Update all collections.",
+)
+
+@click.pass_context
+def update_shards_cli(
+    ctx: click.Context,
+    status: str,
+    collection: Optional[str],
+    shards: Optional[str],
+    all: bool
+) -> None:
+    """Update shards in Weaviate."""
+
+    try:
+        client = get_client_from_context(ctx)
+        shard_man = ShardManager(client)
+        # Call the function from update_shards.py with general and specific arguments
+        shard_man.update_shards(
+            status=status,
+            collection=collection,
+            shards=shards,
+            all=all,
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        client.close()
+        sys.exit(1)  # Return a non-zero exit code on failure
+
+    client.close()
