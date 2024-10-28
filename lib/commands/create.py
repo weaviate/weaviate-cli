@@ -1,10 +1,12 @@
 import sys
 import click
+from typing import Optional
 from lib.utils import get_client_from_context
 from lib.managers.collection_manager import CollectionManager
+
 # Create Group
 @click.group()
-def create():
+def create() -> None:
     """Create resources in Weaviate."""
     pass
 
@@ -59,22 +61,21 @@ def create():
 )
 @click.pass_context
 def create_collection_cli(
-    ctx,
-    collection,
-    replication_factor,
-    async_enabled,
-    vector_index,
-    inverted_index,
-    training_limit,
-    multitenant,
-    auto_tenant_creation,
-    auto_tenant_activation,
-    auto_schema,
-    shards,
-    vectorizer,
-):
+    ctx: click.Context,
+    collection: str,
+    replication_factor: int,
+    async_enabled: bool,
+    vector_index: str,
+    inverted_index: Optional[str],
+    training_limit: int,
+    multitenant: bool,
+    auto_tenant_creation: bool,
+    auto_tenant_activation: bool,
+    auto_schema: bool,
+    shards: int,
+    vectorizer: Optional[str],
+) -> None:
     """Create a collection in Weaviate."""
-
 
     try:
         client = get_client_from_context(ctx)
@@ -95,7 +96,7 @@ def create_collection_cli(
             vectorizer=vectorizer,
         )
     except Exception as e:
-        print(f"Error: {e}")
+        click.echo(f"Error: {e}")
         # traceback.print_exc()  # Print the full traceback
         client.close()
         sys.exit(1)  # Return a non-zero exit code on failure

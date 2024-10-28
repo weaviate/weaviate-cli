@@ -5,6 +5,7 @@ import sys
 import socket
 import weaviate
 from pathlib import Path
+from typing import Dict, Optional, Union
 
 
 
@@ -13,20 +14,20 @@ class ConfigManager:
     """
     Weaviate CLI config manager for handling configuration files.
     """
-    default_file_path = ".config/weaviate/"
-    default_file_name = "config.json"
-    default_host = "localhost"
-    default_port = 8080
-    default_grpc_port = 50051
+    default_file_path: str = ".config/weaviate/"
+    default_file_name: str = "config.json"
+    default_host: str = "localhost"
+    default_port: int = 8080
+    default_grpc_port: int = 50051
 
-    def __init__(self, config_file: str = None):
+    def __init__(self, config_file: Optional[str] = None) -> None:
         """Initialize config manager with optional config file path"""
         if config_file:
             assert os.path.isfile(config_file), "Config file does not exist!"
-            self.config_path = config_file
+            self.config_path: Union[str, Path] = config_file
             with open(self.config_path, 'r', encoding="utf-8") as config_data:
                 try:
-                    self.config = json.load(config_data)
+                    self.config: Dict[str, Union[str, Dict[str, str]]] = json.load(config_data)
                 except:
                     click.echo("Fatal Error: Config file is not valid JSON!")
                     sys.exit(1)
@@ -34,24 +35,22 @@ class ConfigManager:
             self.config_path = Path(os.path.join(os.getenv("HOME"),
                                             self.default_file_path,
                                             self.default_file_name))
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
-            self.config_path.touch(exist_ok=True)
-            with open(self.config_path, 'r', encoding="utf-8") as config_file:
-                try:
+            
+            if self.config_path.exists():
+                with open(self.config_path, 'r', encoding="utf-8") as config_file:
                     self.config = json.load(config_file)
-                except Exception as e:
-                    click.echo("No existing configuration found, creating new one.")
-                    self.create_new_config()
+            else:
+                self.create_default_config()
 
-    def create_new_config(self):
+    def create_default_config(self) -> None:
         """Create a new configuration file"""
         self.config = {
-            "url": f"{self.default_host}",
+            "host": f"{self.default_host}",
             "http_port": f"{self.default_port}",
             "grpc_port": f"{self.default_grpc_port}"
         }
 
-    def __check_host_docker_internal(self, port: int = 8080):
+    def __check_host_docker_internal(self, port: int = 8080) -> bool:
         """Check if host.docker.internal is reachable."""
         try:
             # Attempt to connect to host.docker.internal on any port (e.g., 80)
@@ -62,17 +61,17 @@ class ConfigManager:
             return False
 
 
-    def __get_host(self, port: int = 8080):
+    def __get_host(self, port: int = 8080) -> str:
         """Determine the appropriate host based on the environment."""
         if self.__check_host_docker_internal(port):
             return "host.docker.internal"  # macOS/Windows Docker
         else:
             return "localhost"  # Default fallback (Linux or unreachable)
     
-    def get_client(self):
+    def get_client(self) -> weaviate.WeaviateClient:
         """Get weaviate client from config"""
         
-        auth_config = None
+        auth_config: Optional[weaviate.auth.AuthCredentials] = None
         if hasattr(self.config, "auth"):
             if self.config["auth"]["type"] == "api_key":
                 auth_config = weaviate.auth.AuthApiKey(api_key=self.config["auth"]["api_key"])
@@ -93,8 +92,7 @@ class ConfigManager:
             )
         else:
             return weaviate.connect_to_wcs(
-                cluster_url=self.config["url"],
+                cluster_url=self.config["host"],
                 auth_credentials=auth_config
             )
-
 
