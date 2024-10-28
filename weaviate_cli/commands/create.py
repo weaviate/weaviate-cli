@@ -1,6 +1,7 @@
 import sys
 import click
 from typing import Optional
+from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
@@ -135,6 +136,58 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             state=state,
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        client.close()
+        sys.exit(1)  # Return a non-zero exit code on failure
+    client.close()
+
+
+@create.command("backup")
+@click.option(
+    "--backend",
+    default="s3",
+    type=click.Choice(["s3", "gcs", "filesystem"]),
+    help="The backend used for storing the backups (default: s3).",
+)
+@click.option(
+    "--backup_id",
+    default="test-backup",
+    help="Identifier used for the backup (default: test-backup).",
+)
+@click.option(
+    "--include",
+    default=None,
+    help="Comma separated list of collections to include in the backup. If not provided, all collections will be included.",
+)
+@click.option(
+    "--exclude",
+    default=None,
+    help="Comma separated list of collections to exclude from the backup. If not provided, all collections will be included.",
+)
+@click.option(
+    "--wait", is_flag=True, help="Wait for the backup to complete before returning."
+)
+@click.option(
+    "--cpu_for_backup",
+    default=40,
+    help="The percentage of CPU to use for the backup (default: 40). The larger, the faster it will occur, but it will also consume more memory.",
+)
+@click.pass_context
+def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_backup):
+    """Create a backup in Weaviate."""
+
+    try:
+        client = get_client_from_context(ctx)
+        backup_manager = BackupManager(client)
+        backup_manager.create_backup(
+            backend=backend,
+            backup_id=backup_id,
+            include=include,
+            exclude=exclude,
+            wait=wait,
+            cpu_for_backup=cpu_for_backup,
         )
     except Exception as e:
         print(f"Error: {e}")

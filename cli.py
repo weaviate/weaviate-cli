@@ -22,5 +22,6 @@ main.add_command(create)
 main.add_command(delete)
 main.add_command(get)
 main.add_command(update)
+main.add_command(restore)
 if __name__ == "__main__":
     main()
