@@ -23,5 +23,6 @@ main.add_command(delete)
 main.add_command(get)
 main.add_command(update)
 main.add_command(restore)
+main.add_command(query)
 if __name__ == "__main__":
     main()

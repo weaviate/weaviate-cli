@@ -1,6 +1,6 @@
 import click
 import json
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
 from weaviate.collections.classes.tenants import TenantActivityStatus
@@ -26,7 +26,7 @@ class CollectionManager:
             if not self.client.collections.exists(collection):
 
                 raise Exception(f"Collection '{collection}' does not exist")
-            col_obj = self.client.collections.get(collection)
+            col_obj: Collection = self.client.collections.get(collection)
             # Pretty print the dict structure
             click.echo(json.dumps(col_obj.config.get().to_dict(), indent=4))
         else:
@@ -35,7 +35,7 @@ class CollectionManager:
             )
             all_collections = self.client.collections.list_all()
             for single_collection in all_collections:
-                col_obj = self.client.collections.get(single_collection)
+                col_obj: Collection = self.client.collections.get(single_collection)
                 schema = col_obj.config.get()
                 click.echo(
                     f"{single_collection:<29} {'True' if schema.multi_tenancy_config.enabled else 'False':<15} {len(col_obj.tenants.get()) if schema.multi_tenancy_config.enabled else 0:<15} {self.__get_total_objects_with_multitenant(col_obj) if schema.multi_tenancy_config.enabled else len(col_obj):<15} {schema.replication_config.factor:<19} {schema.vector_index_type if schema.vector_index_type else 'None':<15} {schema.vectorizer if schema.vectorizer else 'None':<15}"
@@ -201,7 +201,7 @@ class CollectionManager:
             ),
         }
 
-        col_obj = self.client.collections.get(collection)
+        col_obj: Collection = self.client.collections.get(collection)
         rf = col_obj.config.get().replication_config.factor
         mt = col_obj.config.get().multi_tenancy_config.enabled
         auto_tenant_creation = (
@@ -239,7 +239,7 @@ class CollectionManager:
 
     def delete_collection(self, collection: str, all: bool) -> None:
         if all:
-            collections = self.client.collections.list_all()
+            collections: List[str] = self.client.collections.list_all()
             for collection in collections:
                 click.echo(f"Deleting collection '{collection}'")
                 self.client.collections.delete(collection)

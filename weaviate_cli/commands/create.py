@@ -5,6 +5,7 @@ from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
+from weaviate_cli.managers.data_manager import DataManager
 
 # Create Group
 @click.group()
@@ -105,7 +106,7 @@ def create_collection_cli(
     client.close()
 
 
-# Subcommand to create tenants (without --vectorizer option)
+# Subcommand to create tenants
 @create.command("tenants")
 @click.option(
     "--collection", default="Movies", help="The name of the collection to create."
@@ -188,6 +189,50 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
             exclude=exclude,
             wait=wait,
             cpu_for_backup=cpu_for_backup,
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        client.close()
+        sys.exit(1)  # Return a non-zero exit code on failure
+    client.close()
+
+
+# Subcommand to ingest data
+@create.command("data")
+@click.option(
+    "--collection",
+    default="Movies",
+    help="The name of the collection to ingest data into.",
+)
+@click.option(
+    "--limit", default=1000, help="Number of objects to import (default: 1000)."
+)
+@click.option(
+    "--consistency_level",
+    default="quorum",
+    type=click.Choice(["quorum", "all", "one"]),
+    help="Consistency level (default: 'quorum').",
+)
+@click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
+@click.option(
+    "--auto_tenants",
+    default=0,
+    help="Number of tenants for which we will send data. NOTE: Requires class with --auto_tenant_creation (default: 0).",
+)
+@click.pass_context
+def create_data_cli(ctx, collection, limit, consistency_level, randomize, auto_tenants):
+    """Ingest data into a collection in Weaviate."""
+
+    try:
+        client = get_client_from_context(ctx)
+        data_manager = DataManager(client)
+        # Call the function from ingest_data.py with general and specific arguments
+        data_manager.ingest_data(
+            collection=collection,
+            limit=limit,
+            consistency_level=consistency_level,
+            randomize=randomize,
+            auto_tenants=auto_tenants,
         )
     except Exception as e:
         print(f"Error: {e}")

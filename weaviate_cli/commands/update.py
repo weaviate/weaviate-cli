@@ -5,6 +5,7 @@ from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
+from weaviate_cli.managers.data_manager import DataManager
 
 # Update Group
 @click.group()
@@ -159,6 +160,41 @@ def update_shards_cli(
             collection=collection,
             shards=shards,
             all=all,
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        client.close()
+        sys.exit(1)  # Return a non-zero exit code on failure
+
+    client.close()
+
+@update.command("data")
+@click.option(
+    "--collection", default="Movies", help="The name of the collection to update."
+)
+@click.option(
+    "--limit", default=100, help="Number of objects to update (default: 100)."
+)
+@click.option(
+    "--consistency_level",
+    default="quorum",
+    type=click.Choice(["quorum", "all", "one"]),
+    help="Consistency level (default: 'quorum').",
+)
+@click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
+@click.pass_context
+def update_data_cli(ctx, collection, limit, consistency_level, randomize):
+    """Update data in a collection in Weaviate."""
+
+    try:
+        client = get_client_from_context(ctx)
+        data_manager = DataManager(client)
+        # Call the function from update_data.py with general and specific arguments
+        data_manager.update_data(
+            collection=collection,
+            limit=limit,
+            consistency_level=consistency_level,
+            randomize=randomize,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
