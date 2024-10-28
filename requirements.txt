@@ -1,5 +1,4 @@
-weaviate-client>=3.7.0
-click==7.1.2
+weaviate-client>=4.9.0
+click==8.1.7
 twine
-click-params==0.3.0
 pytest

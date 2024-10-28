@@ -6,7 +6,7 @@ if version_info.major < 3:
 from os import path
 from builtins import open
 from setuptools import setup
-from semi.version import __version__
+from lib.version import __version__
 # read the contents of your README file
 
 this_directory = path.abspath(path.dirname(__file__))
@@ -21,13 +21,12 @@ setup(
     long_description_content_type='text/x-rst',
     author="SeMI Technologies",
     author_email="hello@semi.technology",
-    packages=["semi", "semi.config",  "semi.data", "semi.schema", "semi.classification"],
+    packages=["lib", "lib.commands",  "lib.managers"],
     py_modules=['cli'],
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     install_requires=[
-        "weaviate-client>=3.7.0",
-        "click==7.1.2",
-        "click-params==0.3.0"],
+        "weaviate-client>=4.9.0",
+        "click==8.1.7"],
     entry_points='''
     [console_scripts]
     weaviate=cli:main
