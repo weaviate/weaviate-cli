@@ -16,7 +16,7 @@ Weaviate CLI
 
 **Command Line Interface (CLI) tool for interacting with a Weaviate instance directly from your Terminal**
 
-Visit the official `SeMi Technology <https://weaviate.io/>`_ website for more information about the Weaviate and how to use it in production.
+Visit the official `Weaviate <https://weaviate.io/>`_ website for more information about the Weaviate and how to use it in production.
 
 Check out our `weaviate-client <https://pypi.org/project/weaviate-client/>`_ library for interacting with a Weaviate instance using python.
 
