@@ -6,10 +6,13 @@ WORKDIR /app
 
 COPY . .
 
+RUN apt-get update && apt-get install -y git
+
 RUN if [ "$ENVIRONMENT" = "development" ]; then \
         pip install .; \
     else \
-        pip install weaviate-cli==v3.0.0-alpha.2; \
+        export LATEST_RELEASE=$(git describe --tags --abbrev=0 --match "v*"); \
+        pip install weaviate-cli==$LATEST_RELEASE; \
     fi
 
 ENTRYPOINT ["python", "cli.py"]
