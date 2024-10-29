@@ -12,6 +12,9 @@ from typing import Dict, List, Optional, Union
 import weaviate.classes.config as wvc
 from weaviate.collections import Collection
 from datetime import datetime, timedelta
+import sys
+import importlib.resources as resources
+from pathlib import Path
 
 
 class DataManager:
@@ -23,35 +26,42 @@ class DataManager:
         properties: List[wvc.Property] = collection.config.get().properties
         
         try:
-            # Use importlib.resources to access the file from the package
-            with resources.files('weaviate_cli.datasets').joinpath(file_name).open('r') as f:
-                data = json.load(f)
-                cl_collection: Collection = collection.with_consistency_level(cl)
-                with cl_collection.batch.dynamic() as batch:
-                    for obj in data[:num_objects] if num_objects else data:
-                        added_obj = {}
-                        for prop in properties:
-                            if prop.name == "release_date":
-                                prop.name = "releaseDate"
-                            if prop.name in obj:
-                                if prop.data_type == wvc.DataType.NUMBER:
-                                    added_obj[prop.name] = float(obj[prop.name])
-                                elif prop.data_type == wvc.DataType.DATE:
-                                    date = datetime.strptime(obj[prop.name], "%Y-%m-%d")
-                                    added_obj[prop.name] = date.strftime("%Y-%m-%dT%H:%M:%SZ")
-                                else:
-                                    added_obj[prop.name] = obj[prop.name]
-                        batch.add_object(properties=added_obj)
-                        counter += 1
+            # Different approach based on Python version
+            if sys.version_info >= (3, 9):
+                # Python 3.9+ approach
+                with resources.files('weaviate_cli.datasets').joinpath(file_name).open('r') as f:
+                    data = json.load(f)
+            else:
+                # Python 3.8 approach
+                with resources.open_text('weaviate_cli.datasets', file_name) as f:
+                    data = json.load(f)
 
-                if cl_collection.batch.failed_objects:
-                    for failed_object in cl_collection.batch.failed_objects:
-                        print(f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}")
-                    return -1
+            cl_collection: Collection = collection.with_consistency_level(cl)
+            with cl_collection.batch.dynamic() as batch:
+                for obj in data[:num_objects] if num_objects else data:
+                    added_obj = {}
+                    for prop in properties:
+                        if prop.name == "release_date":
+                            prop.name = "releaseDate"
+                        if prop.name in obj:
+                            if prop.data_type == wvc.DataType.NUMBER:
+                                added_obj[prop.name] = float(obj[prop.name])
+                            elif prop.data_type == wvc.DataType.DATE:
+                                date = datetime.strptime(obj[prop.name], "%Y-%m-%d")
+                                added_obj[prop.name] = date.strftime("%Y-%m-%dT%H:%M:%SZ")
+                            else:
+                                added_obj[prop.name] = obj[prop.name]
+                    batch.add_object(properties=added_obj)
+                    counter += 1
 
-                expected: int = len(data[:num_objects]) if num_objects else len(data)
-                assert counter == expected, f"Expected {expected} objects, but added {counter} objects."
-                
+            if cl_collection.batch.failed_objects:
+                for failed_object in cl_collection.batch.failed_objects:
+                    print(f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}")
+                return -1
+
+            expected: int = len(data[:num_objects]) if num_objects else len(data)
+            assert counter == expected, f"Expected {expected} objects, but added {counter} objects."
+            
         except Exception as e:
             print(f"Error loading data file: {str(e)}")
             return -1

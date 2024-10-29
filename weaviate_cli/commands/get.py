@@ -4,6 +4,7 @@ from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
+from weaviate.exceptions import WeaviateConnectionError
 
 
 # Get Group
@@ -17,7 +18,8 @@ def get():
 @click.pass_context
 def get_collection_cli(ctx, collection):
     """Get all collections in Weaviate. If --collection is provided, get the specific collection."""
-
+    
+    client = None
     try:
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
@@ -25,10 +27,12 @@ def get_collection_cli(ctx, collection):
         collection_man.get_collection(collection=collection)
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
 
 @get.command("tenants")
 @click.option(
@@ -40,7 +44,8 @@ def get_collection_cli(ctx, collection):
 @click.pass_context
 def get_tenants_cli(ctx, collection, verbose):
     """Get tenants from a collection in Weaviate."""
-
+    
+    client = None
     try:
         client = get_client_from_context(ctx)
         tenant_manager = TenantManager(client)
@@ -50,11 +55,12 @@ def get_tenants_cli(ctx, collection, verbose):
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        # traceback.print_exc()  # Print the full traceback
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
 
 @get.command("shards")
 @click.option(
@@ -65,19 +71,20 @@ def get_tenants_cli(ctx, collection, verbose):
 @click.pass_context
 def get_shards_cli(ctx, collection):
     """Get shards from a collection in Weaviate."""
-
+    
+    client = None
     try:
         client = get_client_from_context(ctx)
         client.collections.list_all()
-        # Call the function from get_tenants.py with general and specific arguments
         shard_man = ShardManager(client)
         shard_man.get_shards(
             collection=collection,
         )
     except Exception as e:
-        print(f"Error: {e}")
-        # traceback.print_exc()  # Print the full traceback
-        client.close()
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
         sys.exit(1)
-
-    client.close()
+    finally:
+        if client:
+            client.close()

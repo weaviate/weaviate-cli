@@ -24,10 +24,14 @@ def print_version(ctx, param, value):
               is_eager=True, help="Prints the version of the CLI.")
 @click.pass_context
 def main(ctx: click.Context, config_file):
-    """Weaviate CLI tool."""
-    ctx.obj = {
-        "config": ConfigManager(config_file)
-    }
+    """Weaviate CLI tool"""
+    try:
+        ctx.obj = {
+            "config": ConfigManager(config_file)
+        }
+    except Exception as e:
+        click.echo(f"Fatal Error: {e}")
+        sys.exit(1)
 
 
 main.add_command(create)
