@@ -4,3 +4,7 @@ twine
 pytest
 semver==3.0.2
 numpy==1.26.4
+build
+wheel
+importlib_metadata==8.5.0
+setuptools_scm
