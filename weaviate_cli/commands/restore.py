@@ -2,7 +2,7 @@ import sys
 import click
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
-from weaviate_cli.managers.collection_manager import CollectionManager
+from weaviate.exceptions import WeaviateConnectionError
 
 # Restore Group
 @click.group()
@@ -39,6 +39,7 @@ def restore() -> None:
 def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait):
     """Restore a backup in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         backup_manager = BackupManager(client)
@@ -50,8 +51,9 @@ def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait):
             wait=wait,
         )
     except Exception as e:
-        print(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+        click.echo(f"Error: {e}")
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)

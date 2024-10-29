@@ -6,7 +6,7 @@ from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate_cli.managers.data_manager import DataManager
-
+from weaviate.exceptions import WeaviateConnectionError
 # Update Group
 @click.group()
 def update() -> None:
@@ -59,6 +59,7 @@ def update_collection_cli(
 ) -> None:
     """Update a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
@@ -74,10 +75,11 @@ def update_collection_cli(
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
 
 
 @update.command("tenants")
@@ -101,6 +103,7 @@ def update_collection_cli(
 def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
     """Update tenants in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         tenant_manager = TenantManager(client)
@@ -112,10 +115,11 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
 
 
 @update.command("shards")
@@ -151,6 +155,7 @@ def update_shards_cli(
 ) -> None:
     """Update shards in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         shard_man = ShardManager(client)
@@ -163,10 +168,11 @@ def update_shards_cli(
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
 
 @update.command("data")
 @click.option(
@@ -186,6 +192,7 @@ def update_shards_cli(
 def update_data_cli(ctx, collection, limit, consistency_level, randomize):
     """Update data in a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
@@ -198,7 +205,8 @@ def update_data_cli(ctx, collection, limit, consistency_level, randomize):
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)

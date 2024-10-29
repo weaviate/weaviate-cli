@@ -21,7 +21,7 @@ class ConfigManager:
     def __init__(self, config_file: Optional[str] = None) -> None:
         """Initialize config manager with optional config file path"""
         if config_file:
-            assert os.path.isfile(config_file), "Config file does not exist!"
+            assert os.path.isfile(config_file), f"Config file '{config_file}' does not exist!"
             self.config_path: Union[str, Path] = config_file
             with open(self.config_path, 'r', encoding="utf-8") as config_data:
                 try:

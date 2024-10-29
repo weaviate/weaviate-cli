@@ -2,7 +2,7 @@ import sys
 import click
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.data_manager import DataManager
-
+from weaviate.exceptions import WeaviateConnectionError
 # Query Group
 @click.group()
 def query() -> None:
@@ -42,6 +42,7 @@ def query_data_cli(
 ):
     """Query data in a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
@@ -56,7 +57,8 @@ def query_data_cli(
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)

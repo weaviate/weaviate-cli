@@ -6,7 +6,7 @@ from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
-
+from weaviate.exceptions import WeaviateConnectionError
 # Create Group
 @click.group()
 def create() -> None:
@@ -80,6 +80,7 @@ def create_collection_cli(
 ) -> None:
     """Create a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         # Call the function from create_collection.py passing both general and specific arguments
@@ -100,10 +101,11 @@ def create_collection_cli(
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        # traceback.print_exc()  # Print the full traceback
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-    client.close()
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
 
 
 # Subcommand to create tenants
@@ -128,6 +130,7 @@ def create_collection_cli(
 def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
     """Create tenants in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         # Call the function from create_tenants.py with general and specific arguments
@@ -139,10 +142,12 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
             state=state,
         )
     except Exception as e:
-        print(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-    client.close()
+        click.echo(f"Error: {e}")
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
 
 
 @create.command("backup")
@@ -178,7 +183,8 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
 @click.pass_context
 def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_backup):
     """Create a backup in Weaviate."""
-
+    
+    client = None
     try:
         client = get_client_from_context(ctx)
         backup_manager = BackupManager(client)
@@ -191,10 +197,12 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
             cpu_for_backup=cpu_for_backup,
         )
     except Exception as e:
-        print(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-    client.close()
+        click.echo(f"Error: {e}")
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
 
 
 # Subcommand to ingest data
@@ -222,7 +230,8 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.pass_context
 def create_data_cli(ctx, collection, limit, consistency_level, randomize, auto_tenants):
     """Ingest data into a collection in Weaviate."""
-
+    
+    client = None
     try:
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
@@ -235,7 +244,9 @@ def create_data_cli(ctx, collection, limit, consistency_level, randomize, auto_t
             auto_tenants=auto_tenants,
         )
     except Exception as e:
-        print(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-    client.close()
+        click.echo(f"Error: {e}")
+    finally:
+        if client:
+            client.close()
+            if isinstance(e, WeaviateConnectionError):
+                sys.exit(1)
