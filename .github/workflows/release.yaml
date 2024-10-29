@@ -1,19 +1,44 @@
 name: Build and Publish
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - '**'
 
 jobs:
+  build-package:
+    name: Build a package
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+          with:
+            fetch-depth: 0
+        - name: Set up Python 3.11
+          uses: actions/setup-python@v4
+          with:
+            python-version: "3.11"
+            cache: 'pip' # caching pip dependencies
+        - name: Install dependencies
+          run: pip install -r requirements-dev.txt
+        - name: Build a binary wheel
+          run: python -m build
+        - name: Create Wheel Artifacts
+          uses: actions/upload-artifact@v3
+          with:
+            path: "dist/*.whl"
+            name: weaviate-cli-wheel
+            retention-days: 30
   gh-release:
       name: Create a GitHub Release on new tags
+      needs: [build-package]
       if: startsWith(github.ref, 'refs/tags')
       runs-on: ubuntu-latest
       steps:
         - name: Download build artifact to append to release
           uses: actions/download-artifact@v4
           with:
-            name: weaviate-python-client-wheel
+            name: weaviate-cli-wheel
             path: dist
         - name: Release
           uses: softprops/action-gh-release@v1
