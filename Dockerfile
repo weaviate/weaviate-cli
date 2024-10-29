@@ -8,6 +8,8 @@ COPY . .
 
 RUN apt-get update && apt-get install -y git
 
+RUN git fetch --tags --unshallow || git fetch --tags
+
 RUN if [ "$ENVIRONMENT" = "development" ]; then \
         pip install .; \
     else \
