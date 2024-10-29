@@ -11,14 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
         - name: Checkout
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             fetch-depth: 0
         - name: Set up Python 3.11
           uses: actions/setup-python@v4
           with:
             python-version: "3.11"
-            cache: 'pip' # caching pip dependencies
         - name: Install dependencies
           run: pip install -r requirements-dev.txt
         - name: Build a binary wheel
@@ -43,7 +42,7 @@ jobs:
             name: weaviate-cli-wheel
             path: dist
         - name: Release
-          uses: softprops/action-gh-release@v1
+          uses: softprops/action-gh-release@v2
           with:
             generate_release_notes: true
             draft: true
@@ -60,7 +59,6 @@ jobs:
           uses: actions/setup-python@v5
           with:
             python-version: "3.11"
-            cache: 'pip' # caching pip dependencies
         - name: Install dependencies
           run: pip install -r requirements-dev.txt
         - name: Build a binary wheel
