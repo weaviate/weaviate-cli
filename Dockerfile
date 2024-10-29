@@ -9,7 +9,7 @@ COPY . .
 RUN if [ "$ENVIRONMENT" = "development" ]; then \
         pip install .; \
     else \
-        pip install weaviate-cli; \
+        pip install weaviate-cli==v3.0.0-alpha.2; \
     fi
 
 ENTRYPOINT ["python", "cli.py"]
