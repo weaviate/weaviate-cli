@@ -70,17 +70,17 @@ class ConfigManager:
         """Get weaviate client from config"""
         
         auth_config: Optional[weaviate.auth.AuthCredentials] = None
-        if hasattr(self.config, "auth"):
-            if self.config["auth"]["type"] == "api_key":
+        
+        if "auth" in self.config:
+            if "type" in self.config["auth"] and self.config["auth"]["type"] == "api_key":
                 auth_config = weaviate.auth.AuthApiKey(api_key=self.config["auth"]["api_key"])
             # elif self.config["auth"]["type"] == "client_secret":
-            #     # auth_config = self.config["auth"]["secret"]
+            #     auth_config = self.config["auth"]["secret"]
             # elif self.config["auth"]["type"] == "username_pass":
                 # auth_config = weaviate.auth.AuthClientP(self.config["auth"]["user"], self.config["auth"]["pass"])
             # else:
-            # click.echo("Fatal Error: Unknown authentication type in config!")
-            # sys.exit(1)
-                
+                # click.echo("Fatal Error: Unknown authentication type in config!")
+                # sys.exit(1)
         if self.config["host"] == "localhost":
             return weaviate.connect_to_local(
                 host=self.__get_host(self.config["http_port"]),
