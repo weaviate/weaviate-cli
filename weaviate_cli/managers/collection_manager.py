@@ -177,7 +177,7 @@ class CollectionManager:
         if not self.client.collections.exists(collection):
 
             raise Exception(
-                f"Collection '{collection}' does not exist in Weaviate. Create first using ./create_collection.py"
+                f"Error: Collection '{collection}' does not exist in Weaviate. Create first using ./create_collection.py"
             )
 
         vector_index_map: Dict[str, wvc.VectorIndexConfig] = {

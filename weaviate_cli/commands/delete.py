@@ -4,6 +4,7 @@ from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.data_manager import DataManager
+from weaviate.exceptions import WeaviateConnectionError
 # Delete Group
 @click.group()
 def delete() -> None:
@@ -19,6 +20,7 @@ def delete() -> None:
 def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> None:
     """Delete a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
@@ -26,10 +28,12 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
         collection_man.delete_collection(collection=collection, all=all)
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
 
 
 @delete.command("tenants")
@@ -50,6 +54,7 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
 def delete_tenants_cli(ctx: click.Context, collection: str, tenant_suffix: str, number_tenants: int) -> None:
     """Delete tenants from a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         tenant_manager = TenantManager(client)
@@ -60,10 +65,12 @@ def delete_tenants_cli(ctx: click.Context, collection: str, tenant_suffix: str, 
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-
-    client.close()
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
 
 @delete.command("data")
 @click.option(
@@ -84,6 +91,7 @@ def delete_tenants_cli(ctx: click.Context, collection: str, tenant_suffix: str, 
 def delete_data_cli(ctx, collection, limit, consistency_level):
     """Delete data from a collection in Weaviate."""
 
+    client = None
     try:
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
@@ -95,6 +103,9 @@ def delete_data_cli(ctx, collection, limit, consistency_level):
         )
     except Exception as e:
         click.echo(f"Error: {e}")
-        client.close()
-        sys.exit(1)  # Return a non-zero exit code on failure
-    client.close()
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()

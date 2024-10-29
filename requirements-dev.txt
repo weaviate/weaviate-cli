@@ -1,9 +1,9 @@
-weaviate-client>=4.9.0
+weaviate-client>=4.0.0
 click==8.1.7
 twine
 pytest
 semver==3.0.2
-numpy==1.26.4
+numpy>=1.24.0
 build
 wheel
 importlib_metadata==8.5.0
