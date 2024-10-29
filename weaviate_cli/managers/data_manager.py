@@ -3,11 +3,12 @@ import json
 import numpy as np
 import random
 import os
+from importlib import resources
 from weaviate_cli.utils import get_random_string, pp_objects
 from weaviate import WeaviateClient
 from weaviate.classes.query import MetadataQuery
 from weaviate.collections.classes.tenants import TenantActivityStatus
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import weaviate.classes.config as wvc
 from weaviate.collections import Collection
 from datetime import datetime, timedelta
@@ -19,11 +20,13 @@ class DataManager:
 
     def __import_json(self, collection: Collection, file_name: str, cl: wvc.ConsistencyLevel, num_objects: Optional[int] = None) -> int:
         counter = 0
-        properties : List[wvc.Property] = collection.config.get().properties
-        if os.path.isfile(file_name):
-            with open(file_name) as f:
+        properties: List[wvc.Property] = collection.config.get().properties
+        
+        try:
+            # Use importlib.resources to access the file from the package
+            with resources.files('weaviate_cli.datasets').joinpath(file_name).open('r') as f:
                 data = json.load(f)
-                cl_collection : Collection = collection.with_consistency_level(cl)
+                cl_collection: Collection = collection.with_consistency_level(cl)
                 with cl_collection.batch.dynamic() as batch:
                     for obj in data[:num_objects] if num_objects else data:
                         added_obj = {}
@@ -35,10 +38,7 @@ class DataManager:
                                     added_obj[prop.name] = float(obj[prop.name])
                                 elif prop.data_type == wvc.DataType.DATE:
                                     date = datetime.strptime(obj[prop.name], "%Y-%m-%d")
-                                    # Format the datetime object to a string
-                                    added_obj[prop.name] = date.strftime(
-                                        "%Y-%m-%dT%H:%M:%SZ"
-                                    )
+                                    added_obj[prop.name] = date.strftime("%Y-%m-%dT%H:%M:%SZ")
                                 else:
                                     added_obj[prop.name] = obj[prop.name]
                         batch.add_object(properties=added_obj)
@@ -46,47 +46,45 @@ class DataManager:
 
                 if cl_collection.batch.failed_objects:
                     for failed_object in cl_collection.batch.failed_objects:
-                        print(
-                            f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
-                        )
+                        print(f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}")
                     return -1
 
-                expected : int = len(data[:num_objects]) if num_objects else len(data)
-                assert (
-                    counter == expected
-                ), f"Expected {expected} objects, but added {counter} objects."
-        else:
-            print(f"File '{file_name}' does not exist or is not a file.")
+                expected: int = len(data[:num_objects]) if num_objects else len(data)
+                assert counter == expected, f"Expected {expected} objects, but added {counter} objects."
+                
+        except Exception as e:
+            print(f"Error loading data file: {str(e)}")
             return -1
+            
         print(f"Finished processing {counter} objects.")
         return counter
 
-    def __generate_data_object(self, limit: int) -> List[Dict]:
-
-        data_objects = []
-        for _ in range(limit):
+    def __generate_data_object(self, limit: int, is_update: bool = False) -> Union[List[Dict], Dict]:
+        def create_single_object() -> Dict:
             date = datetime.strptime("1980-01-01", "%Y-%m-%d")
             random_date = date + timedelta(days=random.randint(1, 15_000))
             release_date = random_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            data_object = {
-                "title": "title" + get_random_string(10),
-                "genres": "genre" + get_random_string(3),
-                "keywords": "keywords" + get_random_string(3),
+            prefix = "update-" if is_update else ""
+            return {
+                "title": f"{prefix}title" + get_random_string(10),
+                "genres": f"{prefix}genre" + get_random_string(3),
+                "keywords": f"{prefix}keywords" + get_random_string(3), 
                 "popularity": float(random.randint(1, 200)),
-                "runtime": "runtime" + get_random_string(3),
-                "cast": "cast" + get_random_string(3),
-                "language": "language" + get_random_string(3),
-                "tagline": "tagline" + get_random_string(3),
+                "runtime": f"{prefix}runtime" + get_random_string(3),
+                "cast": f"{prefix}cast" + get_random_string(3),
+                "originalLanguage": f"{prefix}language" + get_random_string(3),
+                "tagline": f"{prefix}tagline" + get_random_string(3),
                 "budget": random.randint(1_000_000, 1_000_0000_000),
-                "release_date": release_date,
+                "releaseDate": release_date,
                 "revenue": random.randint(1_000_000, 10_000_0000_000),
-                "status": "status" + get_random_string(3),
+                "status": f"{prefix}status" + get_random_string(3),
             }
 
-            data_objects.append(data_object)
-
-        return data_objects
+        if is_update:
+            return create_single_object()
+            
+        return [create_single_object() for _ in range(limit)]
 
     def __ingest_data(self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel, randomize: bool) -> int:
         if randomize:
@@ -117,7 +115,7 @@ class DataManager:
             return counter
         else:
             num_objects_inserted = self.__import_json(
-                collection, "datasets/movies.json", cl, num_objects
+                collection, "movies.json", cl, num_objects
             )
             print(f"Inserted {num_objects_inserted} objects into class '{collection.name}'")
             return num_objects_inserted
@@ -189,29 +187,6 @@ class DataManager:
                     f"Error occurred while ingesting data for tenant '{tenant}'."
                 )
 
-    def __update_data_object(self):
-
-        date = datetime.strptime("1980-01-01", "%Y-%m-%d")
-        random_date = date + timedelta(days=random.randint(1, 15_000))
-        release_date = random_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        data_object = {
-            "title": "title-update" + get_random_string(10),
-            "genres": "genre-update" + get_random_string(3),
-            "keywords": "keywords-update" + get_random_string(3),
-            "popularity": float(random.randint(1, 200)),
-            "runtime": "runtime-update" + get_random_string(3),
-            "cast": "cast-update" + get_random_string(3),
-            "language": "language-update" + get_random_string(3),
-            "tagline": "tagline-update" + get_random_string(3),
-            "budget": random.randint(1_000_000, 1_000_0000_000),
-            "release_date": release_date,
-            "revenue": random.randint(1_000_000, 10_000_0000_000),
-            "status": "status-update" + get_random_string(3),
-        }
-
-        return data_object
-
 
     def __update_data(self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel, randomize: bool) -> int:
         if randomize:
@@ -225,7 +200,7 @@ class DataManager:
             for obj in data_objects:
                 res = collection.with_consistency_level(cl).data.replace(
                     uuid=obj.uuid,
-                    properties=self.__update_data_object(),
+                    properties=self.__generate_data_object(1, True),
                     vector={"default": np.random.rand(1, 1536)[0].tolist()},
                 )
             found_objects = len(data_objects)
