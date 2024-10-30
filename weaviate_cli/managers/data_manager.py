@@ -8,13 +8,15 @@ from weaviate_cli.utils import get_random_string, pp_objects
 from weaviate import WeaviateClient
 from weaviate.classes.query import MetadataQuery
 from weaviate.collections.classes.tenants import TenantActivityStatus
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 import weaviate.classes.config as wvc
 from weaviate.collections import Collection
 from datetime import datetime, timedelta
 import sys
 import importlib.resources as resources
 from pathlib import Path
+
+PROPERTY_NAME_MAPPING = {"release_date": "releaseDate"}
 
 
 class DataManager:
@@ -32,58 +34,59 @@ class DataManager:
         properties: List[wvc.Property] = collection.config.get().properties
 
         try:
-            # Different approach based on Python version
-            if sys.version_info >= (3, 9):
-                # Python 3.9+ approach
-                with (
-                    resources.files("weaviate_cli.datasets")
-                    .joinpath(file_name)
-                    .open("r") as f
-                ):
-                    data = json.load(f)
-            else:
-                # Python 3.8 approach
-                with resources.open_text("weaviate_cli.datasets", file_name) as f:
-                    data = json.load(f)
+            with (
+                resources.files("weaviate_cli.datasets")
+                .joinpath(file_name)
+                .open("r") as f
+            ):
+                data = json.load(f)
 
-            cl_collection: Collection = collection.with_consistency_level(cl)
-            with cl_collection.batch.dynamic() as batch:
-                for obj in data[:num_objects] if num_objects else data:
-                    added_obj = {}
-                    for prop in properties:
-                        if prop.name == "release_date":
-                            prop.name = "releaseDate"
-                        if prop.name in obj:
-                            if prop.data_type == wvc.DataType.NUMBER:
-                                added_obj[prop.name] = float(obj[prop.name])
-                            elif prop.data_type == wvc.DataType.DATE:
-                                date = datetime.strptime(obj[prop.name], "%Y-%m-%d")
-                                added_obj[prop.name] = date.strftime(
-                                    "%Y-%m-%dT%H:%M:%SZ"
+                cl_collection: Collection = collection.with_consistency_level(cl)
+                with cl_collection.batch.dynamic() as batch:
+                    for obj in data[:num_objects] if num_objects else data:
+                        added_obj = {}
+                        for prop in properties:
+                            prop_name = PROPERTY_NAME_MAPPING.get(prop.name, prop.name)
+                            if prop_name in obj:
+                                added_obj[prop_name] = self.__convert_property_value(
+                                    obj[prop_name], prop.data_type
                                 )
-                            else:
-                                added_obj[prop.name] = obj[prop.name]
-                    batch.add_object(properties=added_obj)
-                    counter += 1
+                        batch.add_object(properties=added_obj)
+                        counter += 1
 
-            if cl_collection.batch.failed_objects:
-                for failed_object in cl_collection.batch.failed_objects:
-                    print(
-                        f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
-                    )
-                return -1
+                if cl_collection.batch.failed_objects:
+                    for failed_object in cl_collection.batch.failed_objects:
+                        print(
+                            f"Failed to add object with UUID {failed_object.original_uuid}: "
+                            f"{failed_object.message}"
+                        )
+                    return -1
 
-            expected: int = len(data[:num_objects]) if num_objects else len(data)
-            assert (
-                counter == expected
-            ), f"Expected {expected} objects, but added {counter} objects."
+                expected: int = len(data[:num_objects]) if num_objects else len(data)
+                assert (
+                    counter == expected
+                ), f"Expected {expected} objects, but added {counter} objects."
 
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON file: {str(e)}")
+            return -1
+        except FileNotFoundError as e:
+            print(f"Dataset file not found: {str(e)}")
+            return -1
         except Exception as e:
-            print(f"Error loading data file: {str(e)}")
+            print(f"Unexpected error loading data file: {str(e)}")
             return -1
 
         print(f"Finished processing {counter} objects.")
         return counter
+
+    def __convert_property_value(self, value: Any, data_type: wvc.DataType) -> Any:
+        if data_type == wvc.DataType.NUMBER:
+            return float(value)
+        elif data_type == wvc.DataType.DATE:
+            date = datetime.strptime(value, "%Y-%m-%d")
+            return date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return value
 
     def __generate_data_object(
         self, limit: int, is_update: bool = False

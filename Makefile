@@ -19,6 +19,6 @@ lint:
 test:
 	pytest test/unittests
 
-all: format lint test build
-
 build-all: build build-check
+
+all: format lint test build-all
