@@ -5,11 +5,14 @@ from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+
+
 # Delete Group
 @click.group()
 def delete() -> None:
     """Delete resources in Weaviate."""
     pass
+
 
 @delete.command("collection")
 @click.option(
@@ -51,7 +54,9 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
     "--number_tenants", default=100, help="Number of tenants to delete (default: 100)."
 )
 @click.pass_context
-def delete_tenants_cli(ctx: click.Context, collection: str, tenant_suffix: str, number_tenants: int) -> None:
+def delete_tenants_cli(
+    ctx: click.Context, collection: str, tenant_suffix: str, number_tenants: int
+) -> None:
     """Delete tenants from a collection in Weaviate."""
 
     client = None
@@ -71,6 +76,7 @@ def delete_tenants_cli(ctx: click.Context, collection: str, tenant_suffix: str, 
     finally:
         if client:
             client.close()
+
 
 @delete.command("data")
 @click.option(

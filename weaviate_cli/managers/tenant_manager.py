@@ -4,16 +4,13 @@ import semver
 from weaviate import WeaviateClient
 from weaviate.collections.classes.tenants import TenantActivityStatus, Tenant
 
+
 class TenantManager:
     def __init__(self, client: WeaviateClient):
         self.client = client
 
     def create_tenants(
-        self,
-        collection: str,
-        tenant_suffix: str,
-        number_tenants: int,
-        state: str
+        self, collection: str, tenant_suffix: str, number_tenants: int, state: str
     ) -> None:
         """
         Create tenants for a given collection in Weaviate.
@@ -94,7 +91,9 @@ class TenantManager:
             f"{len(tenants_list)} tenants added with tenant status '{tenant.activity_status}' for collection '{collection.name}'"
         )
 
-    def delete_tenants(self, collection: str, tenant_suffix: str, number_tenants: int) -> None:
+    def delete_tenants(
+        self, collection: str, tenant_suffix: str, number_tenants: int
+    ) -> None:
         """
         Delete tenants for a given collection in Weaviate.
 
@@ -214,7 +213,9 @@ class TenantManager:
             )
         return tenants
 
-    def update_tenants(self, collection: str, tenant_suffix: str, number_tenants: int, state: str) -> None:
+    def update_tenants(
+        self, collection: str, tenant_suffix: str, number_tenants: int, state: str
+    ) -> None:
         """
         Updates the activity status of a specified number of tenants in a collection.
 

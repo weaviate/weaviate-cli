@@ -21,19 +21,29 @@ class DataManager:
     def __init__(self, client: WeaviateClient):
         self.client = client
 
-    def __import_json(self, collection: Collection, file_name: str, cl: wvc.ConsistencyLevel, num_objects: Optional[int] = None) -> int:
+    def __import_json(
+        self,
+        collection: Collection,
+        file_name: str,
+        cl: wvc.ConsistencyLevel,
+        num_objects: Optional[int] = None,
+    ) -> int:
         counter = 0
         properties: List[wvc.Property] = collection.config.get().properties
-        
+
         try:
             # Different approach based on Python version
             if sys.version_info >= (3, 9):
                 # Python 3.9+ approach
-                with resources.files('weaviate_cli.datasets').joinpath(file_name).open('r') as f:
+                with (
+                    resources.files("weaviate_cli.datasets")
+                    .joinpath(file_name)
+                    .open("r") as f
+                ):
                     data = json.load(f)
             else:
                 # Python 3.8 approach
-                with resources.open_text('weaviate_cli.datasets', file_name) as f:
+                with resources.open_text("weaviate_cli.datasets", file_name) as f:
                     data = json.load(f)
 
             cl_collection: Collection = collection.with_consistency_level(cl)
@@ -48,7 +58,9 @@ class DataManager:
                                 added_obj[prop.name] = float(obj[prop.name])
                             elif prop.data_type == wvc.DataType.DATE:
                                 date = datetime.strptime(obj[prop.name], "%Y-%m-%d")
-                                added_obj[prop.name] = date.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                added_obj[prop.name] = date.strftime(
+                                    "%Y-%m-%dT%H:%M:%SZ"
+                                )
                             else:
                                 added_obj[prop.name] = obj[prop.name]
                     batch.add_object(properties=added_obj)
@@ -56,20 +68,26 @@ class DataManager:
 
             if cl_collection.batch.failed_objects:
                 for failed_object in cl_collection.batch.failed_objects:
-                    print(f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}")
+                    print(
+                        f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
+                    )
                 return -1
 
             expected: int = len(data[:num_objects]) if num_objects else len(data)
-            assert counter == expected, f"Expected {expected} objects, but added {counter} objects."
-            
+            assert (
+                counter == expected
+            ), f"Expected {expected} objects, but added {counter} objects."
+
         except Exception as e:
             print(f"Error loading data file: {str(e)}")
             return -1
-            
+
         print(f"Finished processing {counter} objects.")
         return counter
 
-    def __generate_data_object(self, limit: int, is_update: bool = False) -> Union[List[Dict], Dict]:
+    def __generate_data_object(
+        self, limit: int, is_update: bool = False
+    ) -> Union[List[Dict], Dict]:
         def create_single_object() -> Dict:
             date = datetime.strptime("1980-01-01", "%Y-%m-%d")
             random_date = date + timedelta(days=random.randint(1, 15_000))
@@ -79,7 +97,7 @@ class DataManager:
             return {
                 "title": f"{prefix}title" + get_random_string(10),
                 "genres": f"{prefix}genre" + get_random_string(3),
-                "keywords": f"{prefix}keywords" + get_random_string(3), 
+                "keywords": f"{prefix}keywords" + get_random_string(3),
                 "popularity": float(random.randint(1, 200)),
                 "runtime": f"{prefix}runtime" + get_random_string(3),
                 "cast": f"{prefix}cast" + get_random_string(3),
@@ -93,10 +111,16 @@ class DataManager:
 
         if is_update:
             return create_single_object()
-            
+
         return [create_single_object() for _ in range(limit)]
 
-    def __ingest_data(self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel, randomize: bool) -> int:
+    def __ingest_data(
+        self,
+        collection: Collection,
+        num_objects: int,
+        cl: wvc.ConsistencyLevel,
+        randomize: bool,
+    ) -> int:
         if randomize:
             counter = 0
             data_objects = self.__generate_data_object(num_objects)
@@ -127,11 +151,19 @@ class DataManager:
             num_objects_inserted = self.__import_json(
                 collection, "movies.json", cl, num_objects
             )
-            print(f"Inserted {num_objects_inserted} objects into class '{collection.name}'")
+            print(
+                f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
+            )
             return num_objects_inserted
 
-
-    def ingest_data(self, collection: Optional[str], limit: int, consistency_level: str, randomize: bool, auto_tenants: int) -> None:
+    def ingest_data(
+        self,
+        collection: Optional[str],
+        limit: int,
+        consistency_level: str,
+        randomize: bool,
+        auto_tenants: int,
+    ) -> None:
 
         if not self.client.collections.exists(collection):
 
@@ -171,7 +203,8 @@ class DataManager:
             else:
                 if len(tenants) < auto_tenants:
                     tenants += [
-                        f"Tenant--{i}" for i in range(len(tenants) + 1, auto_tenants + 1)
+                        f"Tenant--{i}"
+                        for i in range(len(tenants) + 1, auto_tenants + 1)
                     ]
 
         for tenant in tenants:
@@ -197,8 +230,13 @@ class DataManager:
                     f"Error occurred while ingesting data for tenant '{tenant}'."
                 )
 
-
-    def __update_data(self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel, randomize: bool) -> int:
+    def __update_data(
+        self,
+        collection: Collection,
+        num_objects: int,
+        cl: wvc.ConsistencyLevel,
+        randomize: bool,
+    ) -> int:
         if randomize:
             res = collection.query.fetch_objects(limit=num_objects)
             if len(res.objects) == 0:
@@ -248,8 +286,9 @@ class DataManager:
             print(f"Updated {num_objects} objects into class '{collection.name}'")
             return found_objects
 
-
-    def update_data(self, collection: str, limit: int, consistency_level: str, randomize: bool) -> None:
+    def update_data(
+        self, collection: str, limit: int, consistency_level: str, randomize: bool
+    ) -> None:
 
         if not self.client.collections.exists(collection):
 
@@ -257,7 +296,7 @@ class DataManager:
                 f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
             )
 
-        col : Collection = self.client.collections.get(collection)
+        col: Collection = self.client.collections.get(collection)
         try:
             tenants = [key for key in col.tenants.get().keys()]
         except Exception as e:
@@ -296,7 +335,9 @@ class DataManager:
                     f"Failed to update objects in class '{col.name}' for tenant '{tenant}'"
                 )
 
-    def __delete_data(self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel) -> int:
+    def __delete_data(
+        self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel
+    ) -> int:
 
         res = collection.query.fetch_objects(limit=num_objects)
         if len(res.objects) == 0:
@@ -312,7 +353,6 @@ class DataManager:
         print(f"Deleted {num_objects} objects into class '{collection.name}'")
         return num_objects
 
-
     def delete_data(self, collection: str, limit: int, consistency_level: str) -> None:
 
         if not self.client.collections.exists(collection):
@@ -322,7 +362,7 @@ class DataManager:
 
             return 1
 
-        col : Collection = self.client.collections.get(collection)
+        col: Collection = self.client.collections.get(collection)
         try:
             tenants = [key for key in col.tenants.get().keys()]
         except Exception as e:
@@ -355,7 +395,15 @@ class DataManager:
                     f"Failed to delete objects in class '{col.name}' for tenant '{tenant}'"
                 )
 
-    def __query_data(self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel, search_type: str, query: str, properties: str) -> None:
+    def __query_data(
+        self,
+        collection: Collection,
+        num_objects: int,
+        cl: wvc.ConsistencyLevel,
+        search_type: str,
+        query: str,
+        properties: str,
+    ) -> None:
 
         start_time = datetime.now()
         response = None
@@ -381,7 +429,9 @@ class DataManager:
         elif search_type == "hybrid":
             # Hybrid logic
             response = collection.with_consistency_level(cl).query.hybrid(
-                query=query, return_metadata=MetadataQuery(score=True), limit=num_objects
+                query=query,
+                return_metadata=MetadataQuery(score=True),
+                limit=num_objects,
             )
         else:
             click.echo(
@@ -403,9 +453,14 @@ class DataManager:
         )
         return num_objects
 
-
     def query_data(
-        self, collection: str, search_type: str, query: str, consistency_level: str, limit: int, properties: str
+        self,
+        collection: str,
+        search_type: str,
+        query: str,
+        consistency_level: str,
+        limit: int,
+        properties: str,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -414,7 +469,7 @@ class DataManager:
                 f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
             )
 
-        col : Collection = self.client.collections.get(collection)
+        col: Collection = self.client.collections.get(collection)
         try:
             tenants = [
                 key

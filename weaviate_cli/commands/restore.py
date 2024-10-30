@@ -4,11 +4,13 @@ from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate.exceptions import WeaviateConnectionError
 
+
 # Restore Group
 @click.group()
 def restore() -> None:
     """Restore backups in Weaviate."""
     pass
+
 
 @restore.command("backup")
 @click.option(

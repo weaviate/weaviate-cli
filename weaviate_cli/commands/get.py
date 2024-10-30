@@ -13,12 +13,13 @@ def get():
     """Create resources in Weaviate."""
     pass
 
+
 @get.command("collection")
 @click.option("--collection", default=None, help="The name of the collection to get.")
 @click.pass_context
 def get_collection_cli(ctx, collection):
     """Get all collections in Weaviate. If --collection is provided, get the specific collection."""
-    
+
     client = None
     try:
         client = get_client_from_context(ctx)
@@ -34,6 +35,7 @@ def get_collection_cli(ctx, collection):
         if client:
             client.close()
 
+
 @get.command("tenants")
 @click.option(
     "--collection",
@@ -44,7 +46,7 @@ def get_collection_cli(ctx, collection):
 @click.pass_context
 def get_tenants_cli(ctx, collection, verbose):
     """Get tenants from a collection in Weaviate."""
-    
+
     client = None
     try:
         client = get_client_from_context(ctx)
@@ -62,6 +64,7 @@ def get_tenants_cli(ctx, collection, verbose):
         if client:
             client.close()
 
+
 @get.command("shards")
 @click.option(
     "--collection",
@@ -71,7 +74,7 @@ def get_tenants_cli(ctx, collection, verbose):
 @click.pass_context
 def get_shards_cli(ctx, collection):
     """Get shards from a collection in Weaviate."""
-    
+
     client = None
     try:
         client = get_client_from_context(ctx)

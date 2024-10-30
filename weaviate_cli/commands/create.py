@@ -7,11 +7,14 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+
+
 # Create Group
 @click.group()
 def create() -> None:
     """Create resources in Weaviate."""
     pass
+
 
 # Subcommand to create a collection
 @create.command("collection")
@@ -185,7 +188,7 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
 @click.pass_context
 def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_backup):
     """Create a backup in Weaviate."""
-    
+
     client = None
     try:
         client = get_client_from_context(ctx)
@@ -233,7 +236,7 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.pass_context
 def create_data_cli(ctx, collection, limit, consistency_level, randomize, auto_tenants):
     """Ingest data into a collection in Weaviate."""
-    
+
     client = None
     try:
         client = get_client_from_context(ctx)
