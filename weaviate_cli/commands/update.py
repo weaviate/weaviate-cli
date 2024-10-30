@@ -7,11 +7,14 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+
+
 # Update Group
 @click.group()
 def update() -> None:
     """Update resources in Weaviate."""
     pass
+
 
 @update.command("collection")
 @click.option(
@@ -82,6 +85,7 @@ def update_collection_cli(
         if client:
             client.close()
 
+
 @update.command("tenants")
 @click.option(
     "--collection", default="Movies", help="The name of the collection to update."
@@ -145,14 +149,13 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
     is_flag=True,
     help="Update all collections.",
 )
-
 @click.pass_context
 def update_shards_cli(
     ctx: click.Context,
     status: str,
     collection: Optional[str],
     shards: Optional[str],
-    all: bool
+    all: bool,
 ) -> None:
     """Update shards in Weaviate."""
 
@@ -175,6 +178,7 @@ def update_shards_cli(
     finally:
         if client:
             client.close()
+
 
 @update.command("data")
 @click.option(

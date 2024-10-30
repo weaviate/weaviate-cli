@@ -1,9 +1,11 @@
 """
 Utility functions.
 """
+
 import string
 import random
 import weaviate
+
 
 def get_client_from_context(ctx) -> weaviate.Client:
     """
@@ -13,6 +15,7 @@ def get_client_from_context(ctx) -> weaviate.Client:
     :rtype: semi.config.configuration.Configuration
     """
     return ctx.obj["config"].get_client()
+
 
 # Insert objects to the replicated collection
 def get_random_string(length):

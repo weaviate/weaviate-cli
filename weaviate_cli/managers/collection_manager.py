@@ -6,6 +6,7 @@ from weaviate.collections import Collection
 from weaviate.collections.classes.tenants import TenantActivityStatus
 import weaviate.classes.config as wvc
 
+
 class CollectionManager:
     def __init__(self, client: WeaviateClient) -> None:
         self.client = client
@@ -42,7 +43,6 @@ class CollectionManager:
                 )
             click.echo(f"{'':<30}{'':<16}{'':<16}{'':<16}{'':<20}{'':<16}{'':<16}")
             click.echo(f"Total: {len(all_collections)} collections")
-            
 
     def create_collection(
         self,
@@ -161,7 +161,6 @@ class CollectionManager:
         assert self.client.collections.exists(collection)
 
         click.echo(f"Collection '{collection}' created successfully in Weaviate.")
-        
 
     def update_collection(
         self,
@@ -217,7 +216,9 @@ class CollectionManager:
 
         col_obj.config.update(
             description=description,
-            vectorizer_config=(vector_index_map[vector_index] if vector_index else None),
+            vectorizer_config=(
+                vector_index_map[vector_index] if vector_index else None
+            ),
             replication_config=(
                 wvc.Reconfigure.replication(factor=rf, async_enabled=async_enabled)
                 if async_enabled is not None

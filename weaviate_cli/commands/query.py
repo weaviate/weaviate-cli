@@ -3,11 +3,14 @@ import click
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+
+
 # Query Group
 @click.group()
 def query() -> None:
     """Query resources in Weaviate."""
     pass
+
 
 @query.command("data")
 @click.option(

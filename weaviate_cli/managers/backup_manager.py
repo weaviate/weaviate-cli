@@ -1,24 +1,24 @@
-
 import semver
 import click
 
 from weaviate.backup.backup import BackupConfigCreate
 from weaviate.client import WeaviateClient
 
+
 class BackupManager:
     def __init__(self, client: WeaviateClient) -> None:
         self.client = client
-    
+
     def create_backup(
-            self,
-            backup_id: str,
-            backend,
-            include: str,
-            exclude: str,
-            wait: bool,
-            cpu_for_backup: int
-        ) -> None:
-        
+        self,
+        backup_id: str,
+        backend,
+        include: str,
+        exclude: str,
+        wait: bool,
+        cpu_for_backup: int,
+    ) -> None:
+
         version = semver.Version.parse(self.client.get_meta()["version"])
         if include:
             for collection in include.split(","):
@@ -56,13 +56,8 @@ class BackupManager:
         click.echo(f"Backup '{backup_id}' created successfully in Weaviate.")
 
     def restore_backup(
-            self,
-            backup_id: str,
-            backend,
-            include: str,
-            exclude: str,
-            wait: bool
-        ) -> None:
+        self, backup_id: str, backend, include: str, exclude: str, wait: bool
+    ) -> None:
 
         result = self.client.backup.restore(
             backup_id=backup_id,

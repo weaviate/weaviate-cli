@@ -18,10 +18,29 @@ To contribute to Weaviate CLI you should have:
 
 1. Fork the repository
 2. Clone your fork
-3. Install development dependencies:
+3. Create a virtual environment:
     ```bash
-    pip install -r requirements-dev.txt
+    python -m venv .venv
     ```
+4. Install development dependencies using Makefile:
+    ```bash
+    make install-dev
+    ```
+
+### Code Style
+- We use Black for code formatting
+- Install development dependencies and pre-commit hooks (if not already installed):
+  ```bash
+  make install-dev
+  ```
+- Before committing, ensure code is formatted:
+  ```bash
+  make format
+  ```
+- CI will check formatting using:
+  ```bash
+  make lint
+  ```
 
 ## Tagging Your Commit
 Please tag your commit(s) with the appropriate GH issue that your change refers to, e.g. `gh-9001 reduce memory allocations of ACME widget`. Please also include something in your PR description to indicate which issue it will close, e.g. `fixes #9001` or `closes #9001`.
@@ -47,6 +66,3 @@ The Weaviate team consists of some of the nicest people on this planet. If somet
 
 ## Thanks for Contributing!
 We really appreciate your effort in making Weaviate better for everyone!
-
-
-

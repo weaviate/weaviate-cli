@@ -1,7 +1,6 @@
-
-
 from weaviate import WeaviateClient
 import click
+
 
 class ShardManager:
     def __init__(self, client: WeaviateClient):
@@ -29,12 +28,13 @@ class ShardManager:
             for single_collection in all_collections:
                 col_obj = self.client.collections.get(single_collection)
                 shards = col_obj.config.get_shards()
-                click.echo(f"Collection {single_collection:<29}: Shards {len(shards):<15}")
+                click.echo(
+                    f"Collection {single_collection:<29}: Shards {len(shards):<15}"
+                )
                 for shard in shards:
                     self._print_echo_shard_info(shard)
             click.echo(f"{'':<30}{'':<16}")
             click.echo(f"Total: {len(all_collections)} collections")
-
 
     def _print_echo_shard_info(self, shard):
         shard_name = getattr(shard, "name", "N/A")
@@ -42,8 +42,8 @@ class ShardManager:
         vector_queue_length = getattr(shard, "vector_queue_size", "N/A")
 
         click.echo(
-                    f"Shard Name: {shard_name}, Status: {vector_indexing_status}, Queue Length: {vector_queue_length}"
-                )
+            f"Shard Name: {shard_name}, Status: {vector_indexing_status}, Queue Length: {vector_queue_length}"
+        )
 
     def update_shards(self, status: str, collection: str, shards: str, all: bool):
         """
@@ -54,7 +54,7 @@ class ShardManager:
         collection (str): The name of the collection whose shards are to be updated.
         shards (str): A comma-separated list of shard names to update. If empty, all shards in the collection will be updated.
         all (bool): If True, update shards in all collections. Cannot be used with specific collection or shards.
-        """  
+        """
         if all:
             if collection is not None:
                 raise Exception("Cannot use 'all' flag with specific collection")
@@ -88,4 +88,4 @@ class ShardManager:
             col_obj.config.update_shards(status, list_shards)
             click.echo(
                 f"Shards '{shards}' updated to state '{status}' for collection '{collection}'"
-        )
+            )

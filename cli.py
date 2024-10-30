@@ -18,17 +18,27 @@ def print_version(ctx, param, value):
 
 
 @click.group()
-@click.option('--config-file', required=False, default=None, type=str, is_flag=False,
-              help="If specified cli uses the config specified with this path.")
-@click.option('--version', is_flag=True, callback=print_version, expose_value=False,
-              is_eager=True, help="Prints the version of the CLI.")
+@click.option(
+    "--config-file",
+    required=False,
+    default=None,
+    type=str,
+    is_flag=False,
+    help="If specified cli uses the config specified with this path.",
+)
+@click.option(
+    "--version",
+    is_flag=True,
+    callback=print_version,
+    expose_value=False,
+    is_eager=True,
+    help="Prints the version of the CLI.",
+)
 @click.pass_context
 def main(ctx: click.Context, config_file):
     """Weaviate CLI tool"""
     try:
-        ctx.obj = {
-            "config": ConfigManager(config_file)
-        }
+        ctx.obj = {"config": ConfigManager(config_file)}
     except Exception as e:
         click.echo(f"Fatal Error: {e}")
         sys.exit(1)
