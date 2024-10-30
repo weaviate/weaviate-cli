@@ -27,7 +27,7 @@ def test_create_collection(mock_client):
         multitenant=False,
         auto_tenant_creation=False,
         auto_tenant_activation=False,
-        auto_schema=False,
+        force_auto_schema=False,
         shards=1,
         vectorizer=None,
     )
@@ -65,7 +65,7 @@ def test_create_existing_collection(mock_client):
             multitenant=False,
             auto_tenant_creation=False,
             auto_tenant_activation=False,
-            auto_schema=False,
+            force_auto_schema=False,
             shards=1,
             vectorizer=None,
         )
@@ -101,7 +101,7 @@ def test_create_collection_failure(mock_client):
             multitenant=False,
             auto_tenant_creation=False,
             auto_tenant_activation=False,
-            auto_schema=False,
+            force_auto_schema=False,
             shards=1,
             vectorizer=None,
         )

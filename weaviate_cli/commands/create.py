@@ -57,7 +57,11 @@ def create() -> None:
     is_flag=True,
     help="Enable auto tenant activation (default: False).",
 )
-@click.option("--auto_schema", default=True, help="Enable auto-schema (default: True).")
+@click.option(
+    "--force_auto_schema",
+    is_flag=True,
+    help="Force auto-schema (default: False). If passed, no properties will be added to the collection and it will be the auto-schema the one that infers the properties.",
+)
 @click.option("--shards", default=1, help="Number of shards (default: 1).")
 @click.option(
     "--vectorizer",
@@ -77,7 +81,7 @@ def create_collection_cli(
     multitenant: bool,
     auto_tenant_creation: bool,
     auto_tenant_activation: bool,
-    auto_schema: bool,
+    force_auto_schema: bool,
     shards: int,
     vectorizer: Optional[str],
 ) -> None:
@@ -98,7 +102,7 @@ def create_collection_cli(
             multitenant=multitenant,
             auto_tenant_creation=auto_tenant_creation,
             auto_tenant_activation=auto_tenant_activation,
-            auto_schema=auto_schema,
+            force_auto_schema=force_auto_schema,
             shards=shards,
             vectorizer=vectorizer,
         )
