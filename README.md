@@ -49,7 +49,7 @@ weaviate-cli query data --collection movies --search-type hybrid --query "action
 
 ## Configuration
 
-Weaviate CLI allows you to configure your cluster endpoints and parameters through a configuration file. By default, the CLI looks for a 
+Weaviate CLI allows you to configure your cluster endpoints and parameters through a configuration file. By default, the CLI looks for a
 configuration file at `~/.config/weaviate/config.json`. If this file does not exist, it will be created with the following default values:
 
 ```json
@@ -80,14 +80,27 @@ The configuration file should be a JSON file with the following structure:
 }
 ```
 
+If you are using a remote Weaviate instance, you can use the `weaviate-cli` command to authenticate with your Weaviate instance.
+Here you can see an example on how the configuration file should look like if you are connecting to a WCD cluster:
+
+```json
+ {
+     "host": "thisisaninventedcluster.url.s3.us-west3.prov.weaviate.cloud",
+     "auth": {
+         "type": "api_key",
+         "api_key": "jfeRFsdfRfSasgsDoNOtTrYToUsErRQwqqdZfghasd"
+     }
+ }
+```
+
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - Weaviate instance (local or remote)
 
 ## Documentation
 
-For detailed documentation and examples, visit our [Documentation](https://weaviate.io/developers/weaviate).
+Detailed documentation will be added soon.
 
 ## Community & Support
 
@@ -97,13 +110,9 @@ For detailed documentation and examples, visit our [Documentation](https://weavi
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](https://github.com/weaviate/weaviate-cli/blob/main/CONTRIBUTING.md) for 
+We welcome contributions! Please see our [Contributing Guidelines](https://github.com/weaviate/weaviate-cli/blob/main/CONTRIBUTING.md) for
 details.
 
 ## License
 
 BSD-3-Clause License
-
-
-
-
