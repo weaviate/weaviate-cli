@@ -74,3 +74,47 @@ class BackupManager:
             )
 
         click.echo(f"Backup '{backup_id}' restored successfully in Weaviate.")
+
+    def get_backup(self, backend: str, backup_id: str, restore: bool) -> None:
+
+        if restore:
+            backup = self.client.backup.get_restore_status(
+                backup_id=backup_id,
+                backend=backend,
+            )
+            print(f"Backup ID: {backup.backup_id}")
+            print(f"Backup Path: {backup.path}")
+            print(f"Backup Status: {backup.status}")
+            if "collections" in backup:
+                print(f"Collections: {backup.collections}")
+        else:
+            if backup_id is not None:
+                backup = self.client.backup.get_create_status(
+                    backup_id=backup_id, backend=backend
+                )
+                print(f"Backup ID: {backup.backup_id}")
+                print(f"Backup Path: {backup.path}")
+                print(f"Backup Status: {backup.status}")
+                if "collections" in backup:
+                    print(f"Collections: {backup.collections}")
+            else:
+                raise Exception("This functionality is not supported yet.")
+                # backups = client.backup.list_backups(backend=backend)
+                # for backup in backups:
+                #     print(f"Backup ID: {backup.backup_id}")
+                #     print(f"Backup Path: {backup.path}")
+                #     print(f"Backup Status: {backup.status}")
+                #     if "collections" in backup:
+                #       print(f"Collections: {backup.collections}")
+                #     print("------------------------------")
+
+    def cancel_backup(self, backend: str, backup_id: str) -> None:
+        if self.client.backup.cancel(backend=backend, backup_id=backup_id):
+            click.echo(f"Backup '{backup_id}' cancelled successfully in Weaviate.")
+        else:
+            backup_status = self.client.backup.get_create_status(
+                backend=backend, backup_id=backup_id
+            )
+            raise Exception(
+                f"Error: Backup '{backup_id}' could not be cancelled in Weaviate. Current status: {backup_status.status}"
+            )
