@@ -101,6 +101,7 @@ class DataManager:
                 "title": f"{prefix}title" + get_random_string(10),
                 "genres": f"{prefix}genre" + get_random_string(3),
                 "keywords": f"{prefix}keywords" + get_random_string(3),
+                "director": f"{prefix}director" + get_random_string(3),
                 "popularity": float(random.randint(1, 200)),
                 "runtime": f"{prefix}runtime" + get_random_string(3),
                 "cast": f"{prefix}cast" + get_random_string(3),

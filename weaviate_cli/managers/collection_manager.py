@@ -55,7 +55,7 @@ class CollectionManager:
         multitenant: bool,
         auto_tenant_creation: bool,
         auto_tenant_activation: bool,
-        auto_schema: bool,
+        force_auto_schema: bool,
         shards: int,
         vectorizer: Optional[str],
     ) -> None:
@@ -152,7 +152,7 @@ class CollectionManager:
                     auto_tenant_activation=auto_tenant_activation,
                 ),
                 vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
-                properties=properties if auto_schema else None,
+                properties=properties if not force_auto_schema else None,
             )
         except Exception as e:
 
