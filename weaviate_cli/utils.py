@@ -28,10 +28,6 @@ def get_random_string(length):
 # Pretty print objects in the response in a table format
 def pp_objects(response, main_properties):
 
-    if len(response.objects) == 0:
-        print("No objects found")
-        return
-
     # Create the header
     header = f"{'ID':<37}"
     for prop in main_properties:
@@ -39,17 +35,27 @@ def pp_objects(response, main_properties):
     header += f"{'Distance':<11}{'Certainty':<11}{'Score':<11}"
     print(header)
 
+    objects = []
+    if type(response) == weaviate.collections.classes.internal.ObjectSingleReturn:
+        objects.append(response)
+    else:
+        objects = response.objects
+
+    if len(objects) == 0:
+        print("No objects found")
+        return
+
     # Print each object
-    for obj in response.objects:
+    for obj in objects:
         row = f"{str(obj.uuid):<36} "
         for prop in main_properties:
             row += f"{str(obj.properties.get(prop, ''))[:36]:<36} "
-        row += f"{str(obj.metadata.distance)[:10] if obj.metadata.distance else 'None':<10} "
-        row += f"{str(obj.metadata.certainty)[:10] if obj.metadata.certainty else 'None':<10} "
-        row += f"{str(obj.metadata.score)[:10] if obj.metadata.score else 'None':<10}"
+        row += f"{str(obj.metadata.distance)[:10] if hasattr(obj.metadata, 'distance') else 'None':<10} "
+        row += f"{str(obj.metadata.certainty)[:10] if hasattr(obj.metadata, 'certainty') else 'None':<10} "
+        row += f"{str(obj.metadata.score)[:10] if hasattr(obj.metadata, 'score') else 'None':<10}"
         print(row)
 
     # Print footer
     footer = f"{'':<37}" * (len(main_properties) + 1) + f"{'':<11}{'':<11}{'':<11}"
     print(footer)
-    print(f"Total: {len(response.objects)} objects")
+    print(f"Total: {len(objects)} objects")

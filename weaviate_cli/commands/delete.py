@@ -93,8 +93,12 @@ def delete_tenants_cli(
     type=click.Choice(["quorum", "all", "one"]),
     help="Consistency level (default: 'quorum').",
 )
+@click.option(
+    "--uuid",
+    help="UUID of the oject to be deleted. If provided, --limit will be ignored.",
+)
 @click.pass_context
-def delete_data_cli(ctx, collection, limit, consistency_level):
+def delete_data_cli(ctx, collection, limit, consistency_level, uuid):
     """Delete data from a collection in Weaviate."""
 
     client = None
@@ -106,6 +110,7 @@ def delete_data_cli(ctx, collection, limit, consistency_level):
             collection=collection,
             limit=limit,
             consistency_level=consistency_level,
+            uuid=uuid,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
