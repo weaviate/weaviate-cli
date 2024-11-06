@@ -340,8 +340,17 @@ class DataManager:
                 )
 
     def __delete_data(
-        self, collection: Collection, num_objects: int, cl: wvc.ConsistencyLevel
+        self,
+        collection: Collection,
+        num_objects: int,
+        cl: wvc.ConsistencyLevel,
+        uuid: Optional[str] = None,
     ) -> int:
+
+        if uuid:
+            collection.with_consistency_level(cl).data.delete_by_id(uuid=uuid)
+            print(f"Object deleted: {uuid} into class '{collection.name}'")
+            return 1
 
         res = collection.query.fetch_objects(limit=num_objects)
         if len(res.objects) == 0:
@@ -357,7 +366,13 @@ class DataManager:
         print(f"Deleted {num_objects} objects into class '{collection.name}'")
         return num_objects
 
-    def delete_data(self, collection: str, limit: int, consistency_level: str) -> None:
+    def delete_data(
+        self,
+        collection: str,
+        limit: int,
+        consistency_level: str,
+        uuid: Optional[str] = None,
+    ) -> None:
 
         if not self.client.collections.exists(collection):
             print(
@@ -385,13 +400,14 @@ class DataManager:
 
         for tenant in tenants:
             if tenant == "None":
-                ret = self.__delete_data(col, limit, cl_map[consistency_level])
+                ret = self.__delete_data(col, limit, cl_map[consistency_level], uuid)
             else:
                 click.echo(f"Processing tenant '{tenant}'")
                 ret = self.__delete_data(
                     col.with_tenant(tenant),
                     limit,
                     cl_map[consistency_level],
+                    uuid,
                 )
             if ret == -1:
 
@@ -437,6 +453,13 @@ class DataManager:
                 return_metadata=MetadataQuery(score=True),
                 limit=num_objects,
             )
+        elif search_type == "uuid":
+            # UUID logic
+            num_objects = 1
+            response = collection.with_consistency_level(cl).query.fetch_object_by_id(
+                uuid=query
+            )
+
         else:
             click.echo(
                 f"Invalid search type: {search_type}. Please choose from 'fetch', 'vector', 'keyword', or 'hybrid'."

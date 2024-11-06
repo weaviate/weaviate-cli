@@ -19,7 +19,7 @@ def query() -> None:
 @click.option(
     "--search_type",
     default="fetch",
-    type=click.Choice(["fetch", "vector", "keyword", "hybrid"]),
+    type=click.Choice(["fetch", "vector", "keyword", "hybrid", "uuid"]),
     help='Search type (default: "fetch").',
 )
 @click.option(
