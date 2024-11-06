@@ -30,6 +30,7 @@ def test_create_collection(mock_client):
         force_auto_schema=False,
         shards=1,
         vectorizer=None,
+        replication_deletion_strategy=None,
     )
 
     # Verify the collection creation was called with correct parameters
@@ -68,6 +69,7 @@ def test_create_existing_collection(mock_client):
             force_auto_schema=False,
             shards=1,
             vectorizer=None,
+            replication_deletion_strategy=None,
         )
 
     # Verify the error message
@@ -104,6 +106,7 @@ def test_create_collection_failure(mock_client):
             force_auto_schema=False,
             shards=1,
             vectorizer=None,
+            replication_deletion_strategy=None,
         )
 
     # Verify the error message

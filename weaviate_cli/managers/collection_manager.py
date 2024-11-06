@@ -58,6 +58,7 @@ class CollectionManager:
         force_auto_schema: bool,
         shards: int,
         vectorizer: Optional[str],
+        replication_deletion_strategy: Optional[str],
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -133,6 +134,11 @@ class CollectionManager:
             wvc.Property(name="status", data_type=wvc.DataType.TEXT),
         ]
 
+        rds_map = {
+            "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
+            "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
+        }
+
         try:
             self.client.collections.create(
                 name=collection,
@@ -141,7 +147,13 @@ class CollectionManager:
                     inverted_index_map[inverted_index] if inverted_index else None
                 ),
                 replication_config=wvc.Configure.replication(
-                    factor=replication_factor, async_enabled=async_enabled
+                    factor=replication_factor,
+                    async_enabled=async_enabled,
+                    deletion_strategy=(
+                        rds_map[replication_deletion_strategy]
+                        if replication_deletion_strategy
+                        else None
+                    ),
                 ),
                 sharding_config=(
                     wvc.Configure.sharding(desired_count=shards) if shards > 1 else None

@@ -50,6 +50,7 @@ def test_collection_lifecycle(collection_manager: CollectionManager):
             auto_tenant_activation=False,
             vectorizer="contextionary",
             force_auto_schema=True,
+            replication_deletion_strategy=None,
         )
 
         # Verify collection exists
@@ -98,6 +99,7 @@ def test_multiple_collections(collection_manager: CollectionManager):
                 auto_tenant_activation=False,
                 vectorizer="contextionary",
                 force_auto_schema=True,
+                replication_deletion_strategy=None,
             )
             assert collection_manager.client.collections.exists(col)
     finally:
@@ -129,6 +131,7 @@ def test_shard_operations(
             auto_tenant_activation=False,
             vectorizer="transformers",
             force_auto_schema=True,
+            replication_deletion_strategy=None,
         )
 
         # Get shard info
@@ -170,6 +173,7 @@ def test_error_handling(collection_manager: CollectionManager):
             auto_tenant_activation=False,
             vectorizer="transformers",
             force_auto_schema=True,
+            replication_deletion_strategy=None,
         )
 
         with pytest.raises(Exception):
@@ -186,6 +190,7 @@ def test_error_handling(collection_manager: CollectionManager):
                 auto_tenant_activation=False,
                 vectorizer="transformers",
                 force_auto_schema=True,
+                replication_deletion_strategy=None,
             )
     finally:
         # Test deleting non-existent collection
