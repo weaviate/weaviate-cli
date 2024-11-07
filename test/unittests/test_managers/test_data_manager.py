@@ -24,6 +24,7 @@ def test_ingest_data(mock_client):
         consistency_level="quorum",
         randomize=True,
         auto_tenants=0,
+        vector_dimensions=1536,
     )
 
     mock_client.collections.get.assert_called_once_with("TestCollection")

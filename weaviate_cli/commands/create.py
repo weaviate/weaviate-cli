@@ -237,9 +237,28 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=0,
     help="Number of tenants for which we will send data. NOTE: Requires class with --auto_tenant_creation (default: 0).",
 )
+@click.option(
+    "--vector_dimensions",
+    default=1536,
+    help="Number of vector dimensions to be used when the data is randomized.",
+)
 @click.pass_context
-def create_data_cli(ctx, collection, limit, consistency_level, randomize, auto_tenants):
+def create_data_cli(
+    ctx,
+    collection,
+    limit,
+    consistency_level,
+    randomize,
+    auto_tenants,
+    vector_dimensions,
+):
     """Ingest data into a collection in Weaviate."""
+
+    if vector_dimensions != 1536 and not randomize:
+        click.echo(
+            "Error: --vector_dimensions has no effect unless --randomize is enabled."
+        )
+        sys.exit(1)
 
     client = None
     try:
@@ -252,6 +271,7 @@ def create_data_cli(ctx, collection, limit, consistency_level, randomize, auto_t
             consistency_level=consistency_level,
             randomize=randomize,
             auto_tenants=auto_tenants,
+            vector_dimensions=vector_dimensions,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
