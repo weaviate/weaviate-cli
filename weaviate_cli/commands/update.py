@@ -26,7 +26,9 @@ def update() -> None:
 @click.option(
     "--vector_index",
     default=None,
-    type=click.Choice(["hnsw", "flat", "hnsw_pq", "hnsw_bq", "hnsw_sq", "flat_bq"]),
+    type=click.Choice(
+        ["hnsw", "flat", "hnsw_pq", "hnsw_bq", "hnsw_sq", "flat_bq", "hnsw_acorn"]
+    ),
     help='Vector index type (default: "None").',
 )
 @click.option(

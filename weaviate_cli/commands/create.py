@@ -29,7 +29,16 @@ def create() -> None:
     "--vector_index",
     default="hnsw",
     type=click.Choice(
-        ["hnsw", "flat", "dynamic", "hnsw_pq", "hnsw_bq", "hnsw_sq", "flat_bq"]
+        [
+            "hnsw",
+            "flat",
+            "dynamic",
+            "hnsw_pq",
+            "hnsw_bq",
+            "hnsw_sq",
+            "hnsw_acorn",
+            "flat_bq",
+        ]
     ),
     help="Vector index type (default: 'hnsw').",
 )
