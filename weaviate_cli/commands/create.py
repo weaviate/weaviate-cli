@@ -254,6 +254,12 @@ def create_data_cli(
 ):
     """Ingest data into a collection in Weaviate."""
 
+    if vector_dimensions != 1536 and not randomize:
+        click.echo(
+            "Error: --vector_dimensions has no effect unless --randomize is enabled."
+        )
+        sys.exit(1)
+
     client = None
     try:
         client = get_client_from_context(ctx)

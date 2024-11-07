@@ -132,14 +132,26 @@ class DataManager:
             cl_collection = collection.with_consistency_level(cl)
             vectorizer = cl_collection.config.get().vectorizer
             if vectorizer == "text2vec-contextionary":
+                (
+                    print("Warning: Using vector dimensions: 300")
+                    if vector_dimensions != 1536
+                    else None
+                )
                 vector_dimensions = 300
             elif vectorizer == "text2vec-transformers":
+                (
+                    print("Warning: Using vector dimensions: 768")
+                    if vector_dimensions != 1536
+                    else None
+                )
                 vector_dimensions = 768
             with cl_collection.batch.dynamic() as batch:
                 for obj in data_objects:
                     batch.add_object(
                         properties=obj,
-                        vector=np.random.rand(1, vector_dimensions)[0].tolist(),
+                        vector=(
+                            2 * np.random.rand(1, vector_dimensions)[0] - 1
+                        ).tolist(),
                     )
                     counter += 1
 
