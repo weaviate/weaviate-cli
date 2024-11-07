@@ -16,7 +16,12 @@ import sys
 import importlib.resources as resources
 from pathlib import Path
 
-PROPERTY_NAME_MAPPING = {"release_date": "releaseDate"}
+PROPERTY_NAME_MAPPING = {
+    "releaseDate": "release_date",
+    "originalLanguage": "original_language",
+    "productionCountries": "production_countries",
+    "spokenLanguages": "spoken_languages",
+}
 
 
 class DataManager:
@@ -48,7 +53,7 @@ class DataManager:
                         for prop in properties:
                             prop_name = PROPERTY_NAME_MAPPING.get(prop.name, prop.name)
                             if prop_name in obj:
-                                added_obj[prop_name] = self.__convert_property_value(
+                                added_obj[prop.name] = self.__convert_property_value(
                                     obj[prop_name], prop.data_type
                                 )
                         batch.add_object(properties=added_obj)
@@ -95,6 +100,14 @@ class DataManager:
             date = datetime.strptime("1980-01-01", "%Y-%m-%d")
             random_date = date + timedelta(days=random.randint(1, 15_000))
             release_date = random_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            spoken_languages = [
+                {"iso_639_1": get_random_string(3), "name": get_random_string(3)}
+                for _ in range(random.randint(1, 3))
+            ]
+            production_countries = [
+                {"iso_3166_1": get_random_string(3), "name": get_random_string(3)}
+                for _ in range(random.randint(1, 3))
+            ]
 
             prefix = "update-" if is_update else ""
             return {
@@ -111,6 +124,8 @@ class DataManager:
                 "releaseDate": release_date,
                 "revenue": random.randint(1_000_000, 10_000_0000_000),
                 "status": f"{prefix}status" + get_random_string(3),
+                "spokenLanguages": spoken_languages,
+                "productionCountries": production_countries,
             }
 
         if is_update:

@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
 from weaviate.collections.classes.tenants import TenantActivityStatus
+from weaviate.classes.config import VectorFilterStrategy
 import weaviate.classes.config as wvc
 
 
@@ -87,6 +88,9 @@ class CollectionManager:
                     training_limit=training_limit
                 )
             ),
+            "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
+                filter_strategy=VectorFilterStrategy.ACORN
+            ),
             # Should fail at the moment as Flat and PQ are not compatible
             "flat_pq": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.pq()
@@ -118,6 +122,7 @@ class CollectionManager:
             "length": wvc.Configure.inverted_index(index_property_length=True),
         }
 
+        # Collection schema
         properties: List[wvc.Property] = [
             wvc.Property(name="title", data_type=wvc.DataType.TEXT),
             wvc.Property(name="genres", data_type=wvc.DataType.TEXT),
@@ -127,6 +132,22 @@ class CollectionManager:
             wvc.Property(name="runtime", data_type=wvc.DataType.TEXT),
             wvc.Property(name="cast", data_type=wvc.DataType.TEXT),
             wvc.Property(name="originalLanguage", data_type=wvc.DataType.TEXT),
+            wvc.Property(
+                name="productionCountries",
+                data_type=wvc.DataType.OBJECT_ARRAY,
+                nested_properties=[
+                    wvc.Property(name="iso_3166_1", data_type=wvc.DataType.TEXT),
+                    wvc.Property(name="name", data_type=wvc.DataType.TEXT),
+                ],
+            ),
+            wvc.Property(
+                name="spokenLanguages",
+                data_type=wvc.DataType.OBJECT_ARRAY,
+                nested_properties=[
+                    wvc.Property(name="iso_639_1", data_type=wvc.DataType.TEXT),
+                    wvc.Property(name="name", data_type=wvc.DataType.TEXT),
+                ],
+            ),
             wvc.Property(name="tagline", data_type=wvc.DataType.TEXT),
             wvc.Property(name="budget", data_type=wvc.DataType.NUMBER),
             wvc.Property(name="releaseDate", data_type=wvc.DataType.DATE),
@@ -207,6 +228,9 @@ class CollectionManager:
             ),
             "hnsw_bq": wvc.Reconfigure.VectorIndex.hnsw(
                 quantizer=wvc.Reconfigure.VectorIndex.Quantizer.bq()
+            ),
+            "hnsw_acorn": wvc.Reconfigure.VectorIndex.hnsw(
+                filter_strategy=VectorFilterStrategy.ACORN
             ),
             "flat_bq": wvc.Reconfigure.VectorIndex.flat(
                 quantizer=wvc.Reconfigure.VectorIndex.Quantizer.bq()
