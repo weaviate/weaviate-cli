@@ -124,22 +124,22 @@ class DataManager:
         num_objects: int,
         cl: wvc.ConsistencyLevel,
         randomize: bool,
+        vector_dimensions: Optional[int] = 1536,
     ) -> int:
         if randomize:
             counter = 0
             data_objects = self.__generate_data_object(num_objects)
             cl_collection = collection.with_consistency_level(cl)
             vectorizer = cl_collection.config.get().vectorizer
-            dimensions = 1536
             if vectorizer == "text2vec-contextionary":
-                dimensions = 300
+                vector_dimensions = 300
             elif vectorizer == "text2vec-transformers":
-                dimensions = 768
+                vector_dimensions = 768
             with cl_collection.batch.dynamic() as batch:
                 for obj in data_objects:
                     batch.add_object(
                         properties=obj,
-                        vector=np.random.rand(1, dimensions)[0].tolist(),
+                        vector=np.random.rand(1, vector_dimensions)[0].tolist(),
                     )
                     counter += 1
 
@@ -167,6 +167,7 @@ class DataManager:
         consistency_level: str,
         randomize: bool,
         auto_tenants: int,
+        vector_dimensions: Optional[int] = 1536,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -218,6 +219,7 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
+                    vector_dimensions,
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
@@ -226,6 +228,7 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
+                    vector_dimensions,
                 )
 
             if ret == -1:
