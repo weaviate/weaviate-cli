@@ -69,6 +69,12 @@ def create() -> None:
     type=click.Choice(["contextionary", "transformers", "openai", "ollama"]),
     help="Vectorizer to use.",
 )
+@click.option(
+    "--replication_deletion_strategy",
+    default="delete_on_conflict",
+    type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
+    help="Replication deletion strategy (default: 'delete_on_conflict').",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -84,6 +90,7 @@ def create_collection_cli(
     force_auto_schema: bool,
     shards: int,
     vectorizer: Optional[str],
+    replication_deletion_strategy: str,
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -105,6 +112,7 @@ def create_collection_cli(
             force_auto_schema=force_auto_schema,
             shards=shards,
             vectorizer=vectorizer,
+            replication_deletion_strategy=replication_deletion_strategy,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

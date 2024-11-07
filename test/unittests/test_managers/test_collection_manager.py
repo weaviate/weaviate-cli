@@ -30,6 +30,7 @@ def test_create_collection(mock_client):
         force_auto_schema=False,
         shards=1,
         vectorizer=None,
+        replication_deletion_strategy=None,
     )
 
     # Verify the collection creation was called with correct parameters
@@ -68,6 +69,7 @@ def test_create_existing_collection(mock_client):
             force_auto_schema=False,
             shards=1,
             vectorizer=None,
+            replication_deletion_strategy=None,
         )
 
     # Verify the error message
@@ -104,6 +106,7 @@ def test_create_collection_failure(mock_client):
             force_auto_schema=False,
             shards=1,
             vectorizer=None,
+            replication_deletion_strategy=None,
         )
 
     # Verify the error message
@@ -179,6 +182,7 @@ def test_update_collection(mock_client):
         async_enabled=True,
         auto_tenant_creation=True,
         auto_tenant_activation=True,
+        replication_deletion_strategy="delete_on_conflict",
     )
 
     mock_collection.config.update.assert_called_once()
@@ -218,6 +222,7 @@ def test_update_nonexistent_collection(mock_client):
             async_enabled=True,
             auto_tenant_creation=True,
             auto_tenant_activation=True,
+            replication_deletion_strategy="delete_on_conflict",
         )
 
     assert "Error: Collection 'TestCollection' does not exist in Weaviate." in str(

@@ -58,6 +58,7 @@ class CollectionManager:
         force_auto_schema: bool,
         shards: int,
         vectorizer: Optional[str],
+        replication_deletion_strategy: Optional[str],
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -133,6 +134,11 @@ class CollectionManager:
             wvc.Property(name="status", data_type=wvc.DataType.TEXT),
         ]
 
+        rds_map = {
+            "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
+            "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
+        }
+
         try:
             self.client.collections.create(
                 name=collection,
@@ -141,7 +147,13 @@ class CollectionManager:
                     inverted_index_map[inverted_index] if inverted_index else None
                 ),
                 replication_config=wvc.Configure.replication(
-                    factor=replication_factor, async_enabled=async_enabled
+                    factor=replication_factor,
+                    async_enabled=async_enabled,
+                    deletion_strategy=(
+                        rds_map[replication_deletion_strategy]
+                        if replication_deletion_strategy
+                        else None
+                    ),
                 ),
                 sharding_config=(
                     wvc.Configure.sharding(desired_count=shards) if shards > 1 else None
@@ -171,6 +183,7 @@ class CollectionManager:
         async_enabled: Optional[bool],
         auto_tenant_creation: Optional[bool],
         auto_tenant_activation: Optional[bool],
+        replication_deletion_strategy: Optional[str],
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -202,6 +215,10 @@ class CollectionManager:
 
         col_obj: Collection = self.client.collections.get(collection)
         rf = col_obj.config.get().replication_config.factor
+        rds_map = {
+            "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
+            "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
+        }
         mt = col_obj.config.get().multi_tenancy_config.enabled
         auto_tenant_creation = (
             auto_tenant_creation
@@ -213,16 +230,21 @@ class CollectionManager:
             if auto_tenant_activation is not None
             else col_obj.config.get().multi_tenancy_config.auto_tenant_activation
         )
-
         col_obj.config.update(
             description=description,
             vectorizer_config=(
                 vector_index_map[vector_index] if vector_index else None
             ),
             replication_config=(
-                wvc.Reconfigure.replication(factor=rf, async_enabled=async_enabled)
-                if async_enabled is not None
-                else None
+                wvc.Reconfigure.replication(
+                    factor=rf,
+                    async_enabled=async_enabled if async_enabled is not None else None,
+                    deletion_strategy=(
+                        rds_map[replication_deletion_strategy]
+                        if replication_deletion_strategy
+                        else None
+                    ),
+                )
             ),
             multi_tenancy_config=(
                 wvc.Reconfigure.multi_tenancy(
