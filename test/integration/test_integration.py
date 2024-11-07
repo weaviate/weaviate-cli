@@ -65,6 +65,7 @@ def test_collection_lifecycle(collection_manager: CollectionManager):
             async_enabled=False,
             auto_tenant_creation=None,
             auto_tenant_activation=None,
+            replication_deletion_strategy=None,
         )
 
         # Get collection config to verify update
@@ -209,4 +210,5 @@ def test_error_handling(collection_manager: CollectionManager):
             async_enabled=True,
             auto_tenant_creation=None,
             auto_tenant_activation=None,
+            replication_deletion_strategy=None,
         )

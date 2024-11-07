@@ -182,6 +182,7 @@ def test_update_collection(mock_client):
         async_enabled=True,
         auto_tenant_creation=True,
         auto_tenant_activation=True,
+        replication_deletion_strategy="delete_on_conflict",
     )
 
     mock_collection.config.update.assert_called_once()
@@ -221,6 +222,7 @@ def test_update_nonexistent_collection(mock_client):
             async_enabled=True,
             auto_tenant_creation=True,
             auto_tenant_activation=True,
+            replication_deletion_strategy="delete_on_conflict",
         )
 
     assert "Error: Collection 'TestCollection' does not exist in Weaviate." in str(

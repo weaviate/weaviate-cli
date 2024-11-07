@@ -49,6 +49,12 @@ def update() -> None:
     type=bool,
     help="Enable auto tenant activation (default: None).",
 )
+@click.option(
+    "--replication_deletion_strategy",
+    default=None,
+    type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
+    help="Replication deletion strategy.",
+)
 @click.pass_context
 def update_collection_cli(
     ctx: click.Context,
@@ -59,6 +65,7 @@ def update_collection_cli(
     training_limit: int,
     auto_tenant_creation: Optional[bool],
     auto_tenant_activation: Optional[bool],
+    replication_deletion_strategy: Optional[str],
 ) -> None:
     """Update a collection in Weaviate."""
 
@@ -75,6 +82,7 @@ def update_collection_cli(
             training_limit=training_limit,
             auto_tenant_creation=auto_tenant_creation,
             auto_tenant_activation=auto_tenant_activation,
+            replication_deletion_strategy=replication_deletion_strategy,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
