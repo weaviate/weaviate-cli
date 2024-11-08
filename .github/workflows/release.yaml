@@ -1,18 +1,14 @@
 name: Build and Publish
 
 on:
-  workflow_run:
-    workflows: ["Main"]
-    types:
-      - completed
-    branches:
-      - main
+  push:
+    tags:
+      - '*'
 
 jobs:
   build-package:
     name: Build a package
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'refs/tags/') }}
     steps:
         - name: Checkout
           uses: actions/checkout@v4
