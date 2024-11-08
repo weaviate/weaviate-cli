@@ -7,6 +7,10 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+from weaviate_cli.defaults import UpdateCollectionDefaults
+from weaviate_cli.defaults import UpdateTenantsDefaults
+from weaviate_cli.defaults import UpdateShardsDefaults
+from weaviate_cli.defaults import UpdateDataDefaults
 
 
 # Update Group
@@ -18,42 +22,49 @@ def update() -> None:
 
 @update.command("collection")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to update."
+    "--collection",
+    default=UpdateCollectionDefaults.collection,
+    help="The name of the collection to update.",
 )
 @click.option(
-    "--async_enabled", default=None, type=bool, help="Enable async (default: None)."
+    "--async_enabled",
+    default=UpdateCollectionDefaults.async_enabled,
+    type=bool,
+    help="Enable async (default: None).",
 )
 @click.option(
     "--vector_index",
-    default=None,
+    default=UpdateCollectionDefaults.vector_index,
     type=click.Choice(
         ["hnsw", "flat", "hnsw_pq", "hnsw_bq", "hnsw_sq", "flat_bq", "hnsw_acorn"]
     ),
     help='Vector index type (default: "None").',
 )
 @click.option(
-    "--description", default=None, help="collection description (default: None)."
+    "--description",
+    default=UpdateCollectionDefaults.description,
+    help="collection description (default: None).",
 )
 @click.option(
     "--training_limit",
-    default=10000,
+    default=UpdateCollectionDefaults.training_limit,
     help="Training limit for PQ and SQ (default: 10000).",
 )
 @click.option(
     "--auto_tenant_creation",
-    default=None,
+    default=UpdateCollectionDefaults.auto_tenant_creation,
     type=bool,
     help="Enable auto tenant creation (default: None).",
 )
 @click.option(
     "--auto_tenant_activation",
-    default=None,
+    default=UpdateCollectionDefaults.auto_tenant_activation,
     type=bool,
     help="Enable auto tenant activation (default: None).",
 )
 @click.option(
     "--replication_deletion_strategy",
-    default=None,
+    default=UpdateCollectionDefaults.replication_deletion_strategy,
     type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
     help="Replication deletion strategy.",
 )
@@ -98,19 +109,23 @@ def update_collection_cli(
 
 @update.command("tenants")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to update."
+    "--collection",
+    default=UpdateTenantsDefaults.collection,
+    help="The name of the collection to update.",
 )
 @click.option(
     "--tenant_suffix",
-    default="Tenant--",
+    default=UpdateTenantsDefaults.tenant_suffix,
     help="The suffix to add to the tenant name (default: 'Tenant--').",
 )
 @click.option(
-    "--number_tenants", default=100, help="Number of tenants to update (default: 100)."
+    "--number_tenants",
+    default=UpdateTenantsDefaults.number_tenants,
+    help="Number of tenants to update (default: 100).",
 )
 @click.option(
     "--state",
-    default="active",
+    default=UpdateTenantsDefaults.state,
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
 @click.pass_context
@@ -140,18 +155,18 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
 @update.command("shards")
 @click.option(
     "--collection",
-    default=None,
+    default=UpdateShardsDefaults.collection,
     help="The name of the collection to update.",
 )
 @click.option(
     "--status",
-    default="READY",
+    default=UpdateShardsDefaults.status,
     type=click.Choice(["READY", "READONLY"]),
     help="The status of the shards.",
 )
 @click.option(
     "--shards",
-    default=None,
+    default=UpdateShardsDefaults.shards,
     help="Comma separated list of shards to update.",
 )
 @click.option(
@@ -192,14 +207,18 @@ def update_shards_cli(
 
 @update.command("data")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to update."
+    "--collection",
+    default=UpdateDataDefaults.collection,
+    help="The name of the collection to update.",
 )
 @click.option(
-    "--limit", default=100, help="Number of objects to update (default: 100)."
+    "--limit",
+    default=UpdateDataDefaults.limit,
+    help="Number of objects to update (default: 100).",
 )
 @click.option(
     "--consistency_level",
-    default="quorum",
+    default=UpdateDataDefaults.consistency_level,
     type=click.Choice(["quorum", "all", "one"]),
     help="Consistency level (default: 'quorum').",
 )

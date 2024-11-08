@@ -38,19 +38,12 @@ def test_collection_lifecycle(collection_manager: CollectionManager):
     try:
         # Create collection
         collection_manager.create_collection(
-            collection="Movies",
-            vector_index="hnsw",
             inverted_index="timestamp",
             replication_factor=1,
             training_limit=100000,
-            shards=1,
             async_enabled=True,
-            multitenant=False,
-            auto_tenant_creation=False,
-            auto_tenant_activation=False,
             vectorizer="contextionary",
             force_auto_schema=True,
-            replication_deletion_strategy=None,
         )
 
         # Verify collection exists
@@ -58,14 +51,10 @@ def test_collection_lifecycle(collection_manager: CollectionManager):
 
         # Update collection
         collection_manager.update_collection(
-            collection="Movies",
             description="Updated movie collection",
             vector_index="hnsw_pq",
             training_limit=100000,
             async_enabled=False,
-            auto_tenant_creation=None,
-            auto_tenant_activation=None,
-            replication_deletion_strategy=None,
         )
 
         # Get collection config to verify update
@@ -77,7 +66,7 @@ def test_collection_lifecycle(collection_manager: CollectionManager):
     finally:
         # Delete collection
         if collection_manager.client.collections.exists("Movies"):
-            collection_manager.delete_collection(collection="Movies", all=False)
+            collection_manager.delete_collection(collection="Movies")
         assert not collection_manager.client.collections.exists("Movies")
 
 
@@ -91,16 +80,11 @@ def test_multiple_collections(collection_manager: CollectionManager):
                 collection=col,
                 vector_index="flat",
                 replication_factor=1,
-                inverted_index=None,
                 shards=2,
                 training_limit=100000,
                 async_enabled=True,
-                multitenant=False,
-                auto_tenant_creation=False,
-                auto_tenant_activation=False,
                 vectorizer="contextionary",
                 force_auto_schema=True,
-                replication_deletion_strategy=None,
             )
             assert collection_manager.client.collections.exists(col)
     finally:
@@ -120,30 +104,21 @@ def test_shard_operations(
     try:
         # Create collection with multiple shards
         collection_manager.create_collection(
-            collection="Movies",
-            vector_index="hnsw",
             inverted_index="null",
             replication_factor=1,
             training_limit=1000,
             shards=3,
             async_enabled=True,
-            multitenant=False,
-            auto_tenant_creation=False,
-            auto_tenant_activation=False,
             vectorizer="transformers",
             force_auto_schema=True,
-            replication_deletion_strategy=None,
         )
 
         # Get shard info
         movies_collection = collection_manager.client.collections.get("Movies")
 
-        data_manager.ingest_data(
-            collection="Movies",
+        data_manager.create_data(
             limit=1000,
             consistency_level="one",
-            randomize=False,
-            auto_tenants=0,
         )
 
         shards = movies_collection.config.get_shards()
@@ -155,7 +130,7 @@ def test_shard_operations(
         assert len(objects.objects) == 1000
     finally:
         # Clean up
-        collection_manager.delete_collection(collection="Movies", all=False)
+        collection_manager.delete_collection(collection="Movies")
 
 
 def test_error_handling(collection_manager: CollectionManager):
@@ -163,52 +138,34 @@ def test_error_handling(collection_manager: CollectionManager):
         # Test creating duplicate collection
         collection_manager.create_collection(
             collection="TestCol",
-            vector_index="hnsw",
-            inverted_index=None,
             replication_factor=1,
             training_limit=100000,
-            shards=1,
             async_enabled=True,
-            multitenant=False,
-            auto_tenant_creation=False,
-            auto_tenant_activation=False,
             vectorizer="transformers",
             force_auto_schema=True,
-            replication_deletion_strategy=None,
         )
 
         with pytest.raises(Exception):
             collection_manager.create_collection(
                 collection="TestCol",
-                vector_index="hnsw",
-                inverted_index=None,
                 replication_factor=1,
                 training_limit=100000,
-                shards=1,
                 async_enabled=True,
-                multitenant=False,
-                auto_tenant_creation=False,
-                auto_tenant_activation=False,
                 vectorizer="transformers",
                 force_auto_schema=True,
-                replication_deletion_strategy=None,
             )
     finally:
         # Test deleting non-existent collection
-        collection_manager.delete_collection(collection="TestCol", all=False)
+        collection_manager.delete_collection(collection="TestCol")
 
     with pytest.raises(Exception):
-        collection_manager.delete_collection(collection="NonExistentCol", all=False)
+        collection_manager.delete_collection(collection="NonExistentCol")
 
     # Test updating non-existent collection
     with pytest.raises(Exception):
         collection_manager.update_collection(
             collection="NonExistentCol",
             description="Updated description",
-            vector_index="hnsw",
             training_limit=100000,
             async_enabled=True,
-            auto_tenant_creation=None,
-            auto_tenant_activation=None,
-            replication_deletion_strategy=None,
         )

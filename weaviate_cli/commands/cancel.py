@@ -2,6 +2,7 @@ import click
 import sys
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.backup_manager import BackupManager
+from weaviate_cli.defaults import CancelBackupDefaults
 
 
 # Create Group
@@ -14,13 +15,13 @@ def cancel():
 @cancel.command("backup")
 @click.option(
     "--backend",
-    default="s3",
+    default=CancelBackupDefaults.backend,
     type=click.Choice(["s3", "gcs", "filesystem"]),
     help="The backend used for storing the backups (default: s3).",
 )
 @click.option(
     "--backup_id",
-    default="test-backup",
+    default=CancelBackupDefaults.backup_id,
     help="Identifier used for the backup (default: test-backup).",
 )
 @click.pass_context

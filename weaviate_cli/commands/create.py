@@ -7,6 +7,10 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+from weaviate_cli.defaults import CreateBackupDefaults
+from weaviate_cli.defaults import CreateCollectionDefaults
+from weaviate_cli.defaults import CreateTenantsDefaults
+from weaviate_cli.defaults import CreateDataDefaults
 
 
 # Create Group
@@ -19,15 +23,23 @@ def create() -> None:
 # Subcommand to create a collection
 @create.command("collection")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to create."
+    "--collection",
+    default=CreateCollectionDefaults.collection,
+    help="The name of the collection to create.",
 )
 @click.option(
-    "--replication_factor", default=3, help="Replication factor (default: 3)."
+    "--replication_factor",
+    default=CreateCollectionDefaults.replication_factor,
+    help="Replication factor (default: 3).",
 )
-@click.option("--async_enabled", is_flag=True, help="Enable async (default: False).")
+@click.option(
+    "--async_enabled",
+    is_flag=True,
+    help="Enable async (default: False).",
+)
 @click.option(
     "--vector_index",
-    default="hnsw",
+    default=CreateCollectionDefaults.vector_index,
     type=click.Choice(
         [
             "hnsw",
@@ -44,13 +56,13 @@ def create() -> None:
 )
 @click.option(
     "--inverted_index",
-    default=None,
+    default=CreateCollectionDefaults.inverted_index,
     type=click.Choice(["timestamp", "null", "length"]),
     help="Inverted index properties (default: None). Options: 'timestamp'==index_timestamps, 'null'==index_null_state, 'length'==index_property_length.",
 )
 @click.option(
     "--training_limit",
-    default=10000,
+    default=CreateCollectionDefaults.training_limit,
     help="Training limit for PQ and SQ (default: 10000).",
 )
 @click.option(
@@ -71,16 +83,20 @@ def create() -> None:
     is_flag=True,
     help="Force auto-schema (default: False). If passed, no properties will be added to the collection and it will be the auto-schema the one that infers the properties.",
 )
-@click.option("--shards", default=1, help="Number of shards (default: 1).")
+@click.option(
+    "--shards",
+    default=CreateCollectionDefaults.shards,
+    help="Number of shards (default: 1).",
+)
 @click.option(
     "--vectorizer",
-    default=None,
+    default=CreateCollectionDefaults.vectorizer,
     type=click.Choice(["contextionary", "transformers", "openai", "ollama"]),
     help="Vectorizer to use.",
 )
 @click.option(
     "--replication_deletion_strategy",
-    default="delete_on_conflict",
+    default=CreateCollectionDefaults.replication_deletion_strategy,
     type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
@@ -136,19 +152,23 @@ def create_collection_cli(
 # Subcommand to create tenants
 @create.command("tenants")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to create."
+    "--collection",
+    default=CreateTenantsDefaults.collection,
+    help="The name of the collection to create.",
 )
 @click.option(
     "--tenant_suffix",
-    default="Tenant--",
+    default=CreateTenantsDefaults.tenant_suffix,
     help="The suffix to add to the tenant name (default: 'Tenant--').",
 )
 @click.option(
-    "--number_tenants", default=100, help="Number of tenants to create (default: 100)."
+    "--number_tenants",
+    default=CreateTenantsDefaults.number_tenants,
+    help="Number of tenants to create (default: 100).",
 )
 @click.option(
     "--state",
-    default="active",
+    default=CreateTenantsDefaults.state,
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
 @click.pass_context
@@ -179,23 +199,23 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
 @create.command("backup")
 @click.option(
     "--backend",
-    default="s3",
+    default=CreateBackupDefaults.backend,
     type=click.Choice(["s3", "gcs", "filesystem"]),
     help="The backend used for storing the backups (default: s3).",
 )
 @click.option(
     "--backup_id",
-    default="test-backup",
+    default=CreateBackupDefaults.backup_id,
     help="Identifier used for the backup (default: test-backup).",
 )
 @click.option(
     "--include",
-    default=None,
+    default=CreateBackupDefaults.include,
     help="Comma separated list of collections to include in the backup. If not provided, all collections will be included.",
 )
 @click.option(
     "--exclude",
-    default=None,
+    default=CreateBackupDefaults.exclude,
     help="Comma separated list of collections to exclude from the backup. If not provided, all collections will be included.",
 )
 @click.option(
@@ -203,7 +223,7 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
 )
 @click.option(
     "--cpu_for_backup",
-    default=40,
+    default=CreateBackupDefaults.cpu_for_backup,
     help="The percentage of CPU to use for the backup (default: 40). The larger, the faster it will occur, but it will also consume more memory.",
 )
 @click.pass_context
@@ -236,27 +256,29 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @create.command("data")
 @click.option(
     "--collection",
-    default="Movies",
+    default=CreateDataDefaults.collection,
     help="The name of the collection to ingest data into.",
 )
 @click.option(
-    "--limit", default=1000, help="Number of objects to import (default: 1000)."
+    "--limit",
+    default=CreateDataDefaults.limit,
+    help="Number of objects to import (default: 1000).",
 )
 @click.option(
     "--consistency_level",
-    default="quorum",
+    default=CreateDataDefaults.consistency_level,
     type=click.Choice(["quorum", "all", "one"]),
     help="Consistency level (default: 'quorum').",
 )
 @click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
 @click.option(
     "--auto_tenants",
-    default=0,
+    default=CreateDataDefaults.auto_tenants,
     help="Number of tenants for which we will send data. NOTE: Requires class with --auto_tenant_creation (default: 0).",
 )
 @click.option(
     "--vector_dimensions",
-    default=1536,
+    default=CreateDataDefaults.vector_dimensions,
     help="Number of vector dimensions to be used when the data is randomized.",
 )
 @click.pass_context
@@ -282,7 +304,7 @@ def create_data_cli(
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
         # Call the function from ingest_data.py with general and specific arguments
-        data_manager.ingest_data(
+        data_manager.create_data(
             collection=collection,
             limit=limit,
             consistency_level=consistency_level,

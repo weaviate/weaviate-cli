@@ -5,6 +5,12 @@ from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
 from weaviate.collections.classes.tenants import TenantActivityStatus
 from weaviate.classes.config import VectorFilterStrategy
+from weaviate_cli.defaults import (
+    CreateCollectionDefaults,
+    UpdateCollectionDefaults,
+    DeleteCollectionDefaults,
+    GetCollectionDefaults,
+)
 import weaviate.classes.config as wvc
 
 
@@ -22,7 +28,9 @@ class CollectionManager:
             )
         return acc
 
-    def get_collection(self, collection: Optional[str]) -> None:
+    def get_collection(
+        self, collection: Optional[str] = GetCollectionDefaults.collection
+    ) -> None:
 
         if collection is not None:
             if not self.client.collections.exists(collection):
@@ -47,19 +55,21 @@ class CollectionManager:
 
     def create_collection(
         self,
-        collection: str,
-        replication_factor: int,
-        async_enabled: bool,
-        vector_index: str,
-        inverted_index: Optional[str],
-        training_limit: int,
-        multitenant: bool,
-        auto_tenant_creation: bool,
-        auto_tenant_activation: bool,
-        force_auto_schema: bool,
-        shards: int,
-        vectorizer: Optional[str],
-        replication_deletion_strategy: Optional[str],
+        collection: str = CreateCollectionDefaults.collection,
+        replication_factor: int = CreateCollectionDefaults.replication_factor,
+        async_enabled: bool = CreateCollectionDefaults.async_enabled,
+        vector_index: str = CreateCollectionDefaults.vector_index,
+        inverted_index: Optional[str] = CreateCollectionDefaults.inverted_index,
+        training_limit: int = CreateCollectionDefaults.training_limit,
+        multitenant: bool = CreateCollectionDefaults.multitenant,
+        auto_tenant_creation: bool = CreateCollectionDefaults.auto_tenant_creation,
+        auto_tenant_activation: bool = CreateCollectionDefaults.auto_tenant_activation,
+        force_auto_schema: bool = CreateCollectionDefaults.force_auto_schema,
+        shards: int = CreateCollectionDefaults.shards,
+        vectorizer: Optional[str] = CreateCollectionDefaults.vectorizer,
+        replication_deletion_strategy: Optional[
+            str
+        ] = CreateCollectionDefaults.replication_deletion_strategy,
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -197,14 +207,20 @@ class CollectionManager:
 
     def update_collection(
         self,
-        collection: str,
-        description: Optional[str],
-        vector_index: Optional[str],
-        training_limit: int,
-        async_enabled: Optional[bool],
-        auto_tenant_creation: Optional[bool],
-        auto_tenant_activation: Optional[bool],
-        replication_deletion_strategy: Optional[str],
+        collection: str = UpdateCollectionDefaults.collection,
+        description: Optional[str] = UpdateCollectionDefaults.description,
+        vector_index: Optional[str] = UpdateCollectionDefaults.vector_index,
+        training_limit: int = UpdateCollectionDefaults.training_limit,
+        async_enabled: Optional[bool] = UpdateCollectionDefaults.async_enabled,
+        auto_tenant_creation: Optional[
+            bool
+        ] = UpdateCollectionDefaults.auto_tenant_creation,
+        auto_tenant_activation: Optional[
+            bool
+        ] = UpdateCollectionDefaults.auto_tenant_activation,
+        replication_deletion_strategy: Optional[
+            str
+        ] = UpdateCollectionDefaults.replication_deletion_strategy,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -284,7 +300,11 @@ class CollectionManager:
 
         click.echo(f"Collection '{collection}' modified successfully in Weaviate.")
 
-    def delete_collection(self, collection: str, all: bool) -> None:
+    def delete_collection(
+        self,
+        collection: str = DeleteCollectionDefaults.collection,
+        all: bool = DeleteCollectionDefaults.all,
+    ) -> None:
         if all:
             collections: List[str] = self.client.collections.list_all()
             for collection in collections:

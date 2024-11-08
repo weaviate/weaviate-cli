@@ -22,7 +22,6 @@ def print_version(ctx, param, value):
 @click.option(
     "--config-file",
     required=False,
-    default=None,
     type=str,
     is_flag=False,
     help="If specified cli uses the config specified with this path.",

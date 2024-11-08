@@ -1,8 +1,14 @@
 import semver
 import click
-
+from typing import Optional
 from weaviate.backup.backup import BackupConfigCreate
 from weaviate.client import WeaviateClient
+from weaviate_cli.defaults import (
+    CancelBackupDefaults,
+    CreateBackupDefaults,
+    RestoreBackupDefaults,
+    GetBackupDefaults,
+)
 
 
 class BackupManager:
@@ -11,12 +17,12 @@ class BackupManager:
 
     def create_backup(
         self,
-        backup_id: str,
-        backend,
-        include: str,
-        exclude: str,
-        wait: bool,
-        cpu_for_backup: int,
+        backup_id: str = CreateBackupDefaults.backup_id,
+        backend: str = CreateBackupDefaults.backend,
+        include: Optional[str] = CreateBackupDefaults.include,
+        exclude: Optional[str] = CreateBackupDefaults.exclude,
+        wait: bool = CreateBackupDefaults.wait,
+        cpu_for_backup: int = CreateBackupDefaults.cpu_for_backup,
     ) -> None:
 
         version = semver.Version.parse(self.client.get_meta()["version"])
@@ -56,7 +62,12 @@ class BackupManager:
         click.echo(f"Backup '{backup_id}' created successfully in Weaviate.")
 
     def restore_backup(
-        self, backup_id: str, backend, include: str, exclude: str, wait: bool
+        self,
+        backup_id: str = RestoreBackupDefaults.backup_id,
+        backend: str = RestoreBackupDefaults.backend,
+        include: Optional[str] = RestoreBackupDefaults.include,
+        exclude: Optional[str] = RestoreBackupDefaults.exclude,
+        wait: bool = RestoreBackupDefaults.wait,
     ) -> None:
 
         result = self.client.backup.restore(
@@ -75,7 +86,12 @@ class BackupManager:
 
         click.echo(f"Backup '{backup_id}' restored successfully in Weaviate.")
 
-    def get_backup(self, backend: str, backup_id: str, restore: bool) -> None:
+    def get_backup(
+        self,
+        backend: str = GetBackupDefaults.backend,
+        backup_id: str = GetBackupDefaults.backup_id,
+        restore: bool = GetBackupDefaults.restore,
+    ) -> None:
 
         if restore:
             backup = self.client.backup.get_restore_status(
@@ -108,7 +124,11 @@ class BackupManager:
                 #       print(f"Collections: {backup.collections}")
                 #     print("------------------------------")
 
-    def cancel_backup(self, backend: str, backup_id: str) -> None:
+    def cancel_backup(
+        self,
+        backend: str = CancelBackupDefaults.backend,
+        backup_id: str = CancelBackupDefaults.backup_id,
+    ) -> None:
         if self.client.backup.cancel(backend=backend, backup_id=backup_id):
             click.echo(f"Backup '{backup_id}' cancelled successfully in Weaviate.")
         else:

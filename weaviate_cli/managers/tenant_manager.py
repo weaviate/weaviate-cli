@@ -3,6 +3,12 @@ import semver
 
 from weaviate import WeaviateClient
 from weaviate.collections.classes.tenants import TenantActivityStatus, Tenant
+from weaviate_cli.defaults import (
+    CreateTenantsDefaults,
+    UpdateTenantsDefaults,
+    DeleteTenantsDefaults,
+    GetTenantsDefaults,
+)
 
 
 class TenantManager:
@@ -10,7 +16,11 @@ class TenantManager:
         self.client = client
 
     def create_tenants(
-        self, collection: str, tenant_suffix: str, number_tenants: int, state: str
+        self,
+        collection: str = CreateTenantsDefaults.collection,
+        tenant_suffix: str = CreateTenantsDefaults.tenant_suffix,
+        number_tenants: int = CreateTenantsDefaults.number_tenants,
+        state: str = CreateTenantsDefaults.state,
     ) -> None:
         """
         Create tenants for a given collection in Weaviate.
@@ -92,7 +102,10 @@ class TenantManager:
         )
 
     def delete_tenants(
-        self, collection: str, tenant_suffix: str, number_tenants: int
+        self,
+        collection: str = DeleteTenantsDefaults.collection,
+        tenant_suffix: str = DeleteTenantsDefaults.tenant_suffix,
+        number_tenants: int = DeleteTenantsDefaults.number_tenants,
     ) -> None:
         """
         Delete tenants for a given collection in Weaviate.
@@ -168,7 +181,11 @@ class TenantManager:
 
         click.echo(f"{number_tenants} tenants deleted")
 
-    def get_tenants(self, collection: str, verbose: bool) -> dict:
+    def get_tenants(
+        self,
+        collection: str = GetTenantsDefaults.collection,
+        verbose: bool = GetTenantsDefaults.verbose,
+    ) -> dict:
         """
         Retrieve tenants for a given collection in Weaviate.
 
@@ -214,7 +231,11 @@ class TenantManager:
         return tenants
 
     def update_tenants(
-        self, collection: str, tenant_suffix: str, number_tenants: int, state: str
+        self,
+        collection: str = UpdateTenantsDefaults.collection,
+        tenant_suffix: str = UpdateTenantsDefaults.tenant_suffix,
+        number_tenants: int = UpdateTenantsDefaults.number_tenants,
+        state: str = UpdateTenantsDefaults.state,
     ) -> None:
         """
         Updates the activity status of a specified number of tenants in a collection.

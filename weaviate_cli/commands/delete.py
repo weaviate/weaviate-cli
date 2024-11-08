@@ -5,6 +5,9 @@ from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+from weaviate_cli.defaults import DeleteCollectionDefaults
+from weaviate_cli.defaults import DeleteTenantsDefaults
+from weaviate_cli.defaults import DeleteDataDefaults
 
 
 # Delete Group
@@ -16,7 +19,9 @@ def delete() -> None:
 
 @delete.command("collection")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to delete."
+    "--collection",
+    default=DeleteCollectionDefaults.collection,
+    help="The name of the collection to delete.",
 )
 @click.option("--all", is_flag=True, help="Delete all collections (default: False).")
 @click.pass_context
@@ -42,16 +47,18 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
 @delete.command("tenants")
 @click.option(
     "--collection",
-    default="Movies",
+    default=DeleteTenantsDefaults.collection,
     help="The name of the collection to delete tenants from.",
 )
 @click.option(
     "--tenant_suffix",
-    default="Tenant--",
+    default=DeleteTenantsDefaults.tenant_suffix,
     help="The suffix to add to the tenant name (default: 'Tenant--').",
 )
 @click.option(
-    "--number_tenants", default=100, help="Number of tenants to delete (default: 100)."
+    "--number_tenants",
+    default=DeleteTenantsDefaults.number_tenants,
+    help="Number of tenants to delete (default: 100).",
 )
 @click.pass_context
 def delete_tenants_cli(
@@ -81,20 +88,23 @@ def delete_tenants_cli(
 @delete.command("data")
 @click.option(
     "--collection",
-    default="Movies",
+    default=DeleteDataDefaults.collection,
     help="The name of the collection to delete tenants from.",
 )
 @click.option(
-    "--limit", default=100, help="Number of objects to delete (default: 100)."
+    "--limit",
+    default=DeleteDataDefaults.limit,
+    help="Number of objects to delete (default: 100).",
 )
 @click.option(
     "--consistency_level",
-    default="quorum",
+    default=DeleteDataDefaults.consistency_level,
     type=click.Choice(["quorum", "all", "one"]),
     help="Consistency level (default: 'quorum').",
 )
 @click.option(
     "--uuid",
+    default=DeleteDataDefaults.uuid,
     help="UUID of the oject to be deleted. If provided, --limit will be ignored.",
 )
 @click.pass_context
