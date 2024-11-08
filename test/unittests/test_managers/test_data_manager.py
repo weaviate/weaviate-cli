@@ -18,13 +18,10 @@ def test_ingest_data(mock_client):
     )
 
     # Test data ingestion
-    manager.ingest_data(
+    manager.create_data(
         collection="TestCollection",
         limit=100,
-        consistency_level="quorum",
         randomize=True,
-        auto_tenants=0,
-        vector_dimensions=1536,
     )
 
     mock_client.collections.get.assert_called_once_with("TestCollection")
@@ -43,7 +40,6 @@ def test_update_data(mock_client):
     manager.update_data(
         collection="TestCollection",
         limit=100,
-        consistency_level="quorum",
         randomize=True,
     )
 
@@ -61,7 +57,8 @@ def test_delete_data(mock_client):
 
     # Test data deletion
     manager.delete_data(
-        collection="TestCollection", limit=100, consistency_level="quorum"
+        collection="TestCollection",
+        limit=100,
     )
 
     mock_client.collections.get.assert_called_once_with("TestCollection")

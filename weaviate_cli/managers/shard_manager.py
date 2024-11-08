@@ -1,4 +1,9 @@
+from typing import Optional
 from weaviate import WeaviateClient
+from weaviate_cli.defaults import (
+    GetShardsDefaults,
+    UpdateShardsDefaults,
+)
 import click
 
 
@@ -6,7 +11,9 @@ class ShardManager:
     def __init__(self, client: WeaviateClient):
         self.client = client
 
-    def get_shards(self, collection: str) -> None:
+    def get_shards(
+        self, collection: Optional[str] = GetShardsDefaults.collection
+    ) -> None:
         """
         Retrieve and display shard information for a given collection.
 
@@ -45,7 +52,13 @@ class ShardManager:
             f"Shard Name: {shard_name}, Status: {vector_indexing_status}, Queue Length: {vector_queue_length}"
         )
 
-    def update_shards(self, status: str, collection: str, shards: str, all: bool):
+    def update_shards(
+        self,
+        status: str = UpdateShardsDefaults.status,
+        collection: Optional[str] = UpdateShardsDefaults.collection,
+        shards: Optional[str] = UpdateShardsDefaults.shards,
+        all: bool = UpdateShardsDefaults.all,
+    ):
         """
         Update the status of shards in a collection.
 

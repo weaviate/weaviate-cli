@@ -12,7 +12,12 @@ from typing import Dict, List, Optional, Union, Any
 import weaviate.classes.config as wvc
 from weaviate.collections import Collection
 from datetime import datetime, timedelta
-import sys
+from weaviate_cli.defaults import (
+    CreateDataDefaults,
+    QueryDataDefaults,
+    UpdateDataDefaults,
+    DeleteDataDefaults,
+)
 import importlib.resources as resources
 from pathlib import Path
 
@@ -187,14 +192,14 @@ class DataManager:
             )
             return num_objects_inserted
 
-    def ingest_data(
+    def create_data(
         self,
-        collection: Optional[str],
-        limit: int,
-        consistency_level: str,
-        randomize: bool,
-        auto_tenants: int,
-        vector_dimensions: Optional[int] = 1536,
+        collection: Optional[str] = CreateDataDefaults.collection,
+        limit: int = CreateDataDefaults.limit,
+        consistency_level: str = CreateDataDefaults.consistency_level,
+        randomize: bool = CreateDataDefaults.randomize,
+        auto_tenants: int = CreateDataDefaults.auto_tenants,
+        vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -321,7 +326,11 @@ class DataManager:
             return found_objects
 
     def update_data(
-        self, collection: str, limit: int, consistency_level: str, randomize: bool
+        self,
+        collection: str = UpdateDataDefaults.collection,
+        limit: int = UpdateDataDefaults.limit,
+        consistency_level: str = UpdateDataDefaults.consistency_level,
+        randomize: bool = UpdateDataDefaults.randomize,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -398,10 +407,10 @@ class DataManager:
 
     def delete_data(
         self,
-        collection: str,
-        limit: int,
-        consistency_level: str,
-        uuid: Optional[str] = None,
+        collection: str = DeleteDataDefaults.collection,
+        limit: int = DeleteDataDefaults.limit,
+        consistency_level: str = DeleteDataDefaults.consistency_level,
+        uuid: Optional[str] = DeleteDataDefaults.uuid,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -512,12 +521,12 @@ class DataManager:
 
     def query_data(
         self,
-        collection: str,
-        search_type: str,
-        query: str,
-        consistency_level: str,
-        limit: int,
-        properties: str,
+        collection: str = QueryDataDefaults.collection,
+        search_type: str = QueryDataDefaults.search_type,
+        query: str = QueryDataDefaults.query,
+        consistency_level: str = QueryDataDefaults.consistency_level,
+        limit: int = QueryDataDefaults.limit,
+        properties: str = QueryDataDefaults.properties,
     ) -> None:
 
         if not self.client.collections.exists(collection):

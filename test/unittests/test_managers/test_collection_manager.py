@@ -20,17 +20,8 @@ def test_create_collection(mock_client):
     manager.create_collection(
         collection="TestCollection",
         replication_factor=3,
-        async_enabled=True,
         vector_index="hnsw",
-        inverted_index=None,
-        training_limit=10000,
-        multitenant=False,
-        auto_tenant_creation=False,
-        auto_tenant_activation=False,
-        force_auto_schema=False,
-        shards=1,
-        vectorizer=None,
-        replication_deletion_strategy=None,
+        async_enabled=True,
     )
 
     # Verify the collection creation was called with correct parameters
@@ -58,18 +49,6 @@ def test_create_existing_collection(mock_client):
     with pytest.raises(Exception) as exc_info:
         manager.create_collection(
             collection="TestCollection",
-            replication_factor=3,
-            async_enabled=True,
-            vector_index="hnsw",
-            inverted_index=None,
-            training_limit=10000,
-            multitenant=False,
-            auto_tenant_creation=False,
-            auto_tenant_activation=False,
-            force_auto_schema=False,
-            shards=1,
-            vectorizer=None,
-            replication_deletion_strategy=None,
         )
 
     # Verify the error message
@@ -95,18 +74,6 @@ def test_create_collection_failure(mock_client):
     with pytest.raises(Exception) as exc_info:
         manager.create_collection(
             collection="TestCollection",
-            replication_factor=3,
-            async_enabled=True,
-            vector_index="hnsw",
-            inverted_index=None,
-            training_limit=10000,
-            multitenant=False,
-            auto_tenant_creation=False,
-            auto_tenant_activation=False,
-            force_auto_schema=False,
-            shards=1,
-            vectorizer=None,
-            replication_deletion_strategy=None,
         )
 
     # Verify the error message
@@ -178,7 +145,6 @@ def test_update_collection(mock_client):
         collection="TestCollection",
         description="Updated description",
         vector_index="hnsw",
-        training_limit=10000,
         async_enabled=True,
         auto_tenant_creation=True,
         auto_tenant_activation=True,

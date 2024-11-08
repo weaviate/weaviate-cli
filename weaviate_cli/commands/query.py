@@ -3,6 +3,7 @@ import click
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
+from weaviate_cli.defaults import QueryDataDefaults
 
 
 # Query Group
@@ -14,29 +15,35 @@ def query() -> None:
 
 @query.command("data")
 @click.option(
-    "--collection", default="Movies", help="The name of the collection to query."
+    "--collection",
+    default=QueryDataDefaults.collection,
+    help="The name of the collection to query.",
 )
 @click.option(
     "--search_type",
-    default="fetch",
+    default=QueryDataDefaults.search_type,
     type=click.Choice(["fetch", "vector", "keyword", "hybrid", "uuid"]),
     help='Search type (default: "fetch").',
 )
 @click.option(
     "--query",
-    default="Action movie",
+    default=QueryDataDefaults.query,
     help="Query string for the search. Only used when search type is vector, keyword or hybrid (default: 'Action movie').",
 )
 @click.option(
     "--consistency_level",
-    default="quorum",
+    default=QueryDataDefaults.consistency_level,
     type=click.Choice(["quorum", "all", "one"]),
     help="Consistency level (default: 'quorum').",
 )
-@click.option("--limit", default=10, help="Number of objects to query (default: 10).")
+@click.option(
+    "--limit",
+    default=QueryDataDefaults.limit,
+    help="Number of objects to query (default: 10).",
+)
 @click.option(
     "--properties",
-    default="title,keywords",
+    default=QueryDataDefaults.properties,
     help="Properties from the object to display (default: 'title, keywords').",
 )
 @click.pass_context

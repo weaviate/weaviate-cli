@@ -3,6 +3,7 @@ import click
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate.exceptions import WeaviateConnectionError
+from weaviate_cli.defaults import RestoreBackupDefaults
 
 
 # Restore Group
@@ -15,13 +16,13 @@ def restore() -> None:
 @restore.command("backup")
 @click.option(
     "--backend",
-    default="s3",
+    default=RestoreBackupDefaults.backend,
     type=click.Choice(["s3", "gcs", "filesystem"]),
     help="The backend used for storing the backups (default: s3).",
 )
 @click.option(
     "--backup_id",
-    default="test-backup",
+    default=RestoreBackupDefaults.backup_id,
     help="Identifier used for the backup (default: test-backup).",
 )
 @click.option(
@@ -29,12 +30,12 @@ def restore() -> None:
 )
 @click.option(
     "--include",
-    default=None,
+    default=RestoreBackupDefaults.include,
     help="Collection to include in backup (default: None).",
 )
 @click.option(
     "--exclude",
-    default=None,
+    default=RestoreBackupDefaults.exclude,
     help="Collection to exclude in backup (default: None).",
 )
 @click.pass_context

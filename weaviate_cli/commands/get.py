@@ -6,6 +6,10 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate.exceptions import WeaviateConnectionError
+from weaviate_cli.defaults import GetBackupDefaults
+from weaviate_cli.defaults import GetTenantsDefaults
+from weaviate_cli.defaults import GetShardsDefaults
+from weaviate_cli.defaults import GetCollectionDefaults
 
 
 # Get Group
@@ -16,7 +20,11 @@ def get():
 
 
 @get.command("collection")
-@click.option("--collection", default=None, help="The name of the collection to get.")
+@click.option(
+    "--collection",
+    default=GetCollectionDefaults.collection,
+    help="The name of the collection to get.",
+)
 @click.pass_context
 def get_collection_cli(ctx, collection):
     """Get all collections in Weaviate. If --collection is provided, get the specific collection."""
@@ -40,7 +48,7 @@ def get_collection_cli(ctx, collection):
 @get.command("tenants")
 @click.option(
     "--collection",
-    default="Movies",
+    default=GetTenantsDefaults.collection,
     help="The name of the collection to get tenants from.",
 )
 @click.option("--verbose", is_flag=True, help="Print verbose output.")
@@ -69,7 +77,7 @@ def get_tenants_cli(ctx, collection, verbose):
 @get.command("shards")
 @click.option(
     "--collection",
-    default=None,
+    default=GetShardsDefaults.collection,
     help="The name of the collection to get tenants from.",
 )
 @click.pass_context
@@ -97,13 +105,13 @@ def get_shards_cli(ctx, collection):
 @get.command("backup")
 @click.option(
     "--backend",
-    default="s3",
+    default=GetBackupDefaults.backend,
     type=click.Choice(["s3", "gcs", "filesystem"]),
     help="The backend used for storing the backups (default: s3).",
 )
 @click.option(
     "--backup_id",
-    default=None,
+    default=GetBackupDefaults.backup_id,
     help="Identifier for the backup you want to get its status.",
 )
 @click.option(
