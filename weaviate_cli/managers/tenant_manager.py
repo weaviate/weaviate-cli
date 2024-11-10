@@ -184,6 +184,7 @@ class TenantManager:
     def get_tenants(
         self,
         collection: str = GetTenantsDefaults.collection,
+        tenant_id: str = GetTenantsDefaults.tenant_id,
         verbose: bool = GetTenantsDefaults.verbose,
     ) -> dict:
         """
@@ -191,6 +192,7 @@ class TenantManager:
 
         Args:
             collection (str): The name of the collection to retrieve tenants from.
+            tenant_id (str): The ID of the tenant to retrieve. If None, retrieves all tenants.
             verbose (bool): If True, prints detailed tenant information. If False, prints summary.
 
         Returns:
@@ -199,7 +201,14 @@ class TenantManager:
         Raises:
             Exception: If the collection does not exist or multi-tenancy is not enabled.
         """
-        tenants = self.client.collections.get(collection).tenants.get()
+        if tenant_id:
+            tenants = self.client.collections.get(collection).tenants.get_by_names(
+                [tenant_id]
+            )
+            if not tenants:
+                raise Exception(f"Tenant '{tenant_id}' not found in class {collection}")
+        else:
+            tenants = self.client.collections.get(collection).tenants.get()
 
         if verbose:
             click.echo(f"{'Tenant Name':<20}{'Activity Status':<20}")
