@@ -124,6 +124,8 @@ class CollectionManager:
             "ollama": wvc.Configure.Vectorizer.text2vec_ollama(
                 model="snowflake-arctic-embed:33m"
             ),
+            "cohere": wvc.Configure.Vectorizer.text2vec_cohere(),
+            "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(),
         }
 
         inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {

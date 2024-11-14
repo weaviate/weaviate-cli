@@ -98,8 +98,11 @@ class ConfigManager:
                 port=self.config["http_port"],
                 grpc_port=self.config["grpc_port"],
                 auth_credentials=auth_config,
+                headers=self.config["headers"] if "headers" in self.config else None,
             )
         else:
             return weaviate.connect_to_wcs(
-                cluster_url=self.config["host"], auth_credentials=auth_config
+                cluster_url=self.config["host"],
+                auth_credentials=auth_config,
+                headers=self.config["headers"] if "headers" in self.config else None,
             )

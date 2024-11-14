@@ -89,7 +89,12 @@ Here you can see an example on how the configuration file should look like if yo
      "auth": {
          "type": "api_key",
          "api_key": "jfeRFsdfRfSasgsDoNOtTrYToUsErRQwqqdZfghasd"
-     }
+     },
+    "headers":{
+        "X-OpenAI-Api-Key":"OPEN_AI_KEY",
+        "X-Cohere-Api-Key":"Cohere_AI_KEY",
+        "X-JinaAI-Api-Key":"JINA_AI_KEY"
+        }
  }
 ```
 
@@ -101,6 +106,15 @@ Here you can see an example on how the configuration file should look like if yo
 ## Documentation
 
 Detailed documentation will be added soon.
+
+## Supported Model Provider
+
+- Contextionary
+- Transformers
+- OpenAI
+- Ollama
+- Cohere
+- JinaAI
 
 ## Community & Support
 
