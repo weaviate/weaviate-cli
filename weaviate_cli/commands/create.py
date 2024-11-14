@@ -91,7 +91,9 @@ def create() -> None:
 @click.option(
     "--vectorizer",
     default=CreateCollectionDefaults.vectorizer,
-    type=click.Choice(["contextionary", "transformers", "openai", "ollama"]),
+    type=click.Choice(
+        ["contextionary", "transformers", "openai", "ollama", "cohere", "jinaai"]
+    ),
     help="Vectorizer to use.",
 )
 @click.option(
