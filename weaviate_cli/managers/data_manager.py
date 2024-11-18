@@ -145,6 +145,7 @@ class DataManager:
         cl: wvc.ConsistencyLevel,
         randomize: bool,
         vector_dimensions: Optional[int] = 1536,
+        uuid: Optional[str] = None,
     ) -> int:
         if randomize:
             counter = 0
@@ -169,6 +170,7 @@ class DataManager:
                 for obj in data_objects:
                     batch.add_object(
                         properties=obj,
+                        uuid=uuid,
                         vector=(
                             2 * np.random.rand(1, vector_dimensions)[0] - 1
                         ).tolist(),
@@ -200,6 +202,7 @@ class DataManager:
         randomize: bool = CreateDataDefaults.randomize,
         auto_tenants: int = CreateDataDefaults.auto_tenants,
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
+        uuid: Optional[str] = None,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -252,6 +255,7 @@ class DataManager:
                     cl_map[consistency_level],
                     randomize,
                     vector_dimensions,
+                    uuid,
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
@@ -261,6 +265,7 @@ class DataManager:
                     cl_map[consistency_level],
                     randomize,
                     vector_dimensions,
+                    uuid,
                 )
 
             if ret == -1:

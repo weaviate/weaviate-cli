@@ -170,6 +170,7 @@ class CollectionManager:
         rds_map = {
             "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
             "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
+            "time_based_resolution": wvc.ReplicationDeletionStrategy.TIME_BASED_RESOLUTION,
         }
 
         try:
@@ -260,6 +261,7 @@ class CollectionManager:
         rds_map = {
             "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
             "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
+            "time_based_resolution": wvc.ReplicationDeletionStrategy.TIME_BASED_RESOLUTION,
         }
         mt = col_obj.config.get().multi_tenancy_config.enabled
         auto_tenant_creation = (

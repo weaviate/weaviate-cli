@@ -65,7 +65,9 @@ def update() -> None:
 @click.option(
     "--replication_deletion_strategy",
     default=UpdateCollectionDefaults.replication_deletion_strategy,
-    type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
+    type=click.Choice(
+        ["delete_on_conflict", "no_automated_resolution", "time_based_resolution"]
+    ),
     help="Replication deletion strategy.",
 )
 @click.pass_context
