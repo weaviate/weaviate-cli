@@ -146,7 +146,7 @@ class DataManager:
         randomize: bool,
         vector_dimensions: Optional[int] = 1536,
         uuid: Optional[str] = None,
-    ) -> int:
+    ) -> Collection:
         if randomize:
             counter = 0
             data_objects = self.__generate_data_object(num_objects)
@@ -182,10 +182,13 @@ class DataManager:
                     print(
                         f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
                     )
+<<<<<<< HEAD
                 return -1
 
+=======
+>>>>>>> c3a3236 (data_manager: Return collection object when importing data)
             print(f"Inserted {counter} objects into class '{collection.name}'")
-            return counter
+            return cl_collection
         else:
             num_objects_inserted = self.__import_json(
                 collection, "movies.json", cl, num_objects
@@ -193,7 +196,7 @@ class DataManager:
             print(
                 f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
             )
-            return num_objects_inserted
+            return collection
 
     def create_data(
         self,
@@ -204,7 +207,7 @@ class DataManager:
         auto_tenants: int = CreateDataDefaults.auto_tenants,
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
         uuid: Optional[str] = None,
-    ) -> None:
+    ) -> Collection:
 
         if not self.client.collections.exists(collection):
 
@@ -250,7 +253,7 @@ class DataManager:
 
         for tenant in tenants:
             if tenant == "None":
-                ret = self.__ingest_data(
+                collection = self.__ingest_data(
                     col,
                     limit,
                     cl_map[consistency_level],
@@ -260,7 +263,7 @@ class DataManager:
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
-                ret = self.__ingest_data(
+                collection = self.__ingest_data(
                     col.with_tenant(tenant),
                     limit,
                     cl_map[consistency_level],
@@ -269,11 +272,11 @@ class DataManager:
                     uuid,
                 )
 
-            if ret == -1:
-
-                raise Exception(
-                    f"Error occurred while ingesting data for tenant '{tenant}'."
+            if len(collection) != limit:
+                click.echo(
+                    f"Error occurred while ingesting data for tenant '{tenant}'. Check number of objects inserted."
                 )
+            return collection
 
     def __update_data(
         self,
