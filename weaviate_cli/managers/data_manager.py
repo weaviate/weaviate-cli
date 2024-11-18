@@ -146,6 +146,7 @@ class DataManager:
         randomize: bool,
         vector_dimensions: Optional[int] = 1536,
         uuid: Optional[str] = None,
+        named_vectors: Optional[List[str]] = None,
     ) -> Collection:
         if randomize:
             counter = 0
@@ -168,13 +169,16 @@ class DataManager:
                 vector_dimensions = 384
             with cl_collection.batch.dynamic() as batch:
                 for obj in data_objects:
-                    batch.add_object(
-                        properties=obj,
-                        uuid=uuid,
-                        vector=(
-                            2 * np.random.rand(1, vector_dimensions)[0] - 1
-                        ).tolist(),
-                    )
+                    # Generate vector(s) for the object
+                    if named_vectors is None:
+                        vector = (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                        batch.add_object(properties=obj, uuid=uuid, vector=vector)
+                    else:
+                        vector = {
+                            name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                            for name in named_vectors
+                        }
+                        batch.add_object(properties=obj, uuid=uuid, vector=vector)
                     counter += 1
 
             if cl_collection.batch.failed_objects:
@@ -182,11 +186,6 @@ class DataManager:
                     print(
                         f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
                     )
-<<<<<<< HEAD
-                return -1
-
-=======
->>>>>>> c3a3236 (data_manager: Return collection object when importing data)
             print(f"Inserted {counter} objects into class '{collection.name}'")
             return cl_collection
         else:
@@ -207,6 +206,7 @@ class DataManager:
         auto_tenants: int = CreateDataDefaults.auto_tenants,
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
         uuid: Optional[str] = None,
+        named_vectors: Optional[List[str]] = None,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -260,6 +260,7 @@ class DataManager:
                     randomize,
                     vector_dimensions,
                     uuid,
+                    named_vectors,
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
@@ -270,13 +271,14 @@ class DataManager:
                     randomize,
                     vector_dimensions,
                     uuid,
+                    named_vectors,
                 )
 
             if len(collection) != limit:
                 click.echo(
                     f"Error occurred while ingesting data for tenant '{tenant}'. Check number of objects inserted."
                 )
-            return collection
+        return collection
 
     def __update_data(
         self,
