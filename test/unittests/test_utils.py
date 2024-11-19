@@ -1,9 +1,15 @@
 import pytest
 from unittest.mock import MagicMock
-from weaviate_cli.utils import get_client_from_context, get_random_string, pp_objects
+from weaviate_cli.utils import (
+    get_client_from_context,
+    get_random_string,
+    pp_objects,
+    parse_permission,
+)
 from weaviate.collections import Collection
 from io import StringIO
 import sys
+from weaviate.rbac.models import RBAC
 
 
 def test_get_client_from_context(mock_click_context, mock_client):
@@ -95,3 +101,181 @@ def test_pp_objects_missing_properties():
     assert "test-uuid-5678" in output
     assert "test_name" in output
     assert "None" in output
+
+
+def test_parse_permission_schema():
+    # Test basic schema permissions
+    assert parse_permission("read_schema:Movies") == [
+        RBAC.permissions.config.read(collection="Movies")
+    ]
+
+    assert parse_permission("create_schema:*") == [
+        RBAC.permissions.config.create(collection="*")
+    ]
+
+    # Test without collection specified (should default to "*")
+    assert parse_permission("update_schema") == [
+        RBAC.permissions.config.update(collection="*")
+    ]
+
+    assert parse_permission("delete_schema:Movies") == [
+        RBAC.permissions.config.delete(collection="Movies")
+    ]
+
+    # Test schema with * wildcard
+    assert parse_permission("create_schema:*data*") == [
+        RBAC.permissions.config.create(collection="*data*")
+    ]
+
+    assert parse_permission("update_schema:*") == [
+        RBAC.permissions.config.update(collection="*")
+    ]
+
+    # Test schema with crud shorthand
+    assert parse_permission("crud_schema:MyCollection*") == [
+        RBAC.permissions.config.create(collection="MyCollection*"),
+        RBAC.permissions.config.read(collection="MyCollection*"),
+        RBAC.permissions.config.update(collection="MyCollection*"),
+        RBAC.permissions.config.delete(collection="MyCollection*"),
+    ]
+
+
+def test_parse_permission_roles():
+    # Test roles permissions
+    assert parse_permission("manage_roles") == [RBAC.permissions.roles.manage()]
+
+    assert parse_permission("read_roles") == [RBAC.permissions.roles.read()]
+
+    assert parse_permission("manage_roles:TenantReader") == [
+        RBAC.permissions.roles.manage(role="TenantReader")
+    ]
+
+    assert parse_permission("read_roles:TenantReader") == [
+        RBAC.permissions.roles.read(role="TenantReader")
+    ]
+
+
+def test_parse_permission_standalone():
+    # Test standalone permissions
+    assert parse_permission("manage_users") == [RBAC.permissions.users.manage()]
+    assert parse_permission("read_cluster") == [RBAC.permissions.cluster.read()]
+
+
+def test_parse_permission_backup():
+    # Test manage_backups permission
+    assert parse_permission("manage_backups") == [
+        RBAC.permissions.backups.manage(collection="*")
+    ]
+
+    assert parse_permission("manage_backups:Movies") == [
+        RBAC.permissions.backups.manage(collection="Movies")
+    ]
+
+    assert parse_permission("manage_backups:User.*") == [
+        RBAC.permissions.backups.manage(collection="User.*")
+    ]
+
+
+def test_parse_permission_nodes():
+    assert parse_permission("read_nodes:verbose") == [
+        RBAC.permissions.nodes.read(verbosity="verbose")
+    ]
+
+    assert parse_permission("read_nodes:minimal") == [
+        RBAC.permissions.nodes.read(verbosity="minimal")
+    ]
+
+    assert parse_permission("read_nodes:verbose:Movies") == [
+        RBAC.permissions.nodes.read(verbosity="verbose", collection="Movies")
+    ]
+
+
+def test_parse_permission_crud():
+    # Test crud shorthand for schema
+    crud_perms = parse_permission("crud_schema")
+    expected_crud = [
+        RBAC.permissions.config.create(collection="*"),
+        RBAC.permissions.config.read(collection="*"),
+        RBAC.permissions.config.update(collection="*"),
+        RBAC.permissions.config.delete(collection="*"),
+    ]
+
+    assert crud_perms == expected_crud
+
+    # Test crud shorthand for specific collection
+    crud_tenant_perms = parse_permission("crud_schema:Movies")
+    expected_tenant_crud = [
+        RBAC.permissions.config.create(collection="Movies"),
+        RBAC.permissions.config.read(collection="Movies"),
+        RBAC.permissions.config.update(collection="Movies"),
+        RBAC.permissions.config.delete(collection="Movies"),
+    ]
+    assert crud_tenant_perms == expected_tenant_crud
+
+
+def test_parse_permission_partial_crud():
+    # Test cr (create, read) shorthand
+    cr_perms = parse_permission("cr_schema:Movies")
+    expected_cr = [
+        RBAC.permissions.config.create(collection="Movies"),
+        RBAC.permissions.config.read(collection="Movies"),
+    ]
+    assert cr_perms == expected_cr
+
+    # Test ud (update, delete) shorthand
+    ud_perms = parse_permission("ud_schema:Movies")
+    expected_ud = [
+        RBAC.permissions.config.update(collection="Movies"),
+        RBAC.permissions.config.delete(collection="Movies"),
+    ]
+    assert ud_perms == expected_ud
+
+    # Test ru (read, update) shorthand
+    ru_perms = parse_permission("ru_schema:Movies")
+    expected_ru = [
+        RBAC.permissions.config.read(collection="Movies"),
+        RBAC.permissions.config.update(collection="Movies"),
+    ]
+    assert ru_perms == expected_ru
+
+
+def test_parse_permission_data():
+    # Test crud shorthand for data
+    crud_perms = parse_permission("crud_data")
+    expected_crud = [
+        RBAC.permissions.data.create(collection="*"),
+        RBAC.permissions.data.read(collection="*"),
+        RBAC.permissions.data.update(collection="*"),
+        RBAC.permissions.data.delete(collection="*"),
+    ]
+    assert crud_perms == expected_crud
+
+    # Test individual permissions
+    create_perm = parse_permission("create_data:Movies")
+    assert create_perm == [RBAC.permissions.data.create(collection="Movies")]
+
+    read_perm = parse_permission("read_data:Movies")
+    assert read_perm == [RBAC.permissions.data.read(collection="Movies")]
+
+    update_perm = parse_permission("update_data:Movies")
+    assert update_perm == [RBAC.permissions.data.update(collection="Movies")]
+
+    delete_perm = parse_permission("delete_data:Movies")
+    assert delete_perm == [RBAC.permissions.data.delete(collection="Movies")]
+
+
+def test_parse_permission_invalid():
+    # Test invalid action
+    with pytest.raises(ValueError, match="Invalid resource type: action"):
+        parse_permission("invalid_action:Movies")
+
+    # Test invalid crud combination
+    with pytest.raises(ValueError, match="Invalid crud combination: xyz"):
+        parse_permission("xyz_schema:Movies")
+
+    # Test invalid format
+    with pytest.raises(ValueError, match="Invalid permission format"):
+        parse_permission("read_schema:Movies:extra")
+
+    with pytest.raises(ValueError, match="Invalid permission format"):
+        parse_permission("read_nodes:verbose:Movies:extra")

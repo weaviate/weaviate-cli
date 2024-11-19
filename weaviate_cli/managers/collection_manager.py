@@ -272,6 +272,7 @@ class CollectionManager:
             if auto_tenant_activation is not None
             else col_obj.config.get().multi_tenancy_config.auto_tenant_activation
         )
+
         col_obj.config.update(
             description=description,
             vectorizer_config=(

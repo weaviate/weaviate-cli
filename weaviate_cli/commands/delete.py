@@ -4,10 +4,13 @@ from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.data_manager import DataManager
-from weaviate.exceptions import WeaviateConnectionError
-from weaviate_cli.defaults import DeleteCollectionDefaults
-from weaviate_cli.defaults import DeleteTenantsDefaults
-from weaviate_cli.defaults import DeleteDataDefaults
+from weaviate_cli.managers.role_manager import RoleManager
+from weaviate_cli.defaults import (
+    DeleteCollectionDefaults,
+    DeleteTenantsDefaults,
+    DeleteDataDefaults,
+    DeleteRoleDefaults,
+)
 
 
 # Delete Group
@@ -122,6 +125,31 @@ def delete_data_cli(ctx, collection, limit, consistency_level, uuid):
             consistency_level=consistency_level,
             uuid=uuid,
         )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@delete.command("role")
+@click.option(
+    "--name",
+    default=DeleteRoleDefaults.name,
+    help="The name of the role to delete.",
+)
+@click.pass_context
+def delete_role_cli(ctx, name):
+    """Delete a role in Weaviate."""
+
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        role_manager = RoleManager(client)
+        role_manager.delete_role(name=name)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

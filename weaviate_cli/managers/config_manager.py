@@ -19,8 +19,11 @@ class ConfigManager:
     default_port: int = 8080
     default_grpc_port: int = 50051
 
-    def __init__(self, config_file: Optional[str] = None) -> None:
+    def __init__(
+        self, config_file: Optional[str] = None, user: Optional[str] = None
+    ) -> None:
         """Initialize config manager with optional config file path"""
+        self.user = user
         if config_file:
             assert os.path.isfile(
                 config_file
@@ -74,14 +77,18 @@ class ConfigManager:
 
     def get_client(self) -> weaviate.WeaviateClient:
         """Get weaviate client from config"""
-
         auth_config: Optional[weaviate.auth.AuthCredentials] = None
 
         if "auth" in self.config:
-            if (
-                "type" in self.config["auth"]
-                and self.config["auth"]["type"] == "api_key"
-            ):
+            if self.config["auth"].get("type") == "user":
+                if not self.user:
+                    raise Exception("User must be specified when auth type is 'user'")
+                if self.user not in self.config["auth"]:
+                    raise Exception(f"User '{self.user}' not found in config file")
+                auth_config = weaviate.auth.AuthApiKey(
+                    api_key=self.config["auth"][self.user]
+                )
+            elif self.config["auth"].get("type") == "api_key":
                 auth_config = weaviate.auth.AuthApiKey(
                     api_key=self.config["auth"]["api_key"]
                 )

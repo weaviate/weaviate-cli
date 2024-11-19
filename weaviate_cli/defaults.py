@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict
 
 
 @dataclass
@@ -48,6 +48,12 @@ class CreateDataDefaults:
 
 
 @dataclass
+class CreateRoleDefaults:
+    name: str = "NewRole"
+    permission: tuple = ()
+
+
+@dataclass
 class CancelBackupDefaults:
     backend: str = "s3"
     backup_id: str = "test-backup"
@@ -75,6 +81,11 @@ class DeleteDataDefaults:
 
 
 @dataclass
+class DeleteRoleDefaults:
+    name: str = "NewRole"
+
+
+@dataclass
 class GetCollectionDefaults:
     collection: Optional[str] = None
 
@@ -91,10 +102,21 @@ class GetShardsDefaults:
 
 
 @dataclass
+class GetRoleDefaults:
+    name: Optional[str] = None
+    for_user: Optional[str] = None
+
+
+@dataclass
 class GetBackupDefaults:
     backend: str = "s3"
     backup_id: Optional[str] = None
     restore: bool = False
+
+
+@dataclass
+class GetUserDefaults:
+    of_role: Optional[str] = None
 
 
 @dataclass
