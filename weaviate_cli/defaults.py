@@ -82,6 +82,7 @@ class GetCollectionDefaults:
 @dataclass
 class GetTenantsDefaults:
     collection: str = "Movies"
+    tenant_id: Optional[str] = None
     verbose: bool = False
 
 

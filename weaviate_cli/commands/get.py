@@ -51,9 +51,13 @@ def get_collection_cli(ctx, collection):
     default=GetTenantsDefaults.collection,
     help="The name of the collection to get tenants from.",
 )
+@click.option(
+    "--tenant_id",
+    help="The tenant ID to get.",
+)
 @click.option("--verbose", is_flag=True, help="Print verbose output.")
 @click.pass_context
-def get_tenants_cli(ctx, collection, verbose):
+def get_tenants_cli(ctx, collection, tenant_id, verbose):
     """Get tenants from a collection in Weaviate."""
 
     client = None
@@ -62,6 +66,7 @@ def get_tenants_cli(ctx, collection, verbose):
         tenant_manager = TenantManager(client)
         tenant_manager.get_tenants(
             collection=collection,
+            tenant_id=tenant_id,
             verbose=verbose,
         )
     except Exception as e:
