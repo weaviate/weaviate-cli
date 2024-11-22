@@ -99,7 +99,9 @@ def create() -> None:
 @click.option(
     "--replication_deletion_strategy",
     default=CreateCollectionDefaults.replication_deletion_strategy,
-    type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
+    type=click.Choice(
+        ["delete_on_conflict", "no_automated_resolution", "time_based_resolution"]
+    ),
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
 @click.pass_context
@@ -283,6 +285,11 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=CreateDataDefaults.vector_dimensions,
     help="Number of vector dimensions to be used when the data is randomized.",
 )
+@click.option(
+    "--uuid",
+    default=None,
+    help="UUID of the object to be used when the data is randomized. It requires --limit=1 and --randomize to be enabled.",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -292,6 +299,7 @@ def create_data_cli(
     randomize,
     auto_tenants,
     vector_dimensions,
+    uuid,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -299,6 +307,14 @@ def create_data_cli(
         click.echo(
             "Error: --vector_dimensions has no effect unless --randomize is enabled."
         )
+        sys.exit(1)
+
+    if uuid is not None and not randomize:
+        click.echo("Error: --uuid has no effect unless --randomize is enabled.")
+        sys.exit(1)
+
+    if uuid is not None and limit != 1:
+        click.echo("Error: --uuid has no effect unless --limit=1 is enabled.")
         sys.exit(1)
 
     client = None
@@ -313,6 +329,7 @@ def create_data_cli(
             randomize=randomize,
             auto_tenants=auto_tenants,
             vector_dimensions=vector_dimensions,
+            uuid=uuid,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
