@@ -161,11 +161,11 @@ class DataManager:
                 vector_dimensions = 300
             elif vectorizer == "text2vec-transformers":
                 (
-                    print("Warning: Using vector dimensions: 768")
+                    print("Warning: Using vector dimensions: 384")
                     if vector_dimensions != 1536
                     else None
                 )
-                vector_dimensions = 768
+                vector_dimensions = 384
             with cl_collection.batch.dynamic() as batch:
                 for obj in data_objects:
                     batch.add_object(
