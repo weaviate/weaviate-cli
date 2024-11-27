@@ -17,6 +17,8 @@ class CreateCollectionDefaults:
     shards: int = 1
     vectorizer: Optional[str] = None
     replication_deletion_strategy: str = "delete_on_conflict"
+    reference_name:Optional[str] = "ProductionCompanies"
+    reference_enable: bool = False
 
 
 @dataclass
@@ -45,6 +47,8 @@ class CreateDataDefaults:
     randomize: bool = False
     auto_tenants: int = 0
     vector_dimensions: int = 1536
+    reference_collection_name: str = "ProductionCompanies"
+    reference_enable: bool = False
 
 
 @dataclass

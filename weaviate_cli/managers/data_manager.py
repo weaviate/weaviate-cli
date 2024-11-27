@@ -99,44 +99,57 @@ class DataManager:
         return value
 
     def __generate_data_object(
-        self, limit: int, is_update: bool = False
+        self, limit: int, reference_collection : bool, is_update: bool = False, 
     ) -> Union[List[Dict], Dict]:
-        def create_single_object() -> Dict:
-            date = datetime.strptime("1980-01-01", "%Y-%m-%d")
-            random_date = date + timedelta(days=random.randint(1, 15_000))
-            release_date = random_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-            spoken_languages = [
-                {"iso_639_1": get_random_string(3), "name": get_random_string(3)}
-                for _ in range(random.randint(1, 3))
-            ]
-            production_countries = [
-                {"iso_3166_1": get_random_string(3), "name": get_random_string(3)}
-                for _ in range(random.randint(1, 3))
-            ]
+        if reference_collection is False:
+            def create_single_object() -> Dict:
+                date = datetime.strptime("1980-01-01", "%Y-%m-%d")
+                random_date = date + timedelta(days=random.randint(1, 15_000))
+                release_date = random_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+                spoken_languages = [
+                    {"iso_639_1": get_random_string(3), "name": get_random_string(3)}
+                    for _ in range(random.randint(1, 3))
+                ]
+                production_countries = [
+                    {"iso_3166_1": get_random_string(3), "name": get_random_string(3)}
+                    for _ in range(random.randint(1, 3))
+                ]
 
-            prefix = "update-" if is_update else ""
-            return {
-                "title": f"{prefix}title" + get_random_string(10),
-                "genres": f"{prefix}genre" + get_random_string(3),
-                "keywords": f"{prefix}keywords" + get_random_string(3),
-                "director": f"{prefix}director" + get_random_string(3),
-                "popularity": float(random.randint(1, 200)),
-                "runtime": f"{prefix}runtime" + get_random_string(3),
-                "cast": f"{prefix}cast" + get_random_string(3),
-                "originalLanguage": f"{prefix}language" + get_random_string(3),
-                "tagline": f"{prefix}tagline" + get_random_string(3),
-                "budget": random.randint(1_000_000, 1_000_0000_000),
-                "releaseDate": release_date,
-                "revenue": random.randint(1_000_000, 10_000_0000_000),
-                "status": f"{prefix}status" + get_random_string(3),
-                "spokenLanguages": spoken_languages,
-                "productionCountries": production_countries,
-            }
+                prefix = "update-" if is_update else ""
+                return {
+                    "title": f"{prefix}title" + get_random_string(10),
+                    "genres": f"{prefix}genre" + get_random_string(3),
+                    "keywords": f"{prefix}keywords" + get_random_string(3),
+                    "director": f"{prefix}director" + get_random_string(3),
+                    "popularity": float(random.randint(1, 200)),
+                    "runtime": f"{prefix}runtime" + get_random_string(3),
+                    "cast": f"{prefix}cast" + get_random_string(3),
+                    "originalLanguage": f"{prefix}language" + get_random_string(3),
+                    "tagline": f"{prefix}tagline" + get_random_string(3),
+                    "budget": random.randint(1_000_000, 1_000_0000_000),
+                    "releaseDate": release_date,
+                    "revenue": random.randint(1_000_000, 10_000_0000_000),
+                    "status": f"{prefix}status" + get_random_string(3),
+                    "spokenLanguages": spoken_languages,
+                    "productionCountries": production_countries,
+                }
 
-        if is_update:
-            return create_single_object()
+            if is_update:
+                return create_single_object()
 
-        return [create_single_object() for _ in range(limit)]
+            return [create_single_object() for _ in range(limit)]
+        else:
+            def create_single_object() -> Dict:
+                prefix = "update-" if is_update else ""
+                return {
+                    "name": f"{prefix}name" + get_random_string(10),
+                    "company_id": random.randint(1_000_000, 10_000_0000_000)
+                }
+
+            if is_update:
+                return create_single_object()
+
+            return [create_single_object() for _ in range(limit)]
 
     def __ingest_data(
         self,
@@ -144,11 +157,12 @@ class DataManager:
         num_objects: int,
         cl: wvc.ConsistencyLevel,
         randomize: bool,
-        vector_dimensions: Optional[int] = 1536,
+        reference_collection: bool,
+        vector_dimensions: Optional[int] = 1536,       
     ) -> int:
         if randomize:
             counter = 0
-            data_objects = self.__generate_data_object(num_objects)
+            data_objects = self.__generate_data_object(num_objects, reference_collection)
             cl_collection = collection.with_consistency_level(cl)
             vectorizer = cl_collection.config.get().vectorizer
             if vectorizer == "text2vec-contextionary":
@@ -183,14 +197,21 @@ class DataManager:
                 return -1
             print(f"Inserted {counter} objects into class '{collection.name}'")
             return counter
-        else:
+        elif reference_collection is False:
             num_objects_inserted = self.__import_json(
                 collection, "movies.json", cl, num_objects
             )
             print(
                 f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
             )
-            return num_objects_inserted
+        elif reference_collection is True:
+            num_objects_inserted = self.__import_json(
+                collection, "production_companies.json", cl, num_objects
+            )
+            print(
+                f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
+            )
+        return num_objects_inserted
 
     def create_data(
         self,
@@ -200,6 +221,7 @@ class DataManager:
         randomize: bool = CreateDataDefaults.randomize,
         auto_tenants: int = CreateDataDefaults.auto_tenants,
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
+        reference_collection: Optional[bool] = CreateDataDefaults.reference_enable
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -243,7 +265,6 @@ class DataManager:
                         f"Tenant--{i}"
                         for i in range(len(tenants) + 1, auto_tenants + 1)
                     ]
-
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__ingest_data(
@@ -251,7 +272,8 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
-                    vector_dimensions,
+                    reference_collection,
+                    vector_dimensions        
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
@@ -260,7 +282,8 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
-                    vector_dimensions,
+                    reference_collection,
+                    vector_dimensions          
                 )
 
             if ret == -1:

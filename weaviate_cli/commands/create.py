@@ -19,7 +19,6 @@ def create() -> None:
     """Create resources in Weaviate."""
     pass
 
-
 # Subcommand to create a collection
 @create.command("collection")
 @click.option(
@@ -100,6 +99,16 @@ def create() -> None:
     type=click.Choice(["delete_on_conflict", "no_automated_resolution"]),
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
+@click.option(
+    "--reference_collection_name",
+    default=CreateCollectionDefaults.reference_name,
+    help="Name of Reference collection",
+)
+@click.option(
+    "--reference_collection",
+    is_flag=True,
+    help="Enable Reference collection (default: False). If passed, a reference collection will be created",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -116,15 +125,60 @@ def create_collection_cli(
     shards: int,
     vectorizer: Optional[str],
     replication_deletion_strategy: str,
+    reference_collection_name: str,
+    reference_collection: bool
 ) -> None:
     """Create a collection in Weaviate."""
-
     client = None
-    try:
-        client = get_client_from_context(ctx)
+    if reference_collection is False:
+        try:
+            client = get_client_from_context(ctx)
+            # Call the function from create_collection.py passing both general and specific arguments
+            collection_man = CollectionManager(client)
+            collection_man.create_collection(
+                collection=collection,
+                replication_factor=replication_factor,
+                async_enabled=async_enabled,
+                vector_index=vector_index,
+                inverted_index=inverted_index,
+                training_limit=training_limit,
+                multitenant=multitenant,
+                auto_tenant_creation=auto_tenant_creation,
+                auto_tenant_activation=auto_tenant_activation,
+                force_auto_schema=force_auto_schema,
+                shards=shards,
+                vectorizer=vectorizer,
+                replication_deletion_strategy=replication_deletion_strategy
+            )
+        except Exception as e:
+            click.echo(f"Error: {e}")
+            if client:
+                client.close()
+            sys.exit(1)
+        finally:
+            if client:
+                client.close()
+    else:
+        try:
+            client = get_client_from_context(ctx)
         # Call the function from create_collection.py passing both general and specific arguments
-        collection_man = CollectionManager(client)
-        collection_man.create_collection(
+            collection_man = CollectionManager(client)
+            collection_man.create_reference_collection(
+            reference_collection=reference_collection_name,
+            replication_factor=replication_factor,
+            async_enabled=async_enabled,
+            vector_index=vector_index,
+            inverted_index=inverted_index,
+            training_limit=training_limit,
+            multitenant=multitenant,
+            auto_tenant_creation=auto_tenant_creation,
+            auto_tenant_activation=auto_tenant_activation,
+            force_auto_schema=force_auto_schema,
+            shards=shards,
+            vectorizer=vectorizer,
+            replication_deletion_strategy=replication_deletion_strategy
+            )
+            collection_man.create_collection(
             collection=collection,
             replication_factor=replication_factor,
             async_enabled=async_enabled,
@@ -138,15 +192,18 @@ def create_collection_cli(
             shards=shards,
             vectorizer=vectorizer,
             replication_deletion_strategy=replication_deletion_strategy,
+            reference_collection_name = reference_collection_name,
+            reference_collection = reference_collection
         )
-    except Exception as e:
-        click.echo(f"Error: {e}")
-        if client:
-            client.close()
-        sys.exit(1)
-    finally:
-        if client:
-            client.close()
+        except Exception as e:
+            click.echo(f"Error: {e}")
+            if client:
+                client.close()
+            sys.exit(1)
+        finally:
+            if client:
+                client.close()
+
 
 
 # Subcommand to create tenants
@@ -281,6 +338,16 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=CreateDataDefaults.vector_dimensions,
     help="Number of vector dimensions to be used when the data is randomized.",
 )
+@click.option(
+    "--reference_collection_name",
+    default=CreateDataDefaults.reference_collection_name,
+    help="Name of Reference collection",
+)
+@click.option(
+    "--reference_collection",
+    is_flag=True,
+    help="Enable Reference collection (default: False). If passed, data for reference collection will be created",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -290,6 +357,8 @@ def create_data_cli(
     randomize,
     auto_tenants,
     vector_dimensions,
+    reference_collection_name,
+    reference_collection
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -300,23 +369,46 @@ def create_data_cli(
         sys.exit(1)
 
     client = None
-    try:
-        client = get_client_from_context(ctx)
-        data_manager = DataManager(client)
-        # Call the function from ingest_data.py with general and specific arguments
-        data_manager.create_data(
-            collection=collection,
-            limit=limit,
-            consistency_level=consistency_level,
-            randomize=randomize,
-            auto_tenants=auto_tenants,
-            vector_dimensions=vector_dimensions,
-        )
-    except Exception as e:
-        click.echo(f"Error: {e}")
-        if client:
-            client.close()
-        sys.exit(1)
-    finally:
-        if client:
-            client.close()
+    if reference_collection is False:
+        try:
+            client = get_client_from_context(ctx)
+            data_manager = DataManager(client)
+            # Call the function from ingest_data.py with general and specific arguments
+            data_manager.create_data(
+                collection=collection,
+                limit=limit,
+                consistency_level=consistency_level,
+                randomize=randomize,
+                auto_tenants=auto_tenants,
+                vector_dimensions=vector_dimensions
+            )
+        except Exception as e:
+            click.echo(f"Error: {e}")
+            if client:
+                client.close()
+            sys.exit(1)
+        finally:
+            if client:
+                client.close()
+    else:
+        try:
+            client = get_client_from_context(ctx)
+            data_manager = DataManager(client)
+            # Call the function from ingest_data.py with general and specific arguments
+            data_manager.create_data(
+                collection=reference_collection_name,
+                limit=limit,
+                consistency_level=consistency_level,
+                randomize=randomize,
+                auto_tenants=auto_tenants,
+                vector_dimensions=vector_dimensions,
+                reference_collection=reference_collection
+            )
+        except Exception as e:
+            click.echo(f"Error: {e}")
+            if client:
+                client.close()
+            sys.exit(1)
+        finally:
+            if client:
+                client.close()

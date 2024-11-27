@@ -12,7 +12,7 @@ from weaviate_cli.defaults import (
     GetCollectionDefaults,
 )
 import weaviate.classes.config as wvc
-
+from weaviate.classes.config import Property, ReferenceProperty
 
 class CollectionManager:
     def __init__(self, client: WeaviateClient) -> None:
@@ -52,6 +52,123 @@ class CollectionManager:
                 )
             click.echo(f"{'':<30}{'':<16}{'':<16}{'':<16}{'':<20}{'':<16}{'':<16}")
             click.echo(f"Total: {len(all_collections)} collections")
+    
+    def create_reference_collection(
+            self,
+            reference_collection: str = CreateCollectionDefaults.reference_name,
+            training_limit: int = CreateCollectionDefaults.training_limit,
+            vector_index: str = CreateCollectionDefaults.vector_index,
+            inverted_index: Optional[str] = CreateCollectionDefaults.inverted_index,
+            replication_factor: int = CreateCollectionDefaults.replication_factor,
+            async_enabled: bool = CreateCollectionDefaults.async_enabled,
+            replication_deletion_strategy: Optional[
+            str
+            ] = CreateCollectionDefaults.replication_deletion_strategy,
+            shards: int = CreateCollectionDefaults.shards,
+            multitenant: bool = CreateCollectionDefaults.multitenant,
+             auto_tenant_creation: bool = CreateCollectionDefaults.auto_tenant_creation,
+            auto_tenant_activation: bool = CreateCollectionDefaults.auto_tenant_activation,
+            force_auto_schema: bool = CreateCollectionDefaults.force_auto_schema,
+            vectorizer: Optional[str] = CreateCollectionDefaults.vectorizer       
+    ) -> None:
+        
+        if self.client.collections.exists(reference_collection):
+                raise Exception(
+                    f"Error: Reference Collection '{reference_collection}' already exists in Weaviate. Delete using <delete collection> command."
+                )
+            
+        vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
+                "hnsw": wvc.Configure.VectorIndex.hnsw(),
+                "flat": wvc.Configure.VectorIndex.flat(),
+                "dynamic": wvc.Configure.VectorIndex.dynamic(),
+                "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
+                        training_limit=training_limit
+                    )
+                ),
+                "hnsw_bq": wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                ),
+                "hnsw_bq_cache": wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
+                ),
+                "hnsw_sq": wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
+                        training_limit=training_limit
+                    )
+                ),
+                "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
+                    filter_strategy=VectorFilterStrategy.ACORN
+                ),
+                # Should fail at the moment as Flat and PQ are not compatible
+                "flat_pq": wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.pq()
+                ),
+                # Should fail at the moment as Flat and PQ are not compatible
+                "flat_sq": wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.sq()
+                ),
+                "flat_bq": wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                ),
+                "flat_bq_cache": wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
+                ),
+        }
+        vectorizer_map: Dict[str, wvc.VectorizerConfig] = {
+            "contextionary": wvc.Configure.Vectorizer.text2vec_contextionary(),
+            "transformers": wvc.Configure.Vectorizer.text2vec_transformers(),
+            "openai": wvc.Configure.Vectorizer.text2vec_openai(),
+            "ollama": wvc.Configure.Vectorizer.text2vec_ollama(
+                model="snowflake-arctic-embed:33m"
+            ),
+        }
+
+        inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {
+            "timestamp": wvc.Configure.inverted_index(index_timestamps=True),
+            "null": wvc.Configure.inverted_index(index_null_state=True),
+            "length": wvc.Configure.inverted_index(index_property_length=True),
+        }
+                  # Reference collection properties
+        reference_collection_properties: List[wvc.Property]=[
+            wvc.Property(name="name", data_type=wvc.DataType.TEXT),
+            wvc.Property(name="company_id", data_type=wvc.DataType.NUMBER)
+        ]
+        rds_map = {
+                "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
+                "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
+        }
+        try:
+                self.client.collections.create(
+                    name=reference_collection,
+                    vector_index_config=vector_index_map[vector_index],
+                    inverted_index_config=(
+                        inverted_index_map[inverted_index] if inverted_index else None
+                    ),
+                    replication_config=wvc.Configure.replication(
+                        factor=replication_factor,
+                        async_enabled=async_enabled,
+                        deletion_strategy=(
+                            rds_map[replication_deletion_strategy]
+                            if replication_deletion_strategy
+                            else None
+                        ),
+                    ),
+                    sharding_config=(
+                        wvc.Configure.sharding(desired_count=shards) if shards > 1 else None
+                    ),
+                    multi_tenancy_config=wvc.Configure.multi_tenancy(
+                        enabled=multitenant,
+                        auto_tenant_creation=auto_tenant_creation,
+                        auto_tenant_activation=auto_tenant_activation,
+                    ),
+                    vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
+                    properties=reference_collection_properties if not force_auto_schema else  None
+                )
+        except Exception as e:
+            raise Exception(f"Error creating Reference Collection '{reference_collection}': {e}")
+        assert self.client.collections.exists(reference_collection)
+        click.echo(f" Reference Collection '{reference_collection}' created successfully in Weaviate.")
 
     def create_collection(
         self,
@@ -70,6 +187,8 @@ class CollectionManager:
         replication_deletion_strategy: Optional[
             str
         ] = CreateCollectionDefaults.replication_deletion_strategy,
+        reference_collection_name: Optional[str] = CreateCollectionDefaults.reference_name,
+        reference_collection: Optional[bool] = CreateCollectionDefaults.reference_enable 
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -164,46 +283,91 @@ class CollectionManager:
             wvc.Property(name="revenue", data_type=wvc.DataType.NUMBER),
             wvc.Property(name="status", data_type=wvc.DataType.TEXT),
         ]
+ 
+        references: List[wvc.ReferenceProperty] = [
+            ReferenceProperty(
+                name="production_companies",
+                target_collection=reference_collection_name
+            )
+        ]
 
         rds_map = {
             "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
             "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
         }
 
-        try:
-            self.client.collections.create(
-                name=collection,
-                vector_index_config=vector_index_map[vector_index],
-                inverted_index_config=(
-                    inverted_index_map[inverted_index] if inverted_index else None
-                ),
-                replication_config=wvc.Configure.replication(
-                    factor=replication_factor,
-                    async_enabled=async_enabled,
-                    deletion_strategy=(
-                        rds_map[replication_deletion_strategy]
-                        if replication_deletion_strategy
-                        else None
+        if reference_collection is False:
+            try:
+                self.client.collections.create(
+                    name=collection,
+                    vector_index_config=vector_index_map[vector_index],
+                    inverted_index_config=(
+                        inverted_index_map[inverted_index] if inverted_index else None
                     ),
-                ),
-                sharding_config=(
-                    wvc.Configure.sharding(desired_count=shards) if shards > 1 else None
-                ),
-                multi_tenancy_config=wvc.Configure.multi_tenancy(
-                    enabled=multitenant,
-                    auto_tenant_creation=auto_tenant_creation,
-                    auto_tenant_activation=auto_tenant_activation,
-                ),
-                vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
-                properties=properties if not force_auto_schema else None,
-            )
-        except Exception as e:
+                    replication_config=wvc.Configure.replication(
+                        factor=replication_factor,
+                        async_enabled=async_enabled,
+                        deletion_strategy=(
+                            rds_map[replication_deletion_strategy]
+                            if replication_deletion_strategy
+                            else None
+                        ),
+                    ),
+                    sharding_config=(
+                        wvc.Configure.sharding(desired_count=shards) if shards > 1 else None
+                    ),
+                    multi_tenancy_config=wvc.Configure.multi_tenancy(
+                        enabled=multitenant,
+                        auto_tenant_creation=auto_tenant_creation,
+                        auto_tenant_activation=auto_tenant_activation,
+                    ),
+                    vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
+                    properties=(properties) if not force_auto_schema else  None
+                )
+            except Exception as e:
 
-            raise Exception(f"Error creating Collection '{collection}': {e}")
+                raise Exception(f"Error creating Collection '{collection}': {e}")
 
-        assert self.client.collections.exists(collection)
+            assert self.client.collections.exists(collection)
 
-        click.echo(f"Collection '{collection}' created successfully in Weaviate.")
+            click.echo(f"Collection '{collection}' created successfully in Weaviate.")
+        else:
+            try:
+                self.client.collections.create(
+                    name=collection,
+                    vector_index_config=vector_index_map[vector_index],
+                    inverted_index_config=(
+                        inverted_index_map[inverted_index] if inverted_index else None
+                    ),
+                    replication_config=wvc.Configure.replication(
+                        factor=replication_factor,
+                        async_enabled=async_enabled,
+                        deletion_strategy=(
+                            rds_map[replication_deletion_strategy]
+                            if replication_deletion_strategy
+                            else None
+                        ),
+                    ),
+                    sharding_config=(
+                        wvc.Configure.sharding(desired_count=shards) if shards > 1 else None
+                    ),
+                    multi_tenancy_config=wvc.Configure.multi_tenancy(
+                        enabled=multitenant,
+                        auto_tenant_creation=auto_tenant_creation,
+                        auto_tenant_activation=auto_tenant_activation,
+                    ),
+                    vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
+                    properties=properties if not force_auto_schema else  None,
+                    references= references if references else None
+                )
+            except Exception as e:
+
+                raise Exception(f"Error creating Collection '{collection}': {e}")
+
+            assert self.client.collections.exists(collection)
+
+            click.echo(f"Collection '{collection}' created successfully in Weaviate.")
+
 
     def update_collection(
         self,
