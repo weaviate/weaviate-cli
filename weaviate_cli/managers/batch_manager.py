@@ -62,7 +62,9 @@ class BatchManager:
                 vectorizer_config=vectorizer_map[vectorizer],
                 properties=None if force_auto_schema else [],
             )
-            click.echo(f"Collection '{collection}' created successfully with vectorizer '{vectorizer}'.")
+            click.echo(
+                f"Collection '{collection}' created successfully with vectorizer '{vectorizer}'."
+            )
         except Exception as e:
             raise Exception(f"Error creating collection '{collection}': {e}")
 
@@ -79,7 +81,9 @@ class BatchManager:
             data (List[Dict]): Data to be inserted.
         """
         if not self.client.collections.exists(collection):
-            raise Exception(f"Collection '{collection}' does not exist. Cannot insert data.")
+            raise Exception(
+                f"Collection '{collection}' does not exist. Cannot insert data."
+            )
 
         try:
             # Perform batch insertion using Weaviate's dynamic batch
@@ -94,7 +98,9 @@ class BatchManager:
                         collection=collection,
                         properties=record,
                     )
-                    click.echo(f"Processed record") # add '{record}' <- if you would like to see the record being processed
+                    click.echo(
+                        f"Processed record"
+                    )  # add '{record}' <- if you would like to see the record being processed
         except Exception as e:
             raise Exception(f"Batch insertion failed: {e}")
 

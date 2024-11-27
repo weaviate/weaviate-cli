@@ -5,12 +5,14 @@ import json
 from weaviate_cli.utils import get_client_from_context
 from weaviate.exceptions import WeaviateConnectionError
 from weaviate_cli.defaults import CreateCollectionDefaults
-from weaviate_cli.managers.batch_manager import BatchManager 
+from weaviate_cli.managers.batch_manager import BatchManager
+
 
 @click.group()
 def batch() -> None:
     """Batch operations in Weaviate."""
     pass
+
 
 @batch.command("insert")
 @click.option(
@@ -65,7 +67,9 @@ def batch_insert_cli(ctx, collection, path, vectorizer, shards, replication_fact
 
     # Validate JSON structure
     if not isinstance(data, list) or not all(isinstance(obj, dict) for obj in data):
-        click.echo("Error: The JSON file must contain a list of objects (e.g., [{...}, {...}]).")
+        click.echo(
+            "Error: The JSON file must contain a list of objects (e.g., [{...}, {...}])."
+        )
         sys.exit(1)
 
     # Initialize the Weaviate client
