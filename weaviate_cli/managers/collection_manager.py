@@ -126,6 +126,7 @@ class CollectionManager:
             ),
             "cohere": wvc.Configure.Vectorizer.text2vec_cohere(),
             "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(),
+            "text2vec_weaviate": wvc.Configure.Vectorizer.text2vec_weaviate()
         }
 
         inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {
