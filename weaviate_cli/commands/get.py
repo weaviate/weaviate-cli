@@ -15,7 +15,7 @@ from weaviate_cli.defaults import GetCollectionDefaults
 # Get Group
 @click.group()
 def get():
-    """Create resources in Weaviate."""
+    """Get resources from Weaviate."""
     pass
 
 
