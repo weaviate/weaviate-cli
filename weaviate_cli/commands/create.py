@@ -92,7 +92,7 @@ def create() -> None:
     "--vectorizer",
     default=CreateCollectionDefaults.vectorizer,
     type=click.Choice(
-        ["contextionary", "transformers", "openai", "ollama", "cohere", "jinaai", "text2vec_weaviate"]
+        ["contextionary", "transformers", "openai", "ollama", "cohere", "jinaai", "weaviate"]
     ),
     help="Vectorizer to use.",
 )
