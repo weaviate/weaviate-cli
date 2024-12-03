@@ -5,6 +5,8 @@ Utility functions.
 import string
 import random
 import weaviate
+from weaviate.rbac.models import RBAC
+from typing import Union, List
 
 
 def get_client_from_context(ctx) -> weaviate.Client:
@@ -59,3 +61,153 @@ def pp_objects(response, main_properties):
     footer = f"{'':<37}" * (len(main_properties) + 1) + f"{'':<11}{'':<11}{'':<11}"
     print(footer)
     print(f"Total: {len(objects)} objects")
+
+
+def parse_permission(perm: str) -> Union[RBAC.permissions, List[RBAC.permissions]]:
+    """
+    Convert a permission string to RBAC permission object(s).
+    Format: action:collection[:tenant]
+
+    Supports:
+    - Basic permissions: read_schema:Movies
+    - CRUD shorthand: crud_schema:Movies
+    - Partial CRUD: cr_schema:Movies (create+read)
+    - User management: manage_users
+    - Role permissions: manage_roles, read_roles
+    - Cluster permissions: read_cluster
+    - Backup permissions: manage_backups
+    - Collections permissions: create_collections, read_collections, update_collections, delete_collections, manage_collections
+    - Data permissions: create_data, read_data, update_data, delete_data
+    - Nodes permissions: read_nodes
+    Args:
+        perm (str): Permission string
+
+    Returns:
+        Union[RBAC.permissions, List[RBAC.permissions]]: Single permission or list for crud/partial crud
+    """
+    valid_resources = [
+        "collections",
+        "data",
+        "roles",
+        "users",
+        "cluster",
+        "backups",
+        "nodes",
+    ]
+    parts = perm.split(":")
+    if len(parts) > 3 or (parts[0] != "read_nodes" and len(parts) > 2):
+        raise ValueError(
+            f"Invalid permission format: {perm}. Expected format: action:collection/role/verbosity. Example: manage_roles:custom, crud_collections:Movies, read_nodes:verbose:Movies"
+        )
+    action = parts[0]
+    role = parts[1] if len(parts) > 1 and "roles" in action else "*"
+    verbosity = parts[1] if len(parts) > 1 and action == "read_nodes" else None
+    if action == "read_nodes":
+        # For read_nodes the first part belongs to the verbosity
+        # and the second (optional) belongs to the collection
+        # Example: read_nodes:verbose:Movies
+        collection = parts[2] if len(parts) > 2 else "*"
+    else:
+        collection = (
+            parts[1]
+            if len(parts) > 1
+            and action
+            not in ["manage_roles", "manage_users", "read_roles", "read_cluster"]
+            else "*"
+        )
+
+    # Handle standalone permissions first
+    if action in ["manage_users", "read_cluster", "manage_backups", "read_nodes"]:
+        return [
+            _create_permission(
+                action=action, collection=collection, verbosity=verbosity
+            )
+        ]
+
+    out_permissions = []
+    # Handle crud and partial crud cases
+    if "_" in action:
+        parts = action.split("_", 2)
+        prefix = parts[0]
+        resource = parts[1] if len(parts) > 1 else None
+        if resource not in valid_resources:
+            # Find closest matching resource type
+            closest = min(
+                valid_resources,
+                key=lambda x: (
+                    sum(c1 != c2 for c1, c2 in zip(x, resource))
+                    if len(x) == len(resource)
+                    else abs(len(x) - len(resource))
+                ),
+            )
+            suggestion = f"\nDid you mean '{closest}'?" if closest else ""
+            raise ValueError(f"Invalid resource type: {resource}. {suggestion}")
+
+        action_map = {"c": "create", "r": "read", "u": "update", "d": "delete"}
+
+        if prefix in ["create", "read", "update", "delete", "manage"]:
+            actions = [prefix]
+        else:
+            # Handle partial crud (curd, cr, ru, ud, etc)
+            if not all(c in action_map for c in prefix):
+                raise ValueError(f"Invalid crud combination: {prefix}")
+            actions = [action_map[c] for c in prefix]
+
+        for act in actions:
+            out_permissions.append(
+                _create_permission(
+                    action=f"{act}_{resource}",
+                    role=role,
+                    collection=collection,
+                )
+            )
+
+        return out_permissions
+
+    raise ValueError(f"Invalid permission action: {action}")
+
+
+def _create_permission(
+    action: str, role: str = "*", collection: str = "*", verbosity: str = "minimal"
+) -> RBAC.permissions:
+    """Helper function to create individual RBAC permission objects."""
+
+    # Handle standalone permissions
+    if action == "manage_users":
+        return RBAC.permissions.users.manage()
+    elif action == "read_cluster":
+        return RBAC.permissions.cluster.read()
+    elif action == "manage_backups":
+        return RBAC.permissions.backups.manage(collection=collection)
+    elif action == "read_nodes":
+        return RBAC.permissions.nodes.read(verbosity=verbosity, collection=collection)
+    # Handle roles permissions
+    elif action in ["manage_roles", "read_roles"]:
+        action_prefix = action.split("_")[0]  # will be either "manage" or "read"
+        return getattr(RBAC.permissions.roles, action_prefix)(role=role)
+
+    # Handle schema permissions
+    elif action in [
+        "create_collections",
+        "read_collections",
+        "update_collections",
+        "delete_collections",
+        "manage_collections",
+    ]:
+        action_prefix = action.split("_")[0]
+        return getattr(RBAC.permissions.collections, action_prefix)(
+            collection=collection
+        )
+
+    # Handle data permissions
+    elif action in [
+        "create_data",
+        "read_data",
+        "update_data",
+        "delete_data",
+        "manage_data",
+    ]:
+        action_prefix = action.split("_")[0]
+        return getattr(RBAC.permissions.data, action_prefix)(collection=collection)
+
+    raise ValueError(f"Invalid permission action: {action}.")

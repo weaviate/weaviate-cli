@@ -1,4 +1,5 @@
-weaviate-client>=4.0.0
+#weaviate-client>=4.0.0
+weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@1.28/add-support-for-rbac
 click==8.1.7
 twine
 pytest

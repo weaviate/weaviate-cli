@@ -6,11 +6,15 @@ from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
+from weaviate_cli.managers.role_manager import RoleManager
 from weaviate.exceptions import WeaviateConnectionError
-from weaviate_cli.defaults import CreateBackupDefaults
-from weaviate_cli.defaults import CreateCollectionDefaults
-from weaviate_cli.defaults import CreateTenantsDefaults
-from weaviate_cli.defaults import CreateDataDefaults
+from weaviate_cli.defaults import (
+    CreateBackupDefaults,
+    CreateCollectionDefaults,
+    CreateTenantsDefaults,
+    CreateDataDefaults,
+    CreateRoleDefaults,
+)
 
 
 # Create Group
@@ -331,6 +335,50 @@ def create_data_cli(
             vector_dimensions=vector_dimensions,
             uuid=uuid,
         )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("role")
+@click.option(
+    "--name",
+    default=CreateRoleDefaults.name,
+    help="The name of the role to create.",
+)
+@click.option(
+    "-p",
+    "--permission",
+    multiple=True,
+    required=True,
+    help="""Permission in format action:collection. Can be specified multiple times.
+
+    Allowed actions:
+    - User management: manage_users
+    - Role management: manage_roles, read_roles
+    - Cluster statistics read: read_cluster
+    - Backup management: manage_backups
+    - Collections permissions: create_collections, read_collections, update_collections, delete_collections, manage_collections
+    - Data permissions: create_data, read_data, update_data, delete_data
+    - Nodes read: read_nodes
+    - CRUD shorthands: crud_collections, crud_data
+
+    Example: --permission crud_collections:* --permission read_data:Movies --permission manage_backups:Movies --permission read_cluster --permission read_nodes:verbose:Movies""",
+)
+@click.pass_context
+def create_role_cli(ctx: click.Context, name: str, permission: tuple[str]) -> None:
+    """Create a role in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        role_man = RoleManager(client)
+        role_man.create_role(name=name, permissions=permission)
+        click.echo(f"Role '{name}' created successfully in Weaviate.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

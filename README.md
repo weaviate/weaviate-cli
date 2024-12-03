@@ -98,6 +98,27 @@ Here you can see an example on how the configuration file should look like if yo
  }
 ```
 
+If you want to allow using different users for different actions in your cluster, you can specify the different users in the configuration file and use the `--user` option to specify which user to use for a specific action.
+An example of how the configuration file should look like is the following:
+
+```json
+{
+    "host": "your-weaviate-host",
+    "auth": {
+        "type": "user",
+        "user1": "your-api-key-for-user1",
+        "user2": "your-api-key-for-user2"
+    }
+}
+```
+It's important to note that the "type" key must be set to "user" and the users must be specified in the auth section.
+When using the `weaviate-cli` command, you can specify the user to use for an action by using the `--user` option. For example:
+
+```bash
+weaviate-cli --user user1 create collection --collection movies --vectorizer transformers
+weaviate-cli --user user2 get collection --collection movies
+```
+
 ## Requirements
 
 - Python 3.9+

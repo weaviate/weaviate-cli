@@ -1,3 +1,4 @@
+from typing import Optional
 import click
 import sys
 from weaviate_cli.managers.config_manager import ConfigManager
@@ -8,6 +9,8 @@ from weaviate_cli.commands.update import update
 from weaviate_cli.commands.query import query
 from weaviate_cli.commands.restore import restore
 from weaviate_cli.commands.cancel import cancel
+from weaviate_cli.commands.add import add
+from weaviate_cli.commands.revoke import revoke
 from weaviate_cli import __version__
 
 
@@ -27,6 +30,12 @@ def print_version(ctx, param, value):
     help="If specified cli uses the config specified with this path.",
 )
 @click.option(
+    "--user",
+    required=False,
+    type=str,
+    help="If specified cli uses the user specified in the config file.",
+)
+@click.option(
     "--version",
     is_flag=True,
     callback=print_version,
@@ -35,10 +44,10 @@ def print_version(ctx, param, value):
     help="Prints the version of the CLI.",
 )
 @click.pass_context
-def main(ctx: click.Context, config_file):
+def main(ctx: click.Context, config_file: Optional[str], user: Optional[str]):
     """Weaviate CLI tool"""
     try:
-        ctx.obj = {"config": ConfigManager(config_file)}
+        ctx.obj = {"config": ConfigManager(config_file, user)}
     except Exception as e:
         click.echo(f"Fatal Error: {e}")
         sys.exit(1)
@@ -51,6 +60,8 @@ main.add_command(update)
 main.add_command(restore)
 main.add_command(query)
 main.add_command(cancel)
+main.add_command(add)
+main.add_command(revoke)
 
 if __name__ == "__main__":
     main()
