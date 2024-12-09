@@ -8,7 +8,7 @@
 A powerful command-line interface for managing and interacting with Weaviate vector databases directly from your terminal.
 
 ## Key Features
-- **Collections**: Create, update, delete and get collection configurations
+- **Collections**: Create, batch, update, delete and get collection configurations
 - **Data Management**: Import, query, update and delete data with various search types (vector, keyword, hybrid)
 - **Multi-tenancy**: Manage tenants and their states across collections
 - **Backup & Restore**: Create and restore backups with support for S3, GCS and filesystem
@@ -34,6 +34,9 @@ weaviate-cli create collection --collection movies --vectorizer transformers
 # Import test data
 weaviate-cli create data --collection movies --limit 1000
 
+# Batch data import from local json file
+weaviate-cli batch insert --collection <COL_NAME> --path <LOCAL_FILE_PATH.json> --vectorizer <VEC_NAME e.g. openai> --replication-factor 3
+
 # Query data
 weaviate-cli query data --collection movies --search-type hybrid --query "action movies"
 ```
@@ -41,6 +44,7 @@ weaviate-cli query data --collection movies --search-type hybrid --query "action
 ## Core Commands
 
 - **create**: Create collections, tenants, backups or import data
+- **batch**: batch import a collection from a local file
 - **delete**: Remove collections, tenants or data
 - **update**: Modify collection settings, tenant states or data
 - **get**: Retrieve collection info, tenant details or shard status
