@@ -22,6 +22,11 @@ Install using pip:
 pip install weaviate-cli
 ```
 
+On Mac, install using Homebrew:
+```bash
+brew install weaviate-cli
+```
+
 ## Basic Usage
 
 ```bash
