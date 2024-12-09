@@ -57,7 +57,7 @@ class DataManager:
                         added_obj = {}
                         for prop in properties:
                             prop_name = PROPERTY_NAME_MAPPING.get(prop.name, prop.name)
-                            if prop_name in obj:
+                            if prop_name in obj and obj[prop_name] != "":
                                 added_obj[prop.name] = self.__convert_property_value(
                                     obj[prop_name], prop.data_type
                                 )
@@ -69,6 +69,13 @@ class DataManager:
                         print(
                             f"Failed to add object with UUID {failed_object.original_uuid}: "
                             f"{failed_object.message}"
+                        )
+                    return -1
+
+                if self.client.batch.failed_objects:
+                    for failed_object in self.client.batch.failed_objects:
+                        print(
+                            f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
                         )
                     return -1
 
@@ -183,6 +190,14 @@ class DataManager:
                         f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
                     )
                 return -1
+
+            if self.client.batch.failed_objects:
+                for failed_object in self.client.batch.failed_objects:
+                    print(
+                        f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
+                    )
+                return -1
+
             print(f"Inserted {counter} objects into class '{collection.name}'")
             return counter
         else:
