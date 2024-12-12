@@ -7,12 +7,12 @@ from weaviate_cli.defaults import PERMISSION_HELP_STRING
 
 
 @click.group()
-def add() -> None:
-    """Add resources to other resources in Weaviate."""
+def assign() -> None:
+    """Assign resources to other resources in Weaviate."""
     pass
 
 
-@add.command("role")
+@assign.command("role")
 @click.option(
     "--role_name",
     multiple=True,
@@ -25,8 +25,8 @@ def add() -> None:
     help="The user to add the role to.",
 )
 @click.pass_context
-def add_role_cli(ctx: click.Context, role_name: tuple[str], user_name: str) -> None:
-    """Add a role to a user."""
+def assign_role_cli(ctx: click.Context, role_name: tuple[str], user_name: str) -> None:
+    """Assigns a role to a user."""
     client = None
     try:
         client = get_client_from_context(ctx)
@@ -42,7 +42,7 @@ def add_role_cli(ctx: click.Context, role_name: tuple[str], user_name: str) -> N
             client.close()
 
 
-@add.command("permission")
+@assign.command("permission")
 @click.option(
     "-p",
     "--permission",
@@ -56,10 +56,10 @@ def add_role_cli(ctx: click.Context, role_name: tuple[str], user_name: str) -> N
     help="The name of the role to add the permission to.",
 )
 @click.pass_context
-def add_permission_cli(
+def assign_permission_cli(
     ctx: click.Context, permission: tuple[str], role_name: str
 ) -> None:
-    """Add a permission to a role."""
+    """Assigns a permission to a role."""
 
     client = None
     try:
