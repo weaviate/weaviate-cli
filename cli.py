@@ -9,7 +9,7 @@ from weaviate_cli.commands.update import update
 from weaviate_cli.commands.query import query
 from weaviate_cli.commands.restore import restore
 from weaviate_cli.commands.cancel import cancel
-from weaviate_cli.commands.add import add
+from weaviate_cli.commands.assign import assign
 from weaviate_cli.commands.revoke import revoke
 from weaviate_cli import __version__
 
@@ -60,7 +60,7 @@ main.add_command(update)
 main.add_command(restore)
 main.add_command(query)
 main.add_command(cancel)
-main.add_command(add)
+main.add_command(assign)
 main.add_command(revoke)
 
 if __name__ == "__main__":

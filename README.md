@@ -14,6 +14,7 @@ A powerful command-line interface for managing and interacting with Weaviate vec
 - **Backup & Restore**: Create and restore backups with support for S3, GCS and filesystem
 - **Sharding**: Monitor and manage collection shards
 - **Flexible Configuration**: Configure vector indexes, replication, consistency levels and more
+- **Role Management**: Assign and revoke roles and permissions to users
 
 ## Quick Start
 Install using pip:
@@ -51,7 +52,8 @@ weaviate-cli query data --collection movies --search-type hybrid --query "action
 - **get**: Retrieve collection info, tenant details or shard status
 - **query**: Search data using various methods
 - **restore**: Restore backups from supported backends
-
+- **assign**: Assign roles and permissions to users
+- **revoke**: Revoke roles and permissions from users
 ## Configuration
 
 Weaviate CLI allows you to configure your cluster endpoints and parameters through a configuration file. By default, the CLI looks for a
@@ -126,7 +128,7 @@ weaviate-cli --user user2 get collection --collection movies
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10+
 - Weaviate instance (local or remote)
 
 ## Documentation
