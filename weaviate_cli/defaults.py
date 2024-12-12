@@ -1,5 +1,27 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict
+
+
+PERMISSION_HELP_STRING = (
+    "Permission in format action:collection. Can be specified multiple times.\n\n"
+    "Available Permissions:\n\n"
+    "  Role management: manage_roles, read_roles\n\n"
+    "  Cluster management: manage_cluster, read_cluster\n\n"
+    "  Backup management: manage_backups\n\n"
+    "  Schema management: create_schema, read_schema, update_schema, delete_schema\n\n"
+    "  Data management: create_data, read_data, update_data, delete_data\n\n"
+    "  Node management: read_nodes\n\n"
+    "  CRUD shorthands for collections and data:\n\n"
+    "    crud_collections:collection,cud_data:collection,dur_data:*,rd_collections\n\n"
+    "Examples:\n\n"
+    "  --permission crud_collections:Movies\n\n"
+    "  --permission rucd_data:Person_*\n\n"
+    '  --permission "create_collections:Movies,Books"\n\n'
+    '  --permission "manage_roles:Admin,Editor"\n\n'
+    "  --permission read_nodes:verbose:Movies\n\n"
+    "  --permission manage_backups:Movies\n\n"
+    "  --permission read_cluster"
+)
 
 
 @dataclass
@@ -48,6 +70,12 @@ class CreateDataDefaults:
 
 
 @dataclass
+class CreateRoleDefaults:
+    role_name: str = "NewRole"
+    permission: tuple = ()
+
+
+@dataclass
 class CancelBackupDefaults:
     backend: str = "s3"
     backup_id: str = "test-backup"
@@ -75,6 +103,11 @@ class DeleteDataDefaults:
 
 
 @dataclass
+class DeleteRoleDefaults:
+    role_name: str = "NewRole"
+
+
+@dataclass
 class GetCollectionDefaults:
     collection: Optional[str] = None
 
@@ -92,10 +125,21 @@ class GetShardsDefaults:
 
 
 @dataclass
+class GetRoleDefaults:
+    role_name: Optional[str] = None
+    user_name: Optional[str] = None
+
+
+@dataclass
 class GetBackupDefaults:
     backend: str = "s3"
     backup_id: Optional[str] = None
     restore: bool = False
+
+
+@dataclass
+class GetUserDefaults:
+    role_name: Optional[str] = None
 
 
 @dataclass
