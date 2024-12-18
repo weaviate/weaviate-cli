@@ -126,6 +126,24 @@ weaviate-cli --user user1 create collection --collection movies --vectorizer tra
 weaviate-cli --user user2 get collection --collection movies
 ```
 
+## Shell Completion
+
+Execute the following commands to enable shell completion.
+
+### Zsh
+
+```zsh
+_WEAVIATE_CLI_COMPLETE=zsh_source weaviate-cli > ${fpath[1]}/_weaviate-cli
+autoload -U compinit && compinit
+echo 'autoload -U compinit && compinit' >> ~/.zshrc
+```
+
+### Bash
+
+```bash
+echo 'eval "$(_WEAVIATE_CLI_COMPLETE=bash_source weaviate-cli)"' >> ~/.bashrc
+```
+
 ## Requirements
 
 - Python 3.10+

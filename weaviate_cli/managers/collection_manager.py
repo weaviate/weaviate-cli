@@ -3,6 +3,7 @@ import json
 from typing import Dict, List, Optional
 from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
+from weaviate.collections.classes.config import _CollectionConfigSimple
 from weaviate.collections.classes.tenants import TenantActivityStatus
 from weaviate.classes.config import VectorFilterStrategy
 from weaviate_cli.defaults import (
@@ -52,6 +53,9 @@ class CollectionManager:
                 )
             click.echo(f"{'':<30}{'':<16}{'':<16}{'':<16}{'':<20}{'':<16}{'':<16}")
             click.echo(f"Total: {len(all_collections)} collections")
+
+    def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
+        return self.client.collections.list_all()
 
     def create_collection(
         self,
