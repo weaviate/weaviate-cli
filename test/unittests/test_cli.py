@@ -20,9 +20,12 @@ def test_main_with_non_existing_config_file(cli_runner):
         result = cli_runner.invoke(
             main, ["--config-file", "test_config.json", "get", "shards"]
         )
-        # No weaviate instance running so exit code is 1
-        assert result.exit_code == 1
-        assert "Config file 'test_config.json' does not exist" in result.output
+        # Non existing config file is a usage error, so error code 2 is expected
+        assert result.exit_code == 2
+        assert (
+            "Error: Invalid value for '--config-file': Path 'test_config.json' does not exist"
+            in result.output
+        )
         mock_config.assert_not_called()
 
 

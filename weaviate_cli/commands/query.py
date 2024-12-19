@@ -1,5 +1,7 @@
 import sys
 import click
+
+from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
@@ -18,6 +20,7 @@ def query() -> None:
     "--collection",
     default=QueryDataDefaults.collection,
     help="The name of the collection to query.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--search_type",

@@ -1,6 +1,11 @@
 import sys
 import click
 from typing import Optional
+
+from weaviate_cli.completion.complete import (
+    role_name_complete,
+    collection_name_complete,
+)
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -31,6 +36,7 @@ def create() -> None:
     "--collection",
     default=CreateCollectionDefaults.collection,
     help="The name of the collection to create.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--replication_factor",
@@ -172,6 +178,7 @@ def create_collection_cli(
     "--collection",
     default=CreateTenantsDefaults.collection,
     help="The name of the collection to create.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--tenant_suffix",
@@ -275,6 +282,7 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     "--collection",
     default=CreateDataDefaults.collection,
     help="The name of the collection to ingest data into.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--limit",
@@ -359,6 +367,7 @@ def create_data_cli(
     "--role_name",
     default=CreateRoleDefaults.role_name,
     help="The name of the role to create.",
+    shell_complete=role_name_complete,
 )
 @click.option(
     "-p",

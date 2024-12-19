@@ -1,6 +1,8 @@
 import sys
 import click
 from typing import Optional, Union
+
+from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -25,6 +27,7 @@ def update() -> None:
     "--collection",
     default=UpdateCollectionDefaults.collection,
     help="The name of the collection to update.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--async_enabled",

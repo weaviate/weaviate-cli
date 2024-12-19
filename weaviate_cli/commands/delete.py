@@ -1,5 +1,7 @@
 import sys
 import click
+
+from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -25,6 +27,7 @@ def delete() -> None:
     "--collection",
     default=DeleteCollectionDefaults.collection,
     help="The name of the collection to delete.",
+    shell_complete=collection_name_complete,
 )
 @click.option("--all", is_flag=True, help="Delete all collections (default: False).")
 @click.pass_context
@@ -52,6 +55,7 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
     "--collection",
     default=DeleteTenantsDefaults.collection,
     help="The name of the collection to delete tenants from.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--tenant_suffix",
@@ -93,6 +97,7 @@ def delete_tenants_cli(
     "--collection",
     default=DeleteDataDefaults.collection,
     help="The name of the collection to delete tenants from.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--limit",
