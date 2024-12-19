@@ -130,6 +130,9 @@ weaviate-cli --user user2 get collection --collection movies
 
 Execute the following commands to enable shell completion.
 
+> **Warning**
+> Warp is currently not supporting [dynamic auto completion](https://github.com/warpdotdev/Warp/issues/2925) and thus can not support weaviate-cli completion.
+
 ### Zsh
 
 ```zsh
