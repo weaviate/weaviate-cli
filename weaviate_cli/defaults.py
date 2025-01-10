@@ -195,3 +195,8 @@ class UpdateDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     randomize: bool = False
+
+
+@dataclass
+class GetNodesDefaults:
+    collection: Optional[str] = None

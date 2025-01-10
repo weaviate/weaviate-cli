@@ -22,7 +22,9 @@ from weaviate_cli.defaults import (
     GetCollectionDefaults,
     GetRoleDefaults,
     GetUserDefaults,
+    GetNodesDefaults,
 )
+from weaviate_cli.managers.node_manager import NodeManager
 
 
 # Get Group
@@ -240,6 +242,55 @@ def get_user_cli(ctx, role_name: Optional[str]):
         print(f"\n{separator}")
         for user in users:
             user_man.print_user(user)
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@get.command("nodes")
+@click.option(
+    "--minimal",
+    is_flag=True,
+    help="Get minimal node information. Use for large clusters, as verbose output will take a long time to load.",
+)
+@click.option(
+    "--shards",
+    is_flag=True,
+    help="Get nodes information for each shard.",
+)
+@click.option(
+    "--collections",
+    is_flag=True,
+    help="Get nodes information for each collection.",
+)
+@click.option(
+    "--collection",
+    default=GetNodesDefaults.collection,
+    help="The name of the collection to get shards information from.",
+    shell_complete=collection_name_complete,
+)
+@click.pass_context
+def get_nodes_cli(ctx, minimal, shards, collections, collection):
+    """Get the node information."""
+    client = None
+    try:
+        if sum([bool(collection), shards, collections, minimal]) > 1:
+            raise Exception(
+                "Only one of --collection, --shards, --minimal, or --collections can be provided."
+            )
+        client = get_client_from_context(ctx)
+        node_man = NodeManager(client)
+        node_man.get_nodes(
+            minimal=minimal,
+            shards=shards,
+            collections=collections,
+            collection=collection,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
