@@ -13,6 +13,7 @@ from weaviate_cli.defaults import (
     GetCollectionDefaults,
 )
 import weaviate.classes.config as wvc
+from prettytable import PrettyTable
 
 
 class CollectionManager:
@@ -41,18 +42,55 @@ class CollectionManager:
             # Pretty print the dict structure
             click.echo(json.dumps(col_obj.config.get().to_dict(), indent=4))
         else:
-            click.echo(
-                f"{'Collection':<30}{'Multitenancy':<16}{'Tenants': <16}{'Objects':<16}{'ReplicationFactor':<20}{'VectorIndex':<16}{'Vectorizer':<16}"
-            )
-            all_collections = self.client.collections.list_all()
-            for single_collection in all_collections:
-                col_obj: Collection = self.client.collections.get(single_collection)
+            collections = self.client.collections.list_all()
+
+            if not collections:
+                click.echo("No collections found")
+                return
+
+            table = PrettyTable()
+            table.field_names = [
+                "Collection",
+                "Multitenancy",
+                "Tenants",
+                "Objects",
+                "Repl. Factor",
+                "Vector Index",
+                "Vectorizer",
+            ]
+            table.align = "l"
+
+            for col_name in collections:
+                col_obj = self.client.collections.get(col_name)
                 schema = col_obj.config.get()
-                click.echo(
-                    f"{single_collection:<29} {'True' if schema.multi_tenancy_config.enabled else 'False':<15} {len(col_obj.tenants.get()) if schema.multi_tenancy_config.enabled else 0:<15} {self.__get_total_objects_with_multitenant(col_obj) if schema.multi_tenancy_config.enabled else len(col_obj):<15} {schema.replication_config.factor:<19} {schema.vector_index_type if schema.vector_index_type else 'None':<15} {schema.vectorizer if schema.vectorizer else 'None':<15}"
+
+                table.add_row(
+                    [
+                        col_name,
+                        "True" if schema.multi_tenancy_config.enabled else "False",
+                        (
+                            len(col_obj.tenants.get())
+                            if schema.multi_tenancy_config.enabled
+                            else 0
+                        ),
+                        (
+                            self.__get_total_objects_with_multitenant(col_obj)
+                            if schema.multi_tenancy_config.enabled
+                            else len(col_obj)
+                        ),
+                        schema.replication_config.factor,
+                        (
+                            schema.vector_index_type
+                            if schema.vector_index_type
+                            else "None"
+                        ),
+                        schema.vectorizer if schema.vectorizer else "None",
+                    ]
                 )
-            click.echo(f"{'':<30}{'':<16}{'':<16}{'':<16}{'':<20}{'':<16}{'':<16}")
-            click.echo(f"Total: {len(all_collections)} collections")
+
+            print("\nCollections:")
+            print(table)
+            print(f"\nTotal: {len(collections)} collections")
 
     def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
         return self.client.collections.list_all()
