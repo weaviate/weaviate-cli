@@ -1,5 +1,7 @@
 import click
 import sys
+
+from weaviate_cli.completion.complete import role_name_complete
 from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.utils import get_client_from_context
@@ -18,6 +20,7 @@ def assign() -> None:
     multiple=True,
     required=True,
     help="The name of the role to add. Can be specified multiple times. Example: --role_name MoviesAdmin --role_name TenantAdmin",
+    shell_complete=role_name_complete,
 )
 @click.option(
     "--user_name",

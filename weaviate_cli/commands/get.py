@@ -1,6 +1,11 @@
 import sys
 from typing import List, Optional
 import click
+
+from weaviate_cli.completion.complete import (
+    role_name_complete,
+    collection_name_complete,
+)
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
@@ -32,6 +37,7 @@ def get():
     "--collection",
     default=GetCollectionDefaults.collection,
     help="The name of the collection to get.",
+    shell_complete=collection_name_complete,
 )
 @click.pass_context
 def get_collection_cli(ctx, collection):
@@ -58,6 +64,7 @@ def get_collection_cli(ctx, collection):
     "--collection",
     default=GetTenantsDefaults.collection,
     help="The name of the collection to get tenants from.",
+    shell_complete=collection_name_complete,
 )
 @click.option(
     "--tenant_id",
@@ -92,6 +99,7 @@ def get_tenants_cli(ctx, collection, tenant_id, verbose):
     "--collection",
     default=GetShardsDefaults.collection,
     help="The name of the collection to get tenants from.",
+    shell_complete=collection_name_complete,
 )
 @click.pass_context
 def get_shards_cli(ctx, collection):
@@ -156,6 +164,7 @@ def get_backup_cli(ctx, backend, backup_id, restore):
     "--role_name",
     default=GetRoleDefaults.role_name,
     help="The name of the role to get.",
+    shell_complete=role_name_complete,
 )
 @click.option(
     "--user_name",
