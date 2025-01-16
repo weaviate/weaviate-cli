@@ -89,9 +89,31 @@ class BatchManager:
             # Perform batch insertion using Weaviate's dynamic batch
             with self.client.batch.dynamic() as batch:
                 for record in data:
-                    # Remove the reserved 'id' key, if present - to avoid Error message: WeaviateInsertInvalidPropertyError("It is forbidden to insert `id` or `vector`
-                    if "id" in record:
-                        record.pop("id")
+
+                    def remove_id_keys(data: Dict) -> Dict:
+                        if not isinstance(data, dict):
+                            return data
+                        cleaned_data = {}
+                        for key, value in data.items():
+                            if key != "id":
+                                if isinstance(value, dict):
+                                    cleaned_data[key] = remove_id_keys(value)
+                                elif isinstance(value, list):
+                                    cleaned_data[key] = [
+                                        (
+                                            remove_id_keys(item)
+                                            if isinstance(item, dict)
+                                            else item
+                                        )
+                                        for item in value
+                                    ]
+                                else:
+                                    cleaned_data[key] = value
+
+                        return cleaned_data
+
+                    # Remove all keys  and subkeys that start with 'id'
+                    record = remove_id_keys(record)
 
                     # Add the object to the batch
                     batch.add_object(
