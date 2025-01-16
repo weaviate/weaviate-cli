@@ -9,12 +9,9 @@ from weaviate_cli.commands.update import update
 from weaviate_cli.commands.query import query
 from weaviate_cli.commands.restore import restore
 from weaviate_cli.commands.cancel import cancel
-<<<<<<< HEAD
 from weaviate_cli.commands.assign import assign
 from weaviate_cli.commands.revoke import revoke
-=======
 from weaviate_cli.commands.batch import batch
->>>>>>> 19aebe7 (new feature - add batch import from a local json file)
 from weaviate_cli import __version__
 
 
@@ -64,12 +61,9 @@ main.add_command(update)
 main.add_command(restore)
 main.add_command(query)
 main.add_command(cancel)
-<<<<<<< HEAD
 main.add_command(assign)
 main.add_command(revoke)
-=======
 main.add_command(batch)
->>>>>>> 19aebe7 (new feature - add batch import from a local json file)
 
 if __name__ == "__main__":
     main()
