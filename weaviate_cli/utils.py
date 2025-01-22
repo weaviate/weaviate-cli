@@ -76,6 +76,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
     - Cluster permissions: read_cluster
     - Backup permissions: manage_backups
     - Collections permissions: create_collections, read_collections, update_collections, delete_collections
+    - Tenants permissions: create_tenants, read_tenants, update_tenants, delete_tenants
     - Data permissions: create_data, read_data, update_data, delete_data
     - Nodes permissions: read_nodes
     Args:
@@ -88,6 +89,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
         "collections",
         "data",
         "roles",
+        "tenants",
         # "users", will be added in next release
         "cluster",
         "backups",
@@ -211,4 +213,13 @@ def _create_permission(
             delete=("delete" in action),
         )
 
+    # Handle tenants permissions
+    elif resource == "tenants":
+        return Permissions.tenants(
+            collection=collection,
+            create=("create" in action),
+            read=("read" in action),
+            update=("update" in action),
+            delete=("delete" in action),
+        )
     raise ValueError(f"Invalid permission action: {action}.")

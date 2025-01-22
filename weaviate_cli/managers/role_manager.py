@@ -129,6 +129,11 @@ class RoleManager:
         if role.collections_permissions:
             print("\nCollections (schema) Permissions:")
             for perm in role.collections_permissions:
+                print(f"  - Collection: {perm.collection}, Action: {perm.action.value}")
+
+        if role.tenants_permissions:
+            print("\nTenants Permissions:")
+            for perm in role.tenants_permissions:
                 print(
                     f"  - Collection: {perm.collection}, Tenant: *, Action: {perm.action.value}"
                 )
