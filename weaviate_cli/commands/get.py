@@ -236,12 +236,15 @@ def get_user_cli(ctx, role_name: Optional[str]):
             raise Exception("Currently only --role_name is supported.")
         client = get_client_from_context(ctx)
         user_man = UserManager(client)
-        users = user_man.get_user_from_role(role_name=role_name).values()
+        users = user_man.get_user_from_role(role_name=role_name)
         print(f"Users of role '{role_name}':")
         separator = "-" * 50
         print(f"\n{separator}")
-        for user in users:
-            user_man.print_user(user)
+        if len(users) == 0:
+            print(f"No users found for role '{role_name}'.")
+        else:
+            for user in users:
+                user_man.print_user(user)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

@@ -19,7 +19,7 @@ class NodeManager:
             nodes = self.__get_nodes_minimal()
             self.__print_minimal_nodes(nodes)
         else:
-            nodes = self.__get_nodes_verbose()
+            nodes = self.__get_nodes_verbose(collection)
             if collection:
                 collection_shards = self.get_collection_shards(collection, nodes)
                 self.__print_collection_shards(collection, collection_shards)
@@ -157,8 +157,8 @@ class NodeManager:
         print(f"\nCollection: {collection_name} (Replication Factor: {rf})")
         print(table)
 
-    def __get_nodes_verbose(self):
-        return self.client.cluster.nodes(output="verbose")
+    def __get_nodes_verbose(self, collection: Optional[str] = None):
+        return self.client.cluster.nodes(output="verbose", collection=collection)
 
     def __get_nodes_minimal(self):
         return self.client.cluster.nodes(output="minimal")

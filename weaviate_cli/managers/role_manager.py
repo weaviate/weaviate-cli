@@ -35,13 +35,13 @@ class RoleManager:
 
     def get_role(self, role_name: str) -> Optional[Role]:
         try:
-            return self.client.roles.by_name(role_name=role_name)
+            return self.client.roles.get(role_name=role_name)
         except Exception as e:
             raise Exception(f"Error getting role '{role_name}': {e}")
 
     def get_roles_from_user(self, user_name: str) -> Dict[str, Role]:
         try:
-            return self.client.roles.by_user(user=user_name)
+            return self.client.users.get_assigned_roles(user_id=user_name)
         except Exception as e:
             raise Exception(f"Error getting roles from user '{user_name}': {e}")
 
@@ -63,7 +63,7 @@ class RoleManager:
     def role_of_current_user(self) -> Dict[str, Role]:
         """Get the role of the current user."""
         try:
-            return self.client.roles.of_current_user()
+            return self.client.users.get_my_user().roles
         except Exception as e:
             raise Exception(f"Error getting role of current user: {e}")
 
@@ -107,33 +107,53 @@ class RoleManager:
         if role.cluster_permissions:
             print("\nCluster Actions:")
             for perm in role.cluster_permissions:
-                print(f"  - {perm.action.value}")
+                print(f"  - {', '.join([action.value for action in perm.actions])}")
 
         if role.nodes_permissions:
             print("\nNodes Permissions:")
             for perm in role.nodes_permissions:
                 print(
-                    f"  - Verbosity: {perm.verbosity}, Collection: {perm.collection if perm.collection else '*'}, Action: {perm.action.value}"
+                    f"  - Verbosity: {perm.verbosity}, Collection: {perm.collection if perm.collection else '*'}, Action: {', '.join([action.value for action in perm.actions])}"
                 )
 
         if role.backups_permissions:
             print("\nBackups Permissions:")
             for perm in role.backups_permissions:
-                print(f"  - Collection: {perm.collection}, Action: {perm.action.value}")
+                print(
+                    f"  - Collection: {perm.collection}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
 
         if role.roles_permissions:
             print("\nRoles Permissions:")
             for perm in role.roles_permissions:
-                print(f"  - Role: {perm.role}, Action: {perm.action.value}")
+                print(
+                    f"  - Role: {perm.role}, Action: {', '.join([action.value for action in perm.actions])}, Scope: {perm.scope}"
+                )
+
+        if role.users_permissions:
+            print("\nUsers Permissions:")
+            for perm in role.users_permissions:
+                print(
+                    f"  - User: {perm.users}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
 
         if role.collections_permissions:
             print("\nCollections (schema) Permissions:")
             for perm in role.collections_permissions:
                 print(
-                    f"  - Collection: {perm.collection}, Tenant: *, Action: {perm.action.value}"
+                    f"  - Collection: {perm.collection}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
+
+        if role.tenants_permissions:
+            print("\nTenants Permissions:")
+            for perm in role.tenants_permissions:
+                print(
+                    f"  - Collection: {perm.collection}, Tenant: *, Action: {', '.join([action.value for action in perm.actions])}"
                 )
 
         if role.data_permissions:
             print("\nData Permissions:")
             for perm in role.data_permissions:
-                print(f"  - Collection: {perm.collection}, Action: {perm.action.value}")
+                print(
+                    f"  - Collection: {perm.collection}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
