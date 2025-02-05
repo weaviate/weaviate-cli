@@ -90,6 +90,8 @@ The configuration file should be a JSON file with the following structure:
 If you are using a remote Weaviate instance, you can use the `weaviate-cli` command to authenticate with your Weaviate instance.
 Here you can see an example on how the configuration file should look like if you are connecting to a WCD cluster:
 
+>NOTE: here `host` URL should be http endpoint not `grpc_endpoint` of the weaviate cloud. And without "https" prefix.
+
 ```json
  {
      "host": "thisisaninventedcluster.url.s3.us-west3.prov.weaviate.cloud",
