@@ -60,6 +60,7 @@ def create() -> None:
             "hnsw_bq",
             "hnsw_sq",
             "hnsw_acorn",
+            "hnsw_multivector",
             "flat_bq",
         ]
     ),
@@ -110,10 +111,17 @@ def create() -> None:
             "ollama",
             "cohere",
             "jinaai",
+            "jinaai_colbert",
+            "none_multi_vector",
             "weaviate",
         ]
     ),
     help="Vectorizer to use.",
+)
+@click.option(
+    "--multi_vector",
+    is_flag=True,
+    help="Enable multi-vector (default: False).",
 )
 @click.option(
     "--replication_deletion_strategy",
@@ -139,6 +147,7 @@ def create_collection_cli(
     shards: int,
     vectorizer: Optional[str],
     replication_deletion_strategy: str,
+    multi_vector: bool,
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -161,6 +170,7 @@ def create_collection_cli(
             shards=shards,
             vectorizer=vectorizer,
             replication_deletion_strategy=replication_deletion_strategy,
+            multi_vector=multi_vector,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -311,6 +321,11 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=None,
     help="UUID of the object to be used when the data is randomized. It requires --limit=1 and --randomize to be enabled.",
 )
+@click.option(
+    "--multi_vector",
+    is_flag=True,
+    help="Enable multi-vector (default: False).",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -321,6 +336,7 @@ def create_data_cli(
     auto_tenants,
     vector_dimensions,
     uuid,
+    multi_vector,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -351,6 +367,7 @@ def create_data_cli(
             auto_tenants=auto_tenants,
             vector_dimensions=vector_dimensions,
             uuid=uuid,
+            multi_vector=multi_vector,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

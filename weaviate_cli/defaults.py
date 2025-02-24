@@ -39,6 +39,8 @@ class CreateCollectionDefaults:
     shards: int = 1
     vectorizer: Optional[str] = None
     replication_deletion_strategy: str = "delete_on_conflict"
+    multi_vector: bool = False
+    named_vector: Optional[str] = "default"
 
 
 @dataclass
@@ -67,6 +69,7 @@ class CreateDataDefaults:
     randomize: bool = False
     auto_tenants: int = 0
     vector_dimensions: int = 1536
+    multi_vector: bool = False
 
 
 @dataclass

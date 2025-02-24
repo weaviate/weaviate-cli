@@ -112,6 +112,8 @@ class CollectionManager:
         replication_deletion_strategy: Optional[
             str
         ] = CreateCollectionDefaults.replication_deletion_strategy,
+        multi_vector: bool = CreateCollectionDefaults.multi_vector,
+        named_vector: Optional[str] = CreateCollectionDefaults.named_vector,
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -143,6 +145,9 @@ class CollectionManager:
             "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
                 filter_strategy=VectorFilterStrategy.ACORN
             ),
+            "hnsw_multivector": wvc.Configure.VectorIndex.hnsw(
+                multi_vector=wvc.Configure.VectorIndex.MultiVector.multi_vector(),
+            ),
             # Should fail at the moment as Flat and PQ are not compatible
             "flat_pq": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.pq()
@@ -169,6 +174,16 @@ class CollectionManager:
             "cohere": wvc.Configure.Vectorizer.text2vec_cohere(),
             "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(),
             "weaviate": wvc.Configure.Vectorizer.text2vec_weaviate(),
+            "jinaai_colbert": wvc.Configure.NamedVectors.text2colbert_jinaai(
+                name=named_vector,
+                vector_index_config=vector_index_map[vector_index],
+            ),
+            "none_multi_vector": [
+                wvc.Configure.NamedVectors.none(
+                    name=named_vector,
+                    vector_index_config=vector_index_map[vector_index],
+                )
+            ],
         }
 
         inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {
@@ -219,7 +234,9 @@ class CollectionManager:
         try:
             self.client.collections.create(
                 name=collection,
-                vector_index_config=vector_index_map[vector_index],
+                vector_index_config=(
+                    vector_index_map[vector_index] if not multi_vector else None
+                ),
                 inverted_index_config=(
                     inverted_index_map[inverted_index] if inverted_index else None
                 ),
@@ -240,8 +257,14 @@ class CollectionManager:
                     auto_tenant_creation=auto_tenant_creation,
                     auto_tenant_activation=auto_tenant_activation,
                 ),
-                vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
-                properties=properties if not force_auto_schema else None,
+                vectorizer_config=(
+                    vectorizer_map[vectorizer]
+                    if vectorizer and not multi_vector
+                    else None
+                ),
+                properties=(
+                    properties if not force_auto_schema and not multi_vector else None
+                ),
             )
         except Exception as e:
 

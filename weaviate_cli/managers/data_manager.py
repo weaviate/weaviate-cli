@@ -13,6 +13,7 @@ import weaviate.classes.config as wvc
 from weaviate.collections import Collection
 from datetime import datetime, timedelta
 from weaviate_cli.defaults import (
+    CreateCollectionDefaults,
     CreateDataDefaults,
     QueryDataDefaults,
     UpdateDataDefaults,
@@ -147,6 +148,7 @@ class DataManager:
         vector_dimensions: Optional[int] = 1536,
         uuid: Optional[str] = None,
         named_vectors: Optional[List[str]] = None,
+        multi_vector: bool = False,
     ) -> Collection:
         if randomize:
             counter = 0
@@ -173,11 +175,21 @@ class DataManager:
                     if named_vectors is None:
                         vector = (2 * np.random.rand(vector_dimensions) - 1).tolist()
                         batch.add_object(properties=obj, uuid=uuid, vector=vector)
+
                     else:
-                        vector = {
-                            name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                            for name in named_vectors
-                        }
+                        if multi_vector:
+                            vector = {
+                                CreateCollectionDefaults.named_vector: [
+                                    (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                                ]
+                            }
+                        else:
+                            vector = {
+                                name: (
+                                    2 * np.random.rand(vector_dimensions) - 1
+                                ).tolist()
+                                for name in named_vectors
+                            }
                         batch.add_object(properties=obj, uuid=uuid, vector=vector)
                     counter += 1
 
@@ -207,6 +219,7 @@ class DataManager:
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
         uuid: Optional[str] = None,
         named_vectors: Optional[List[str]] = None,
+        multi_vector: bool = CreateDataDefaults.multi_vector,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -261,6 +274,7 @@ class DataManager:
                     vector_dimensions,
                     uuid,
                     named_vectors,
+                    multi_vector,
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
@@ -272,6 +286,7 @@ class DataManager:
                     vector_dimensions,
                     uuid,
                     named_vectors,
+                    multi_vector,
                 )
 
             if len(collection) != limit:
