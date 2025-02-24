@@ -62,6 +62,7 @@ def create() -> None:
             "hnsw_bq",
             "hnsw_sq",
             "hnsw_acorn",
+            "hnsw_multivector",
             "flat_bq",
         ]
     ),
@@ -112,6 +113,8 @@ def create() -> None:
             "ollama",
             "cohere",
             "jinaai",
+            "jinaai_colbert",
+            "none_multi_vector",
             "weaviate",
             "weaviate-1.5",
         ]
@@ -122,6 +125,11 @@ def create() -> None:
     "--vectorizer_base_url",
     default=CreateCollectionDefaults.vectorizer_base_url,
     help="Base URL for the vectorizer.",
+)
+@click.option(
+    "--multi_vector",
+    is_flag=True,
+    help="Enable multi-vector (default: False).",
 )
 @click.option(
     "--replication_deletion_strategy",
@@ -148,6 +156,7 @@ def create_collection_cli(
     vectorizer: Optional[str],
     vectorizer_base_url: Optional[str],
     replication_deletion_strategy: str,
+    multi_vector: bool,
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -171,6 +180,7 @@ def create_collection_cli(
             vectorizer=vectorizer,
             vectorizer_base_url=vectorizer_base_url,
             replication_deletion_strategy=replication_deletion_strategy,
+            multi_vector=multi_vector,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -355,6 +365,11 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=CreateDataDefaults.verbose,
     help="Show detailed progress information (default: True).",
 )
+@click.option(
+    "--multi_vector",
+    is_flag=True,
+    help="Enable multi-vector (default: False).",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -370,6 +385,7 @@ def create_data_cli(
     uuid,
     wait_for_indexing,
     verbose,
+    multi_vector,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -405,6 +421,7 @@ def create_data_cli(
             tenant_suffix=tenant_suffix,
             wait_for_indexing=wait_for_indexing,
             verbose=verbose,
+            multi_vector=multi_vector,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

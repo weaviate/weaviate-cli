@@ -52,6 +52,8 @@ class CreateCollectionDefaults:
     vectorizer: Optional[str] = None
     vectorizer_base_url: Optional[str] = None
     replication_deletion_strategy: str = "no_automated_resolution"
+    multi_vector: bool = False
+    named_vector: Optional[str] = "default"
 
 
 @dataclass
@@ -84,6 +86,7 @@ class CreateDataDefaults:
     skip_seed: bool = False
     wait_for_indexing: bool = False
     verbose: bool = False
+    multi_vector: bool = False
 
 
 @dataclass
