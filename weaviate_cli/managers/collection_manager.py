@@ -164,7 +164,8 @@ class CollectionManager:
             "transformers": wvc.Configure.Vectorizer.text2vec_transformers(),
             "openai": wvc.Configure.Vectorizer.text2vec_openai(),
             "ollama": wvc.Configure.Vectorizer.text2vec_ollama(
-                model="snowflake-arctic-embed:33m"
+                model="snowflake-arctic-embed:33m",
+                api_endpoint="http://ollama.weaviate.svc.cluster.local:11434",
             ),
             "cohere": wvc.Configure.Vectorizer.text2vec_cohere(),
             "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(),

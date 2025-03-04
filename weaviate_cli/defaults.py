@@ -6,19 +6,26 @@ PERMISSION_HELP_STRING = (
     "Permission in format action:collection. Can be specified multiple times.\n\n"
     "Available Permissions:\n\n"
     "  Role management: manage_roles, read_roles\n\n"
-    "  Cluster management: manage_cluster, read_cluster\n\n"
+    "  Cluster management: read_cluster\n\n"
     "  Backup management: manage_backups\n\n"
-    "  Schema management: create_schema, read_schema, update_schema, delete_schema\n\n"
+    "  Collection management: create_collections, read_collections, update_collections, delete_collections\n\n"
+    "  Tenant management: create_tenants, read_tenants, update_tenants, delete_tenants\n\n"
     "  Data management: create_data, read_data, update_data, delete_data\n\n"
+    "  User management: assign_and_revoke_users, read_users\n\n"
     "  Node management: read_nodes\n\n"
     "  CRUD shorthands for collections and data:\n\n"
     "    crud_collections:collection,cud_data:collection,dur_data:*,rd_collections\n\n"
     "Examples:\n\n"
     "  --permission crud_collections:Movies\n\n"
+    "  --permission cud_tenants:Person_*\n\n"
     "  --permission rucd_data:Person_*\n\n"
+    '  --permission "assign_and_revoke_users:user-1,user-2"\n\n'
     '  --permission "create_collections:Movies,Books"\n\n'
+    '  --permission "create_tenants:Movies,Books"\n\n'
     '  --permission "manage_roles:Admin,Editor"\n\n'
+    "  --permission manage_roles:Editor:all\n\n"
     "  --permission read_nodes:verbose:Movies\n\n"
+    "  --permission read_nodes:minimal\n\n"
     "  --permission manage_backups:Movies\n\n"
     "  --permission read_cluster"
 )
@@ -38,7 +45,7 @@ class CreateCollectionDefaults:
     force_auto_schema: bool = False
     shards: int = 1
     vectorizer: Optional[str] = None
-    replication_deletion_strategy: str = "delete_on_conflict"
+    replication_deletion_strategy: str = "no_automated_resolution"
 
 
 @dataclass

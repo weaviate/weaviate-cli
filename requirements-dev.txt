@@ -1,4 +1,4 @@
-weaviate-client>=4.10.0
+weaviate-client>=4.11.0
 click==8.1.7
 twine
 pytest

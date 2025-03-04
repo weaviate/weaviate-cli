@@ -9,7 +9,7 @@ from weaviate_cli.utils import (
 from weaviate.collections import Collection
 from io import StringIO
 import sys
-from weaviate.rbac.models import Permissions
+from weaviate.rbac.models import Permissions, RoleScope
 
 
 def test_get_client_from_context(mock_click_context, mock_client):
@@ -126,6 +126,25 @@ def test_parse_permission_collections():
     )
 
 
+def test_parse_permissions_tenant():
+
+    assert parse_permission("create_tenants:Movies") == Permissions.tenants(
+        collection="Movies", create=True
+    )
+
+    assert parse_permission("read_tenants:Movies") == Permissions.tenants(
+        collection="Movies", read=True
+    )
+
+    assert parse_permission("crud_tenants:Movies,Books,Films*") == Permissions.tenants(
+        collection=["Movies", "Books", "Films*"],
+        create=True,
+        read=True,
+        update=True,
+        delete=True,
+    )
+
+
 def test_parse_permission_data():
     # Test basic data permissions
     assert parse_permission("read_data:Movies") == Permissions.data(
@@ -144,9 +163,14 @@ def test_parse_permission_data():
 
 
 def test_parse_permission_roles():
+
     # Test basic role permissions
     assert parse_permission("read_roles:custom") == Permissions.roles(
         role="custom", read=True
+    )
+
+    assert parse_permission("read_roles:custom,viewer") == Permissions.roles(
+        role=["custom", "viewer"], read=True
     )
 
     # Test multiple roles
@@ -154,10 +178,71 @@ def test_parse_permission_roles():
         role=["custom", "editor", "viewer"], read=True
     )
 
-    # Test manage roles
-    assert parse_permission("manage_roles:custom") == Permissions.roles(
-        role="custom", manage=True
+    # Test read with scope
+    assert parse_permission("read_roles:custom:all") == Permissions.roles(
+        role="custom", read=True, scope=RoleScope.ALL
     )
+
+    # Test update roles
+    assert parse_permission("update_roles:custom") == Permissions.roles(
+        role="custom", update=True
+    )
+    assert parse_permission("update_roles:*:match") == Permissions.roles(
+        role="*", update=True, scope=RoleScope.MATCH
+    )
+
+    # Test delete roles
+    assert parse_permission("delete_roles:CustomMovies:all") == Permissions.roles(
+        role="CustomMovies", delete=True, scope=RoleScope.ALL
+    )
+
+    # Test create roles
+    assert parse_permission(
+        "create_roles:admin1,admin2,admin3:match"
+    ) == Permissions.roles(
+        role=["admin1", "admin2", "admin3"], create=True, scope=RoleScope.MATCH
+    )
+
+    assert parse_permission("rucd_roles:CustomMovies:all") == Permissions.roles(
+        role="CustomMovies",
+        create=True,
+        read=True,
+        update=True,
+        delete=True,
+        scope=RoleScope.ALL,
+    )
+
+    assert parse_permission("cr_roles:admin,admin1,admin2") == Permissions.roles(
+        role=["admin", "admin1", "admin2"],
+        create=True,
+        read=True,
+        update=False,
+        delete=False,
+    )
+
+
+def test_parse_permission_users():
+    assert parse_permission("assign_and_revoke_users:admin") == Permissions.users(
+        user="admin", assign_and_revoke=True
+    )
+
+    assert parse_permission(
+        "assign_and_revoke_users:admin,admin1,admin2"
+    ) == Permissions.users(user=["admin", "admin1", "admin2"], assign_and_revoke=True)
+
+    assert parse_permission("assign_and_revoke_users") == Permissions.users(
+        user="*", assign_and_revoke=True
+    )
+
+    assert parse_permission("read_users:admin") == Permissions.users(
+        user="admin", read=True
+    )
+
+    assert parse_permission("read_users:admin,admin1,admin2") == Permissions.users(
+        user=["admin", "admin1", "admin2"], read=True
+    )
+
+    assert parse_permission("read_users") == Permissions.users(user="*", read=True)
 
 
 def test_parse_permission_backups():
@@ -174,21 +259,19 @@ def test_parse_permission_backups():
 
 def test_parse_permission_nodes():
     # Test basic node permissions
-    assert parse_permission("read_nodes:minimal:Movies") == Permissions.nodes(
-        collection="Movies", verbosity="minimal", read=True
+    assert parse_permission("read_nodes:minimal") == Permissions.Nodes.minimal(
+        read=True
     )
 
     # Test verbose node permissions
-    assert parse_permission("read_nodes:verbose:Movies") == Permissions.nodes(
-        collection="Movies", verbosity="verbose", read=True
+    assert parse_permission("read_nodes:verbose:Movies") == Permissions.Nodes.verbose(
+        collection="Movies", read=True
     )
 
     # Test multiple collections
     assert parse_permission(
         "read_nodes:verbose:Movies,Books,Films"
-    ) == Permissions.nodes(
-        collection=["Movies", "Books", "Films"], verbosity="verbose", read=True
-    )
+    ) == Permissions.Nodes.verbose(collection=["Movies", "Books", "Films"], read=True)
 
 
 def test_parse_permission_cluster():
@@ -198,7 +281,7 @@ def test_parse_permission_cluster():
 
 def test_parse_permission_invalid():
     # Test invalid action
-    with pytest.raises(ValueError, match="Invalid resource type: action"):
+    with pytest.raises(ValueError, match="Invalid permission action: invalid_action"):
         parse_permission("invalid_action:Movies")
 
     # Test invalid crud combination
@@ -216,3 +299,13 @@ def test_parse_permission_invalid():
     # Test passing too many parts
     with pytest.raises(ValueError, match="Invalid permission format"):
         parse_permission("read_nodes:minimal:Movies:custom")
+
+    # Test non existing actions
+    with pytest.raises(ValueError, match="Invalid permission action: create_cluster"):
+        parse_permission("create_cluster")
+
+    with pytest.raises(ValueError, match="Invalid permission action: read_backups"):
+        parse_permission("read_backups")
+
+    with pytest.raises(ValueError, match="Invalid permission action: update_nodes"):
+        parse_permission("update_nodes")
