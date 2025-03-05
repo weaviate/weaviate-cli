@@ -234,7 +234,9 @@ class CollectionManager:
                     ),
                 ),
                 sharding_config=(
-                    wvc.Configure.sharding(desired_count=shards) if shards > 1 else None
+                    wvc.Configure.sharding(desired_count=shards)
+                    if shards >= 1
+                    else None
                 ),
                 multi_tenancy_config=wvc.Configure.multi_tenancy(
                     enabled=multitenant,
