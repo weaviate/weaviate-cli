@@ -60,7 +60,7 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
 @click.option(
     "--tenant_suffix",
     default=DeleteTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant--').",
+    help="The suffix to add to the tenant name (default: 'Tenant-').",
 )
 @click.option(
     "--number_tenants",
@@ -111,12 +111,17 @@ def delete_tenants_cli(
     help="Consistency level (default: 'quorum').",
 )
 @click.option(
+    "--tenants",
+    default=None,
+    help="Comma separated list of tenants to delete data from.",
+)
+@click.option(
     "--uuid",
     default=DeleteDataDefaults.uuid,
     help="UUID of the oject to be deleted. If provided, --limit will be ignored.",
 )
 @click.pass_context
-def delete_data_cli(ctx, collection, limit, consistency_level, uuid):
+def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid):
     """Delete data from a collection in Weaviate."""
 
     client = None
@@ -128,6 +133,7 @@ def delete_data_cli(ctx, collection, limit, consistency_level, uuid):
             collection=collection,
             limit=limit,
             consistency_level=consistency_level,
+            tenants_list=tenants.split(",") if tenants else None,
             uuid=uuid,
         )
     except Exception as e:

@@ -1,3 +1,4 @@
+from typing import Optional
 import click
 import semver
 
@@ -20,6 +21,7 @@ class TenantManager:
         collection: str = CreateTenantsDefaults.collection,
         tenant_suffix: str = CreateTenantsDefaults.tenant_suffix,
         number_tenants: int = CreateTenantsDefaults.number_tenants,
+        tenant_batch_size: Optional[int] = CreateTenantsDefaults.tenant_batch_size,
         state: str = CreateTenantsDefaults.state,
     ) -> None:
         """
@@ -33,11 +35,10 @@ class TenantManager:
 
         Raises:
             Exception: If the collection does not exist, multi-tenancy is not enabled,
-                       tenants already exist, or if there is a mismatch in tenant activity status.
+                       or if there is a mismatch in tenant activity status.
         """
 
         if not self.client.collections.exists(collection):
-
             raise Exception(
                 f"Class '{collection}' does not exist in Weaviate. Create first using <create class>"
             )
@@ -46,7 +47,6 @@ class TenantManager:
         collection = self.client.collections.get(collection)
 
         if not collection.config.get().multi_tenancy_config.enabled:
-
             raise Exception(
                 f"Collection '{collection.name}' does not have multi-tenancy enabled. Recreate or modify the class with: <create class>"
             )
@@ -61,45 +61,94 @@ class TenantManager:
         }
 
         existing_tenants = collection.tenants.get()
+        new_tenant_names = []
+
         if existing_tenants:
-
-            raise Exception(
-                f"Tenants already exist in class '{collection.name}'. Update their status using ./update_tenants.py or delete them using <delete tenants> command"
-            )
-        else:
-            collection.tenants.create(
-                [
-                    Tenant(
-                        name=f"{tenant_suffix}{i}",
-                        activity_status=tenant_state_map[state],
+            # Check if existing tenants follow the same suffix pattern
+            existing_tenant_names = list(existing_tenants.keys())
+            for tenant_name in existing_tenant_names:
+                if tenant_name.startswith(tenant_suffix):
+                    try:
+                        # Try to extract the index part after the suffix
+                        int(tenant_name[len(tenant_suffix) :])
+                    except ValueError:
+                        raise Exception(
+                            f"Existing tenant '{tenant_name}' does not follow the expected pattern '{tenant_suffix}N' where N is a number. "
+                            f"Please use a different tenant_suffix or delete existing tenants."
+                        )
+                else:
+                    raise Exception(
+                        f"Existing tenant '{tenant_name}' does not use the provided tenant_suffix '{tenant_suffix}'. "
+                        f"Please use the same tenant_suffix as existing tenants or delete existing tenants."
                     )
-                    for i in range(number_tenants)
-                ]
-            )
 
-        # get_by_names is only available after 1.25.0
-        if version.compare(semver.Version.parse("1.25.0")) < 0:
-            tenants_list = {
-                name: tenant
-                for name, tenant in collection.tenants.get().items()
-                if name.startswith(tenant_suffix)
-            }
+            # Find the highest index among existing tenants
+            highest_index = -1
+            for tenant_name in existing_tenant_names:
+                try:
+                    index = int(tenant_name[len(tenant_suffix) :])
+                    highest_index = max(highest_index, index)
+                except ValueError:
+                    continue
+
+            # Generate new tenant names starting from the next index
+            start_index = highest_index + 1
+            new_tenant_names = [
+                f"{tenant_suffix}{i}"
+                for i in range(start_index, start_index + number_tenants)
+            ]
         else:
-            tenants_list = collection.tenants.get_by_names(
-                [f"{tenant_suffix}{i}" for i in range(number_tenants)]
-            )
-        assert (
-            len(tenants_list) == number_tenants
-        ), f"Expected {number_tenants} tenants, but found {len(tenants_list)}"
-        for tenant in tenants_list.values():
-            if tenant.activity_status != tenant_state_map[state]:
+            # No existing tenants, create tenants starting from index 0
+            new_tenant_names = [f"{tenant_suffix}{i}" for i in range(number_tenants)]
 
+        # Create the new tenants
+        tenants = [
+            Tenant(
+                name=name,
+                activity_status=tenant_state_map[state],
+            )
+            for name in new_tenant_names
+        ]
+
+        if tenants:  # Only call create if there are tenants to create
+            if tenant_batch_size:
+                for i in range(0, len(tenants), tenant_batch_size):
+                    batch = tenants[i : i + tenant_batch_size]
+                    collection.tenants.create(batch)
+            else:
+                collection.tenants.create(tenants)
+
+            # Verify the newly created tenants
+            if version.compare(semver.Version.parse("1.25.0")) < 0:
+                created_tenants = {
+                    name: tenant
+                    for name, tenant in collection.tenants.get().items()
+                    if name in new_tenant_names
+                }
+            else:
+                created_tenants = collection.tenants.get_by_names(new_tenant_names)
+
+            # Verify all requested tenants were created
+            if len(created_tenants) != len(new_tenant_names):
+                missing_tenants = set(new_tenant_names) - set(created_tenants.keys())
                 raise Exception(
-                    f"Tenant '{tenant.name}' has activity status '{tenant.activity_status}', but expected '{tenant_state_map[state]}'"
+                    f"Not all requested tenants were created. Missing: {', '.join(missing_tenants)}"
                 )
-        click.echo(
-            f"{len(tenants_list)} tenants added with tenant status '{tenant.activity_status}' for collection '{collection.name}'"
-        )
+
+            # Verify tenant activity status
+            for tenant_name, tenant in created_tenants.items():
+                if tenant.activity_status != tenant_state_map[state]:
+                    raise Exception(
+                        f"Tenant '{tenant_name}' has activity status '{tenant.activity_status}', but expected '{tenant_state_map[state]}'"
+                    )
+
+            click.echo(
+                f"{len(new_tenant_names)} tenants added with tenant status '{tenant_state_map[state]}' for collection '{collection.name}'"
+            )
+        else:
+            click.echo(
+                f"No new tenants were created for collection '{collection.name}'"
+            )
 
     def delete_tenants(
         self,
