@@ -30,6 +30,8 @@ PERMISSION_HELP_STRING = (
     "  --permission read_cluster"
 )
 
+MAX_OBJECTS_PER_BATCH = 5000
+
 
 @dataclass
 class CreateCollectionDefaults:
@@ -51,8 +53,9 @@ class CreateCollectionDefaults:
 @dataclass
 class CreateTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant--"
+    tenant_suffix: str = "Tenant-"
     number_tenants: int = 100
+    tenant_batch_size: Optional[int] = None
     state: str = "active"
 
 
@@ -97,7 +100,7 @@ class DeleteCollectionDefaults:
 @dataclass
 class DeleteTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant--"
+    tenant_suffix: str = "Tenant-"
     number_tenants: int = 100
 
 
@@ -183,7 +186,7 @@ class UpdateCollectionDefaults:
 @dataclass
 class UpdateTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant--"
+    tenant_suffix: str = "Tenant-"
     number_tenants: int = 100
     state: str = "active"
 

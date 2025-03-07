@@ -183,7 +183,7 @@ def create_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=CreateTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant--').",
+    help="The suffix to add to the tenant name (default: 'Tenant-').",
 )
 @click.option(
     "--number_tenants",
@@ -191,12 +191,20 @@ def create_collection_cli(
     help="Number of tenants to create (default: 100).",
 )
 @click.option(
+    "--tenant_batch_size",
+    default=CreateTenantsDefaults.tenant_batch_size,
+    type=int,
+    help="Number of tenants to create in each batch (default: None, all tenants will be created in one batch).",
+)
+@click.option(
     "--state",
     default=CreateTenantsDefaults.state,
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
 @click.pass_context
-def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
+def create_tenants_cli(
+    ctx, collection, tenant_suffix, number_tenants, tenant_batch_size, state
+):
     """Create tenants in Weaviate."""
 
     client = None
@@ -208,6 +216,7 @@ def create_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
+            tenant_batch_size=tenant_batch_size,
             state=state,
         )
     except Exception as e:
@@ -302,6 +311,16 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     help="Number of tenants for which we will send data. NOTE: Requires class with --auto_tenant_creation (default: 0).",
 )
 @click.option(
+    "--tenants",
+    default=None,
+    help="Comma separated list of tenants to send data to.",
+)
+@click.option(
+    "--tenant_suffix",
+    default=CreateTenantsDefaults.tenant_suffix,
+    help="The suffix to add to the tenant name (default: 'Tenant-'). Only used if --auto_tenants is provided.",
+)
+@click.option(
     "--vector_dimensions",
     default=CreateDataDefaults.vector_dimensions,
     help="Number of vector dimensions to be used when the data is randomized.",
@@ -319,6 +338,8 @@ def create_data_cli(
     consistency_level,
     randomize,
     auto_tenants,
+    tenants,
+    tenant_suffix,
     vector_dimensions,
     uuid,
 ):
@@ -349,8 +370,10 @@ def create_data_cli(
             consistency_level=consistency_level,
             randomize=randomize,
             auto_tenants=auto_tenants,
+            tenants_list=tenants.split(",") if tenants else None,
             vector_dimensions=vector_dimensions,
             uuid=uuid,
+            tenant_suffix=tenant_suffix,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

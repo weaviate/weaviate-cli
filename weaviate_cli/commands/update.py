@@ -121,7 +121,7 @@ def update_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=UpdateTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant--').",
+    help="The suffix to add to the tenant name (default: 'Tenant-').",
 )
 @click.option(
     "--number_tenants",

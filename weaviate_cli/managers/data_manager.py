@@ -10,16 +10,20 @@ from weaviate.classes.query import MetadataQuery
 from weaviate.collections.classes.tenants import TenantActivityStatus
 from typing import Dict, List, Optional, Union, Any
 import weaviate.classes.config as wvc
+from weaviate.classes.query import Filter
 from weaviate.collections import Collection
 from datetime import datetime, timedelta
 from weaviate_cli.defaults import (
+    MAX_OBJECTS_PER_BATCH,
     CreateDataDefaults,
+    CreateTenantsDefaults,
     QueryDataDefaults,
     UpdateDataDefaults,
     DeleteDataDefaults,
 )
 import importlib.resources as resources
 from pathlib import Path
+import math
 
 PROPERTY_NAME_MAPPING = {
     "releaseDate": "release_date",
@@ -203,7 +207,9 @@ class DataManager:
         limit: int = CreateDataDefaults.limit,
         consistency_level: str = CreateDataDefaults.consistency_level,
         randomize: bool = CreateDataDefaults.randomize,
+        tenant_suffix: str = CreateTenantsDefaults.tenant_suffix,
         auto_tenants: int = CreateDataDefaults.auto_tenants,
+        tenants_list: Optional[List[str]] = None,
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
         uuid: Optional[str] = None,
         named_vectors: Optional[List[str]] = None,
@@ -217,14 +223,19 @@ class DataManager:
 
         col: Collection = self.client.collections.get(collection)
         try:
-            tenants = [key for key in col.tenants.get().keys()]
+            existing_tenants = [key for key in col.tenants.get().keys()]
         except Exception as e:
             # Check if the error is due to multi-tenancy being disabled
             if "multi-tenancy is not enabled" in str(e):
-                click.echo(
-                    f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
-                )
-                tenants = ["None"]
+                if (
+                    tenants_list is not None
+                    or auto_tenants != CreateDataDefaults.auto_tenants
+                ):
+                    raise Exception(
+                        f"Collection '{col.name}' does not have multi-tenancy enabled. Adding data to tenants is not possible."
+                    )
+
+                existing_tenants = ["None"]
             else:
                 raise e
         if (
@@ -241,16 +252,23 @@ class DataManager:
             "all": wvc.ConsistencyLevel.ALL,
             "one": wvc.ConsistencyLevel.ONE,
         }
+        tenants = existing_tenants
         if auto_tenants > 0:
-            if tenants == "None":
-                tenants = [f"Tenant--{i}" for i in range(1, auto_tenants + 1)]
+            if tenants_list is not None:
+                raise Exception(
+                    f"Either --tenants or --auto_tenants must be provided, not both."
+                )
+            if existing_tenants == "None":
+                tenants = [f"{tenant_suffix}{i}" for i in range(1, auto_tenants + 1)]
             else:
-                if len(tenants) < auto_tenants:
+                if len(existing_tenants) < auto_tenants:
                     tenants += [
-                        f"Tenant--{i}"
-                        for i in range(len(tenants) + 1, auto_tenants + 1)
+                        f"{tenant_suffix}{i}"
+                        for i in range(len(existing_tenants) + 1, auto_tenants + 1)
                     ]
-
+        else:
+            if tenants_list is not None:
+                tenants = tenants_list
         for tenant in tenants:
             if tenant == "None":
                 collection = self.__ingest_data(
@@ -273,7 +291,7 @@ class DataManager:
                     uuid,
                     named_vectors,
                 )
-
+            collection.batch.wait_for_vector_indexing()
             if len(collection) != limit:
                 click.echo(
                     f"Error occurred while ingesting data for tenant '{tenant}'. Check number of objects inserted."
@@ -402,25 +420,43 @@ class DataManager:
             print(f"Object deleted: {uuid} into class '{collection.name}'")
             return 1
 
-        res = collection.query.fetch_objects(limit=num_objects)
-        if len(res.objects) == 0:
-            print(
-                f"No objects found in class '{collection.name}'. Insert objects first using <ingest data> command"
+        # Calculate the number of full batches and handle any remaining objects
+        # Use math.ceil to ensure we process all objects, even if num_objects < MAX_OBJECTS_PER_BATCH
+        iterations = math.ceil(num_objects / MAX_OBJECTS_PER_BATCH)
+        deleted_objects = 0
+
+        for _ in range(iterations):
+            # Determine how many objects to fetch in this batch
+            batch_size = min(MAX_OBJECTS_PER_BATCH, num_objects - deleted_objects)
+            if batch_size <= 0:
+                break
+
+            res = collection.query.fetch_objects(limit=batch_size)
+            if len(res.objects) == 0:
+                click.echo(
+                    f"No objects found in class '{collection.name}'. Insert objects first using <ingest data> command"
+                )
+                return deleted_objects
+
+            ids = [o.uuid for o in res.objects]
+            collection.with_consistency_level(cl).data.delete_many(
+                where=Filter.by_id().contains_any(ids)
             )
-            return -1
-        data_objects = res.objects
+            deleted_objects += len(ids)
 
-        for obj in data_objects:
-            collection.with_consistency_level(cl).data.delete_by_id(uuid=obj.uuid)
+            # If we've deleted fewer objects than expected, there might not be any more objects
+            if len(ids) < batch_size:
+                break
 
-        print(f"Deleted {num_objects} objects into class '{collection.name}'")
-        return num_objects
+        print(f"Deleted {deleted_objects} objects from class '{collection.name}'")
+        return deleted_objects
 
     def delete_data(
         self,
         collection: str = DeleteDataDefaults.collection,
         limit: int = DeleteDataDefaults.limit,
         consistency_level: str = DeleteDataDefaults.consistency_level,
+        tenants_list: Optional[List[str]] = None,
         uuid: Optional[str] = DeleteDataDefaults.uuid,
     ) -> None:
 
@@ -433,20 +469,25 @@ class DataManager:
 
         col: Collection = self.client.collections.get(collection)
         try:
-            tenants = [key for key in col.tenants.get().keys()]
+            existing_tenants = [key for key in col.tenants.get().keys()]
         except Exception as e:
             # Check if the error is due to multi-tenancy being disabled
             if "multi-tenancy is not enabled" in str(e):
                 click.echo(
                     f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
                 )
-                tenants = ["None"]
+                existing_tenants = ["None"]
 
         cl_map = {
             "quorum": wvc.ConsistencyLevel.QUORUM,
             "all": wvc.ConsistencyLevel.ALL,
             "one": wvc.ConsistencyLevel.ONE,
         }
+
+        if tenants_list is not None:
+            tenants = tenants_list
+        else:
+            tenants = existing_tenants
 
         for tenant in tenants:
             if tenant == "None":
