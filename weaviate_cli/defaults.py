@@ -77,6 +77,7 @@ class CreateDataDefaults:
     randomize: bool = False
     auto_tenants: int = 0
     vector_dimensions: int = 1536
+    wait_for_indexing: bool = False
 
 
 @dataclass

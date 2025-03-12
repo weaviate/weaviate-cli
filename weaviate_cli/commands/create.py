@@ -330,6 +330,12 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=None,
     help="UUID of the object to be used when the data is randomized. It requires --limit=1 and --randomize to be enabled.",
 )
+@click.option(
+    "--wait_for_indexing",
+    is_flag=True,
+    default=CreateDataDefaults.wait_for_indexing,
+    help="Wait for the indexing to complete before returning.",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -342,6 +348,7 @@ def create_data_cli(
     tenant_suffix,
     vector_dimensions,
     uuid,
+    wait_for_indexing,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -374,6 +381,7 @@ def create_data_cli(
             vector_dimensions=vector_dimensions,
             uuid=uuid,
             tenant_suffix=tenant_suffix,
+            wait_for_indexing=wait_for_indexing,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

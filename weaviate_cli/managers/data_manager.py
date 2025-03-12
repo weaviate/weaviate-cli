@@ -213,6 +213,7 @@ class DataManager:
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
         uuid: Optional[str] = None,
         named_vectors: Optional[List[str]] = None,
+        wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -291,7 +292,8 @@ class DataManager:
                     uuid,
                     named_vectors,
                 )
-            collection.batch.wait_for_vector_indexing()
+            if wait_for_indexing:
+                collection.batch.wait_for_vector_indexing()
             if len(collection) != limit:
                 click.echo(
                     f"Error occurred while ingesting data for tenant '{tenant}'. Check number of objects inserted."
