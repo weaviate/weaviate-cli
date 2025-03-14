@@ -346,6 +346,12 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     default=CreateDataDefaults.wait_for_indexing,
     help="Wait for the indexing to complete before returning.",
 )
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=CreateDataDefaults.verbose,
+    help="Show detailed progress information (default: True).",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -359,6 +365,7 @@ def create_data_cli(
     vector_dimensions,
     uuid,
     wait_for_indexing,
+    verbose,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -392,6 +399,7 @@ def create_data_cli(
             uuid=uuid,
             tenant_suffix=tenant_suffix,
             wait_for_indexing=wait_for_indexing,
+            verbose=verbose,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

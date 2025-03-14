@@ -231,8 +231,14 @@ def update_shards_cli(
     help="Consistency level (default: 'quorum').",
 )
 @click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=UpdateDataDefaults.verbose,
+    help="Show detailed progress information (default: True).",
+)
 @click.pass_context
-def update_data_cli(ctx, collection, limit, consistency_level, randomize):
+def update_data_cli(ctx, collection, limit, consistency_level, randomize, verbose):
     """Update data in a collection in Weaviate."""
 
     client = None
@@ -245,6 +251,7 @@ def update_data_cli(ctx, collection, limit, consistency_level, randomize):
             limit=limit,
             consistency_level=consistency_level,
             randomize=randomize,
+            verbose=verbose,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

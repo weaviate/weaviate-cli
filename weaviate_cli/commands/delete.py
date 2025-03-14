@@ -121,8 +121,14 @@ def delete_tenants_cli(
     default=DeleteDataDefaults.uuid,
     help="UUID of the oject to be deleted. If provided, --limit will be ignored.",
 )
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=DeleteDataDefaults.verbose,
+    help="Show detailed progress information (default: False).",
+)
 @click.pass_context
-def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid):
+def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid, verbose):
     """Delete data from a collection in Weaviate."""
 
     client = None
@@ -136,6 +142,7 @@ def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid):
             consistency_level=consistency_level,
             tenants_list=tenants.split(",") if tenants else None,
             uuid=uuid,
+            verbose=verbose,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
