@@ -1,9 +1,11 @@
 import sys
 import click
+import json
 from typing import Optional, Union
 
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.tenant_manager import TenantManager
+from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
@@ -13,6 +15,7 @@ from weaviate_cli.defaults import UpdateCollectionDefaults
 from weaviate_cli.defaults import UpdateTenantsDefaults
 from weaviate_cli.defaults import UpdateShardsDefaults
 from weaviate_cli.defaults import UpdateDataDefaults
+from weaviate_cli.defaults import UpdateUserDefaults
 
 
 # Update Group
@@ -243,6 +246,109 @@ def update_data_cli(ctx, collection, limit, consistency_level, randomize):
             consistency_level=consistency_level,
             randomize=randomize,
         )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@update.command("user")
+@click.option(
+    "--user_name",
+    default=UpdateUserDefaults.user_name,
+    help="The name of the user to update.",
+)
+@click.option(
+    "--rotate_api_key",
+    is_flag=True,
+    default=UpdateUserDefaults.rotate_api_key,
+    help="Rotate the api key for the user.",
+)
+@click.option(
+    "--activate",
+    is_flag=True,
+    default=UpdateUserDefaults.activate,
+    help="Activate the user.",
+)
+@click.option(
+    "--deactivate",
+    is_flag=True,
+    default=UpdateUserDefaults.deactivate,
+    help="Deactivate the user.",
+)
+@click.option(
+    "--store",
+    is_flag=True,
+    help="Store the rotated API key in the config file. Only works when auth type is 'user' and --rotate_api_key is used.",
+)
+@click.pass_context
+def update_user_cli(
+    ctx: click.Context,
+    user_name: str,
+    rotate_api_key: bool,
+    activate: bool,
+    deactivate: bool,
+    store: bool,
+) -> None:
+    """Update a user in Weaviate."""
+
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        user_man = UserManager(client)
+        api_key = user_man.update_user(
+            user_name=user_name,
+            rotate_api_key=rotate_api_key,
+            activate=activate,
+            deactivate=deactivate,
+        )
+
+        # If rotate_api_key is True and store is True, store the new API key
+        if rotate_api_key and store and api_key:
+            config_manager = ctx.obj.get("config")
+            if not config_manager:
+                click.echo(
+                    "Error: --store option requires a config manager in the context."
+                )
+                return
+
+            # Get the config file path from the ConfigManager
+            config_path = config_manager.config_path
+
+            # Read the current config directly from the file to ensure we have the latest
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+
+            # Check if auth type is "user"
+            if "auth" not in config or config["auth"].get("type") != "user":
+                click.echo(
+                    "Error: Cannot store API key. Config file must have auth type 'user'."
+                )
+                return
+
+            # Add or update the user's API key
+            config["auth"][user_name] = api_key
+
+            # Write back to config file
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+
+            click.echo(
+                f"API key for user '{user_name}' has been rotated and stored in config file at {config_path}"
+            )
+        elif rotate_api_key and api_key:
+            click.echo(
+                f"API key for user '{user_name}' rotated successfully: \n{api_key}"
+            )
+        elif activate:
+            click.echo(f"User '{user_name}' activated successfully.")
+        elif deactivate:
+            click.echo(f"User '{user_name}' deactivated successfully.")
+
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
