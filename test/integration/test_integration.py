@@ -6,6 +6,7 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.config_manager import ConfigManager
 from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate_cli.managers.data_manager import DataManager
+from weaviate_cli.managers.user_manager import UserManager
 import weaviate.classes.config as wvc
 
 
@@ -32,6 +33,11 @@ def shard_manager(client: weaviate.Client) -> ShardManager:
 @pytest.fixture
 def data_manager(client: weaviate.Client) -> DataManager:
     return DataManager(client)
+
+
+@pytest.fixture
+def user_manager(client: weaviate.Client) -> UserManager:
+    return UserManager(client)
 
 
 def test_collection_lifecycle(collection_manager: CollectionManager):
@@ -131,6 +137,37 @@ def test_shard_operations(
     finally:
         # Clean up
         collection_manager.delete_collection(collection="Movies")
+
+
+def test_user_lifecycle(user_manager: UserManager):
+    try:
+        # Create user
+        api_key = user_manager.create_user(user_name="test_user")
+        assert user_manager.client.users.db.exists(user_id="test_user")
+        assert api_key is not None
+
+        # Update user
+        new_api_key = user_manager.update_user(
+            user_name="test_user", rotate_api_key=True
+        )
+        assert new_api_key is not None
+        assert new_api_key != api_key
+
+        # Deactivate user
+        user_manager.update_user(user_name="test_user", deactivate=True)
+        assert not user_manager.client.users.db.exists(user_id="test_user")
+
+        # Activate user
+        user_manager.update_user(user_name="test_user", activate=True)
+        assert user_manager.client.users.db.exists(user_id="test_user")
+
+        # Print user
+        user_manager.print_user(user_name="test_user")
+
+    finally:
+        # Delete user
+        user_manager.delete_user(user_name="test_user")
+        assert not user_manager.client.users.db.exists(user_id="test_user")
 
 
 def test_error_handling(collection_manager: CollectionManager):

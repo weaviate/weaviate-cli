@@ -67,7 +67,7 @@ def pp_objects(response, main_properties):
 def parse_permission(perm: str) -> PermissionsCreateType:
     """
     Convert a permission string to RBAC permission object(s).
-    Format: action:[collection/role/verbosity]
+    Format: action:[collection/user/role/verbosity]
 
     Supports:
     - CRUD shorthand: crud_collections:Movies
@@ -78,7 +78,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
     - Collections permissions: create_collections, read_collections, update_collections, delete_collections
     - Tenants permissions: create_tenants, read_tenants, update_tenants, delete_tenants
     - Data permissions: create_data, read_data, update_data, delete_data
-    - Users permissions: read_users,assign_and_revoke_users
+    - Users permissions: create_users, read_users, update_users, delete_users, assign_and_revoke_users
     - Nodes permissions: read_nodes
     Args:
         perm (str): Permission string
@@ -96,7 +96,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
         "backups",
         "nodes",
     ]
-    crud_resources = ["collections", "data", "tenants", "roles"]
+    crud_resources = ["collections", "data", "tenants", "roles", "users"]
     parts = perm.split(":")
     # Only read_nodes  and *_roles can have 3 parts: read_nodes:verbosity:collection, read_roles:role:scope
     if len(parts) > 3 or (
@@ -104,17 +104,13 @@ def parse_permission(perm: str) -> PermissionsCreateType:
         and len(parts) > 2
     ):
         raise ValueError(
-            f"Invalid permission format: {perm}. Expected format: action:collection/role/verbosity:scope. Example: create_roles:custom:all, crud_collections:Movies, read_nodes:verbose:Movies"
+            f"Invalid permission format: {perm}. Expected format: action:collection/role/user/verbosity:scope. Example: create_roles:custom:all, crud_collections:Movies, create_users:admin-user, read_nodes:verbose:Movies"
         )
     action = parts[0]
     role = parts[1] if len(parts) > 1 and "roles" in action else "*"
     role_scope = parts[2] if len(parts) > 2 and "roles" in action else None
     #
-    user = (
-        parts[1].split(",")
-        if len(parts) > 1 and action in ["assign_and_revoke_users", "read_users"]
-        else "*"
-    )
+    user = parts[1].split(",") if len(parts) > 1 and "users" in action else "*"
 
     verbosity = "minimal"
     if action == "read_nodes":
@@ -143,7 +139,6 @@ def parse_permission(perm: str) -> PermissionsCreateType:
         "manage_backups",
         "read_nodes",
         "assign_and_revoke_users",
-        "read_users",
     ]:
         return _create_permission(
             action=(
@@ -192,6 +187,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
                 collection=collection,
                 role=role,
                 role_scope=role_scope,
+                user=user,
             )
 
     raise ValueError(f"Invalid permission action: {action}")
@@ -227,8 +223,11 @@ def _create_permission(
     elif resource == "users":
         return Permissions.users(
             user=user,
-            assign_and_revoke=("assign_and_revoke" in action),
+            create=("create" in action),
             read=("read" in action),
+            update=("update" in action),
+            delete=("delete" in action),
+            assign_and_revoke=("assign_and_revoke" in action),
         )
     # Handle roles permissions
     elif resource == "roles":

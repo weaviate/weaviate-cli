@@ -50,7 +50,7 @@ jobs:
   integration-tests:
     needs: [unit-tests]
     env:
-      WEAVIATE_VERSION: "1.27.0"
+      WEAVIATE_VERSION: "1.30.0-dev-1ff2349-arm64"
       MODULES: "text2vec-transformers,text2vec-contextionary"
     name: Run Integration Tests
     runs-on: ubuntu-latest

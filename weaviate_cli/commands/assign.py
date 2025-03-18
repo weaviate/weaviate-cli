@@ -27,14 +27,24 @@ def assign() -> None:
     required=True,
     help="The user to add the role to.",
 )
+@click.option(
+    "--user_type",
+    type=click.Choice(["db", "oidc"]),
+    default="db",
+    help="The type of user to add the role to.",
+)
 @click.pass_context
-def assign_role_cli(ctx: click.Context, role_name: tuple[str], user_name: str) -> None:
+def assign_role_cli(
+    ctx: click.Context, role_name: tuple[str], user_name: str, user_type: str
+) -> None:
     """Assigns a role to a user."""
     client = None
     try:
         client = get_client_from_context(ctx)
         user_manager = UserManager(client)
-        user_manager.add_role(role_name=role_name, user_name=user_name)
+        user_manager.add_role(
+            role_name=role_name, user_name=user_name, user_type=user_type
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
