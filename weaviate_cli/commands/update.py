@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.tenant_manager import TenantManager
+from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
@@ -13,6 +14,7 @@ from weaviate_cli.defaults import UpdateCollectionDefaults
 from weaviate_cli.defaults import UpdateTenantsDefaults
 from weaviate_cli.defaults import UpdateShardsDefaults
 from weaviate_cli.defaults import UpdateDataDefaults
+from weaviate_cli.defaults import UpdateUserDefaults
 
 
 # Update Group
@@ -242,6 +244,60 @@ def update_data_cli(ctx, collection, limit, consistency_level, randomize):
             limit=limit,
             consistency_level=consistency_level,
             randomize=randomize,
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@update.command("user")
+@click.option(
+    "--user_name",
+    default=UpdateUserDefaults.user_name,
+    help="The name of the user to update.",
+)
+@click.option(
+    "--rotate_api_key",
+    is_flag=True,
+    default=UpdateUserDefaults.rotate_api_key,
+    help="Rotate the api key for the user.",
+)
+@click.option(
+    "--activate",
+    is_flag=True,
+    default=UpdateUserDefaults.activate,
+    help="Activate the user.",
+)
+@click.option(
+    "--deactivate",
+    is_flag=True,
+    default=UpdateUserDefaults.deactivate,
+    help="Deactivate the user.",
+)
+@click.pass_context
+def update_user_cli(
+    ctx: click.Context,
+    user_name: str,
+    rotate_api_key: bool,
+    activate: bool,
+    deactivate: bool,
+) -> None:
+    """Update a user in Weaviate."""
+
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        user_man = UserManager(client)
+        user_man.update_user(
+            user_name=user_name,
+            rotate_api_key=rotate_api_key,
+            activate=activate,
+            deactivate=deactivate,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

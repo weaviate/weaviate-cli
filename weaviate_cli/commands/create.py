@@ -12,6 +12,7 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate_cli.managers.role_manager import RoleManager
+from weaviate_cli.managers.user_manager import UserManager
 from weaviate.exceptions import WeaviateConnectionError
 from weaviate_cli.defaults import (
     CreateBackupDefaults,
@@ -416,6 +417,33 @@ def create_role_cli(ctx: click.Context, role_name: str, permission: tuple[str]) 
         role_man = RoleManager(client)
         role_man.create_role(role_name=role_name, permissions=permission)
         click.echo(f"Role '{role_name}' created successfully in Weaviate.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("user")
+@click.option(
+    "--user_name",
+    default=None,
+    help="The name of the user to create.",
+)
+@click.pass_context
+def create_user_cli(ctx: click.Context, user_name: str) -> None:
+    """Create a user in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        user_man = UserManager(client)
+        api_key = user_man.create_user(user_name=user_name)
+        click.echo(
+            f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
