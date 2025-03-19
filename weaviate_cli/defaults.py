@@ -29,7 +29,7 @@ PERMISSION_HELP_STRING = (
     "  --permission manage_backups:Movies\n\n"
     "  --permission read_cluster"
 )
-
+QUERY_MAXIMUM_RESULTS = 10000
 MAX_OBJECTS_PER_BATCH = 5000
 
 
@@ -78,6 +78,7 @@ class CreateDataDefaults:
     auto_tenants: int = 0
     vector_dimensions: int = 1536
     wait_for_indexing: bool = False
+    verbose: bool = False
 
 
 @dataclass
@@ -111,6 +112,7 @@ class DeleteDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     uuid: Optional[str] = None
+    verbose: bool = False
 
 
 @dataclass
@@ -206,6 +208,7 @@ class UpdateDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     randomize: bool = False
+    verbose: bool = False
 
 
 @dataclass
