@@ -80,6 +80,7 @@ The configuration file should be a JSON file with the following structure:
     "host": "your-weaviate-host",
     "http_port": "your-http-port",
     "grpc_port": "your-grpc-port",
+    "grpc_host": "your-grpc-host",
     "auth": {
         "type": "api_key",
         "api_key": "your-api-key"

@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import click
 import json
 import os
@@ -75,6 +77,14 @@ class ConfigManager:
         else:
             return "localhost"  # Default fallback (Linux or unreachable)
 
+    def __get_port(self, url_parsed):
+        if url_parsed.port:
+            return url_parsed.port
+        if url_parsed.scheme == "https":
+            return 443
+        else:
+            return 80
+
     def get_client(self) -> weaviate.WeaviateClient:
         """Get weaviate client from config"""
         auth_config: Optional[weaviate.auth.AuthCredentials] = None
@@ -107,9 +117,22 @@ class ConfigManager:
                 auth_credentials=auth_config,
                 headers=self.config["headers"] if "headers" in self.config else None,
             )
-        else:
+        elif self.config["host"].endswith("weaviate.cloud"):
             return weaviate.connect_to_wcs(
                 cluster_url=self.config["host"],
+                auth_credentials=auth_config,
+                headers=self.config["headers"] if "headers" in self.config else None,
+            )
+        else:
+            host_parsed = urlparse(self.config["host"])
+            grpc_parsed = urlparse(self.config["grpc_host"])
+            return weaviate.connect_to_custom(
+                http_host=host_parsed.hostname,
+                grpc_host=grpc_parsed.hostname,
+                grpc_secure=grpc_parsed.scheme == "https",
+                http_secure=host_parsed.scheme == "https",
+                http_port=self.__get_port(host_parsed),
+                grpc_port=self.__get_port(grpc_parsed),
                 auth_credentials=auth_config,
                 headers=self.config["headers"] if "headers" in self.config else None,
             )
