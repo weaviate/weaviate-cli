@@ -27,14 +27,24 @@ def revoke() -> None:
     required=True,
     help="The user to revoke the role from.",
 )
+@click.option(
+    "--user_type",
+    type=click.Choice(["db", "oidc"]),
+    default="db",
+    help="The type of user to revoke the role from.",
+)
 @click.pass_context
-def revoke_role_cli(ctx: click.Context, role_name: tuple[str], user_name: str) -> None:
+def revoke_role_cli(
+    ctx: click.Context, role_name: tuple[str], user_name: str, user_type: str
+) -> None:
     """Revoke a role from a user."""
     client = None
     try:
         client = get_client_from_context(ctx)
         user_manager = UserManager(client)
-        user_manager.revoke_role(role_name=role_name, user_name=user_name)
+        user_manager.revoke_role(
+            role_name=role_name, user_name=user_name, user_type=user_type
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

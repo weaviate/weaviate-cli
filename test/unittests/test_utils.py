@@ -222,8 +222,24 @@ def test_parse_permission_roles():
 
 
 def test_parse_permission_users():
+    assert parse_permission("create_users:admin") == Permissions.users(
+        user="admin", create=True
+    )
+
+    assert parse_permission("crud_users:admin") == Permissions.users(
+        user="admin", create=True, read=True, update=True, delete=True
+    )
+
     assert parse_permission("assign_and_revoke_users:admin") == Permissions.users(
         user="admin", assign_and_revoke=True
+    )
+
+    assert parse_permission("cr_users:admin1,admin2,viewer1") == Permissions.users(
+        user=["admin1", "admin2", "viewer1"],
+        create=True,
+        read=True,
+        update=False,
+        delete=False,
     )
 
     assert parse_permission(
