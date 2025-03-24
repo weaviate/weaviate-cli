@@ -316,6 +316,9 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 )
 @click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
 @click.option(
+    "--skip-seed", is_flag=True, help="Skip seeding the random data (default: False)."
+)
+@click.option(
     "--auto_tenants",
     default=CreateDataDefaults.auto_tenants,
     help="Number of tenants for which we will send data. NOTE: Requires class with --auto_tenant_creation (default: 0).",
@@ -359,6 +362,7 @@ def create_data_cli(
     limit,
     consistency_level,
     randomize,
+    skip_seed,
     auto_tenants,
     tenants,
     tenant_suffix,
@@ -393,6 +397,7 @@ def create_data_cli(
             limit=limit,
             consistency_level=consistency_level,
             randomize=randomize,
+            skip_seed=skip_seed,
             auto_tenants=auto_tenants,
             tenants_list=tenants.split(",") if tenants else None,
             vector_dimensions=vector_dimensions,

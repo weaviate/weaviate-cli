@@ -78,6 +78,7 @@ class CreateDataDefaults:
     randomize: bool = False
     auto_tenants: int = 0
     vector_dimensions: int = 1536
+    skip_seed: bool = False
     wait_for_indexing: bool = False
     verbose: bool = False
 
@@ -211,6 +212,7 @@ class UpdateDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     randomize: bool = False
+    skip_seed: bool = False
     verbose: bool = False
 
 

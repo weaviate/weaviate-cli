@@ -232,13 +232,18 @@ def update_shards_cli(
 )
 @click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
 @click.option(
+    "--skip-seed", is_flag=True, help="Skip seeding the random data (default: False)."
+)
+@click.option(
     "--verbose",
     is_flag=True,
     default=UpdateDataDefaults.verbose,
     help="Show detailed progress information (default: True).",
 )
 @click.pass_context
-def update_data_cli(ctx, collection, limit, consistency_level, randomize, verbose):
+def update_data_cli(
+    ctx, collection, limit, consistency_level, randomize, skip_seed, verbose
+):
     """Update data in a collection in Weaviate."""
 
     client = None
@@ -251,6 +256,7 @@ def update_data_cli(ctx, collection, limit, consistency_level, randomize, verbos
             limit=limit,
             consistency_level=consistency_level,
             randomize=randomize,
+            skip_seed=skip_seed,
             verbose=verbose,
         )
     except Exception as e:

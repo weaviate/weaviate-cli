@@ -30,6 +30,7 @@ import multiprocessing
 from functools import partial
 import concurrent.futures
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 PROPERTY_NAME_MAPPING = {
     "releaseDate": "release_date",
@@ -213,9 +214,9 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
 
 def generate_chunk(args) -> List[Dict]:
     """Generate a chunk of movie objects - standalone function for multiprocessing"""
-    chunk_size, chunk_id, is_update = args
+    chunk_size, chunk_id, is_update, skip_seed = args
     # Use different seeds for each worker to ensure                                                  unique random data
-    base_seed = 42 + chunk_id * 1000
+    base_seed = 42 + chunk_id * 1000 if not skip_seed else None
     return [generate_movie_object(is_update, base_seed + i) for i in range(chunk_size)]
 
 
@@ -296,7 +297,11 @@ class DataManager:
         return generate_movie_object(is_update)
 
     def __generate_data_object(
-        self, limit: int, is_update: bool = False, verbose: bool = False
+        self,
+        limit: int,
+        skip_seed: bool,
+        is_update: bool = False,
+        verbose: bool = False,
     ) -> Union[List[Dict], Dict]:
         """Generate data objects, using parallel processing for large batches"""
 
@@ -317,7 +322,9 @@ class DataManager:
 
         # Prepare arguments for worker processes
         task_args = [
-            (size, i, is_update) for i, size in enumerate(chunk_sizes) if size > 0
+            (size, i, is_update, skip_seed)
+            for i, size in enumerate(chunk_sizes)
+            if size > 0
         ]
 
         # Use multiprocessing Pool to avoid pickling issues with ProcessPoolExecutor
@@ -346,12 +353,74 @@ class DataManager:
 
         return results
 
+    def __ingest_batch(
+        self,
+        batch_objects: List[Dict],
+        collection: Collection,
+        vectorizer: str,
+        vector_dimensions: int,
+        named_vectors: Optional[List[str]],
+        uuid: Optional[str],
+        batch_index: int = 0,
+        verbose: bool = False,
+    ) -> Tuple[int, List]:
+        """Process a single batch of objects for ingestion"""
+        counter = 0
+        failed_objects = []
+        batch_size = len(batch_objects)
+
+        if verbose:
+            print(f"Starting batch {batch_index+1} with {batch_size} objects")
+
+        log_interval = max(1, batch_size // 5)  # Log 5 times per batch
+        start_time = time.time()
+
+        with collection.batch.dynamic() as batch:
+            for i, obj in enumerate(batch_objects):
+                if vectorizer == "none":
+                    # Generate vector(s) for the object
+                    if named_vectors is None:
+                        vector = (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                    else:
+                        vector = {
+                            name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                            for name in named_vectors
+                        }
+                    batch.add_object(properties=obj, uuid=uuid, vector=vector)
+                else:
+                    # Let the vectorizer generate the vector
+                    batch.add_object(properties=obj, uuid=uuid)
+                counter += 1
+
+                # Log progress periodically
+                if verbose and (i + 1) % log_interval == 0:
+                    progress = (i + 1) / batch_size * 100
+                    elapsed = time.time() - start_time
+                    rate = (i + 1) / elapsed if elapsed > 0 else 0
+                    print(
+                        f"Batch {batch_index+1}: {progress:.1f}% ({i+1}/{batch_size}) at {rate:.1f} objects/second"
+                    )
+
+            # Collect failed objects
+            if collection.batch.failed_objects:
+                failed_objects.extend(batch.failed_objects)
+
+        if verbose:
+            total_elapsed = time.time() - start_time
+            rate = batch_size / total_elapsed if total_elapsed > 0 else 0
+            print(
+                f"Completed batch {batch_index+1}: {counter} objects in {total_elapsed:.2f}s ({rate:.1f} objects/second)"
+            )
+
+        return counter, failed_objects
+
     def __ingest_data(
         self,
         collection: Collection,
         num_objects: int,
         cl: wvc.ConsistencyLevel,
         randomize: bool,
+        skip_seed: bool,
         vector_dimensions: Optional[int] = 1536,
         uuid: Optional[str] = None,
         named_vectors: Optional[List[str]] = None,
@@ -365,41 +434,71 @@ class DataManager:
             vectorizer = collection.config.get().vectorizer
 
             # Generate all the data objects
-            data_objects = self.__generate_data_object(num_objects, verbose=verbose)
+            data_objects = self.__generate_data_object(
+                num_objects, skip_seed, verbose=verbose
+            )
             if verbose:
                 print(f"Data generation complete. Beginning ingestion...")
 
-            # Use batch insertion with progress tracking
+            # Use parallel batch insertion with progress tracking
             counter = 0
             cl_collection = collection.with_consistency_level(cl)
 
-            with cl_collection.batch.dynamic() as batch:
-                for obj in data_objects:
-                    if vectorizer == "none":
-                        # Generate vector(s) for the object
-                        if named_vectors is None:
-                            vector = (
-                                2 * np.random.rand(vector_dimensions) - 1
-                            ).tolist()
-                        else:
-                            vector = {
-                                name: (
-                                    2 * np.random.rand(vector_dimensions) - 1
-                                ).tolist()
-                                for name in named_vectors
-                            }
-                        batch.add_object(properties=obj, uuid=uuid, vector=vector)
-                    else:
-                        # Let the vectorizer generate the vector
-                        batch.add_object(properties=obj, uuid=uuid)
-                    counter += 1
+            # Split data into batches for parallel processing
+            num_workers = min(MAX_WORKERS, 16)  # Limit workers for network connections
+            batch_size = max(1, len(data_objects) // num_workers)
+            batches = [
+                data_objects[i : i + batch_size]
+                for i in range(0, len(data_objects), batch_size)
+            ]
 
-                # Handle any failed objects
-                if cl_collection.batch.failed_objects:
-                    for failed_object in cl_collection.batch.failed_objects:
-                        print(
-                            f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
+            if verbose:
+                print(
+                    f"Processing {len(data_objects)} objects in {len(batches)} batches using {num_workers} workers"
+                )
+
+            all_failed_objects = []
+            completed_jobs = 0
+
+            # Process batches in parallel
+            with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                futures = []
+                for i, batch in enumerate(batches):
+                    futures.append(
+                        executor.submit(
+                            self.__ingest_batch,
+                            batch,
+                            cl_collection,
+                            vectorizer,
+                            vector_dimensions,
+                            named_vectors,
+                            uuid,
+                            i,
+                            verbose,
                         )
+                    )
+
+                # Process results as they complete
+                for future in concurrent.futures.as_completed(futures):
+                    batch_count, batch_failed = future.result()
+                    counter += batch_count
+                    all_failed_objects.extend(batch_failed)
+
+                    completed_jobs += 1
+                    if verbose:
+                        progress = completed_jobs / len(batches) * 100
+                        elapsed = time.time() - start_time
+                        rate = counter / elapsed if elapsed > 0 else 0
+                        print(
+                            f"Overall progress: {progress:.1f}% ({completed_jobs}/{len(batches)} batches, {counter}/{num_objects} objects) at {rate:.1f} objects/second"
+                        )
+
+            # Handle any failed objects
+            if all_failed_objects:
+                for failed_object in all_failed_objects:
+                    print(
+                        f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
+                    )
 
             total_elapsed = time.time() - start_time
             print(
@@ -427,6 +526,7 @@ class DataManager:
         limit: int = CreateDataDefaults.limit,
         consistency_level: str = CreateDataDefaults.consistency_level,
         randomize: bool = CreateDataDefaults.randomize,
+        skip_seed: bool = CreateDataDefaults.skip_seed,
         tenant_suffix: str = CreateTenantsDefaults.tenant_suffix,
         auto_tenants: int = CreateDataDefaults.auto_tenants,
         tenants_list: Optional[List[str]] = None,
@@ -501,6 +601,7 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
+                    skip_seed,
                     vector_dimensions,
                     uuid,
                     named_vectors,
@@ -515,6 +616,7 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
+                    skip_seed,
                     vector_dimensions,
                     uuid,
                     named_vectors,
@@ -535,12 +637,14 @@ class DataManager:
         num_objects: int,
         cl: wvc.ConsistencyLevel,
         randomize: bool,
+        skip_seed: bool,
         verbose: bool = False,
     ) -> int:
         """Update objects in the collection, either with random data or incremental changes."""
 
-        # Set a seed for reproducible random sampling
-        random.seed(42)
+        if not skip_seed:
+            # Set a seed for reproducible random sampling
+            random.seed(42)
 
         start_time = time.time()
         cl_collection = collection.with_consistency_level(cl)
@@ -563,7 +667,6 @@ class DataManager:
         random_offset = None
         if use_random_offsets:
             # Set a consistent seed for reproducibility
-            random.seed(42)
             # Calculate the maximum safe starting offset
             # the client has problem with large offsets, so we limit it to 100000
             max_start_offset = (
@@ -741,6 +844,7 @@ class DataManager:
         limit: int = UpdateDataDefaults.limit,
         consistency_level: str = UpdateDataDefaults.consistency_level,
         randomize: bool = UpdateDataDefaults.randomize,
+        skip_seed: bool = UpdateDataDefaults.skip_seed,
         verbose: bool = UpdateDataDefaults.verbose,
     ) -> None:
 
@@ -775,6 +879,7 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
+                    skip_seed,
                     verbose,
                 )
             else:
@@ -784,6 +889,7 @@ class DataManager:
                     limit,
                     cl_map[consistency_level],
                     randomize,
+                    skip_seed,
                     verbose,
                 )
             if ret == -1:
