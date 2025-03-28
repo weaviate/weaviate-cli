@@ -29,7 +29,7 @@ PERMISSION_HELP_STRING = (
     "  --permission manage_backups:Movies\n\n"
     "  --permission read_cluster"
 )
-
+QUERY_MAXIMUM_RESULTS = 10000
 MAX_OBJECTS_PER_BATCH = 5000
 
 
@@ -53,7 +53,7 @@ class CreateCollectionDefaults:
 @dataclass
 class CreateTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant-"
+    tenant_suffix: str = "Tenant"
     number_tenants: int = 100
     tenant_batch_size: Optional[int] = None
     state: str = "active"
@@ -77,7 +77,9 @@ class CreateDataDefaults:
     randomize: bool = False
     auto_tenants: int = 0
     vector_dimensions: int = 1536
+    skip_seed: bool = False
     wait_for_indexing: bool = False
+    verbose: bool = False
 
 
 @dataclass
@@ -101,8 +103,9 @@ class DeleteCollectionDefaults:
 @dataclass
 class DeleteTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant-"
+    tenant_suffix: str = "Tenant"
     number_tenants: int = 100
+    tenants: Optional[list] = None
 
 
 @dataclass
@@ -111,6 +114,7 @@ class DeleteDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     uuid: Optional[str] = None
+    verbose: bool = False
 
 
 @dataclass
@@ -161,6 +165,7 @@ class QueryDataDefaults:
     consistency_level: str = "quorum"
     limit: int = 10
     properties: str = "title,keywords"
+    tenants: Optional[str] = None
 
 
 @dataclass
@@ -187,9 +192,10 @@ class UpdateCollectionDefaults:
 @dataclass
 class UpdateTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant-"
+    tenant_suffix: str = "Tenant"
     number_tenants: int = 100
     state: str = "active"
+    tenants: Optional[str] = None
 
 
 @dataclass
@@ -206,6 +212,8 @@ class UpdateDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     randomize: bool = False
+    skip_seed: bool = False
+    verbose: bool = False
 
 
 @dataclass

@@ -70,10 +70,10 @@ class TenantManager:
                 if tenant_name.startswith(tenant_suffix):
                     try:
                         # Try to extract the index part after the suffix
-                        int(tenant_name[len(tenant_suffix) :])
+                        int(tenant_name[len(f"{tenant_suffix}-") :])
                     except ValueError:
                         raise Exception(
-                            f"Existing tenant '{tenant_name}' does not follow the expected pattern '{tenant_suffix}N' where N is a number. "
+                            f"Existing tenant '{tenant_name}' does not follow the expected pattern '{tenant_suffix}-N' where N is a number. "
                             f"Please use a different tenant_suffix or delete existing tenants."
                         )
                 else:
@@ -86,7 +86,7 @@ class TenantManager:
             highest_index = -1
             for tenant_name in existing_tenant_names:
                 try:
-                    index = int(tenant_name[len(tenant_suffix) :])
+                    index = int(tenant_name[len(f"{tenant_suffix}-") :])
                     highest_index = max(highest_index, index)
                 except ValueError:
                     continue
@@ -94,12 +94,12 @@ class TenantManager:
             # Generate new tenant names starting from the next index
             start_index = highest_index + 1
             new_tenant_names = [
-                f"{tenant_suffix}{i}"
+                f"{tenant_suffix}-{i}"
                 for i in range(start_index, start_index + number_tenants)
             ]
         else:
             # No existing tenants, create tenants starting from index 0
-            new_tenant_names = [f"{tenant_suffix}{i}" for i in range(number_tenants)]
+            new_tenant_names = [f"{tenant_suffix}-{i}" for i in range(number_tenants)]
 
         # Create the new tenants
         tenants = [
@@ -155,6 +155,7 @@ class TenantManager:
         collection: str = DeleteTenantsDefaults.collection,
         tenant_suffix: str = DeleteTenantsDefaults.tenant_suffix,
         number_tenants: int = DeleteTenantsDefaults.number_tenants,
+        tenants_list: Optional[list] = DeleteTenantsDefaults.tenants,
     ) -> None:
         """
         Delete tenants for a given collection in Weaviate.
@@ -163,7 +164,7 @@ class TenantManager:
             collection (str): The name of the collection to delete tenants from.
             tenant_suffix (str): The suffix of the tenant names to be deleted.
             number_tenants (int): The number of tenants to delete.
-
+            tenants_list (list): A list of tenant names to delete. If not provided, all tenants with the given suffix will be deleted.
         Raises:
             Exception: If the collection does not exist, multi-tenancy is not enabled,
                        no tenants are present, or if there is a failure in deleting tenants.
@@ -183,52 +184,50 @@ class TenantManager:
             raise Exception(
                 f"Collection '{collection.name}' does not have multi-tenancy enabled. Recreate or modify the class with <create class> command"
             )
-
-        total_tenants = len(collection.tenants.get())
+        if tenants_list is not None:
+            # Extract the tenant suffix from the first tenant name in the list
+            tenant_suffix = tenants_list[0].split("-")[0]
+        tenants_list_with_suffix = {
+            name: tenant
+            for name, tenant in collection.tenants.get().items()
+            if name.startswith(tenant_suffix)
+        }
+        total_tenants = len(tenants_list_with_suffix)
         try:
             if total_tenants == 0:
 
                 raise Exception(f"No tenants present in class {collection.name}.")
-            # get_by_names is only available after 1.25.0
-            if version.compare(semver.Version.parse("1.25.0")) < 0:
-                tenants_list = {
-                    name: tenant
-                    for name, tenant in collection.tenants.get().items()
-                    if name.startswith(tenant_suffix)
-                }
-                deleting_tenants = {
-                    name: tenant
-                    for name, tenant in tenants_list.items()
-                    if int(name[len(tenant_suffix) :]) < number_tenants
-                }
+            if tenants_list:
+                deleting_tenants = collection.tenants.get_by_names(tenants_list)
             else:
-                deleting_tenants = collection.tenants.get_by_names(
-                    [
-                        f"{tenant_suffix}{i}"
-                        for i in range(
-                            number_tenants
-                            if number_tenants < total_tenants
-                            else total_tenants
-                        )
-                    ]
-                )
+
+                if number_tenants < total_tenants:
+                    deleting_tenants = tenants_list_with_suffix[:number_tenants]
+                else:
+                    deleting_tenants = tenants_list_with_suffix
+
             if not deleting_tenants:
 
                 raise Exception(f"No tenants present in class {collection.name}.")
             else:
-                for name, tenant in deleting_tenants.items():
-                    collection.tenants.remove(Tenant(name=name))
+                for tenant in deleting_tenants.values():
+                    collection.tenants.remove(tenant)
 
         except Exception as e:
 
             raise Exception(f"Failed to delete tenants: {e}")
 
-        tenants_list = collection.tenants.get()
+        remaining_tenants = {
+            name: tenant
+            for name, tenant in collection.tenants.get().items()
+            if name.startswith(tenant_suffix)
+        }
+        removed_tenants = len(deleting_tenants)
         assert (
-            len(tenants_list) == total_tenants - number_tenants
-        ), f"Expected {total_tenants - number_tenants} tenants, but found {len(tenants_list)}"
+            len(remaining_tenants) == total_tenants - removed_tenants
+        ), f"Expected {total_tenants - removed_tenants} tenants, but found {len(remaining_tenants)}"
 
-        click.echo(f"{number_tenants} tenants deleted")
+        click.echo(f"{len(deleting_tenants)} tenants deleted")
 
     def get_tenants(
         self,
@@ -294,6 +293,7 @@ class TenantManager:
         tenant_suffix: str = UpdateTenantsDefaults.tenant_suffix,
         number_tenants: int = UpdateTenantsDefaults.number_tenants,
         state: str = UpdateTenantsDefaults.state,
+        tenants: Optional[str] = UpdateTenantsDefaults.tenants,
     ) -> None:
         """
         Updates the activity status of a specified number of tenants in a collection.
@@ -348,19 +348,23 @@ class TenantManager:
             "offloaded": TenantActivityStatus.OFFLOADED,
         }
 
-        tenants_with_suffix = {
-            name: tenant
-            for name, tenant in collection.tenants.get().items()
-            if name.startswith(tenant_suffix)
-        }
+        if tenants is None:
+            tenants_with_suffix = {
+                name: tenant
+                for name, tenant in collection.tenants.get().items()
+                if name.startswith(tenant_suffix)
+            }
 
-        if len(tenants_with_suffix) < number_tenants:
+        if tenants is None and len(tenants_with_suffix) < number_tenants:
 
             raise Exception(
                 f"Not enough tenants present in class {collection.name} with suffix {tenant_suffix}. Expected {number_tenants}, found {len(tenants_with_suffix)}."
             )
-
-        existing_tenants = dict(list(tenants_with_suffix.items())[:number_tenants])
+        if tenants:
+            # Update only the specified tenants passed via arguments.
+            existing_tenants = collection.tenants.get_by_names(tenants.split(","))
+        else:
+            existing_tenants = dict(list(tenants_with_suffix.items())[:number_tenants])
 
         for name, tenant in existing_tenants.items():
             collection.tenants.update(
@@ -380,10 +384,14 @@ class TenantManager:
             tenants_list = collection.tenants.get_by_names(
                 [name for name in existing_tenants.keys()]
             )
-
-        assert (
-            len(tenants_list) == number_tenants
-        ), f"Expected {number_tenants} tenants, but found {len(tenants_list)}"
+        if tenants is None:
+            assert (
+                len(tenants_list) == number_tenants
+            ), f"Expected {number_tenants} tenants, but found {len(tenants_list)}"
+        else:
+            assert len(tenants_list) == len(
+                tenants.split(",")
+            ), f"Expected {len(tenants.split(','))} tenants, but found {len(tenants_list)}"
         for tenant in tenants_list.values():
             if tenant.activity_status != equivalent_state_map[state]:
 
