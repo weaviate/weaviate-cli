@@ -22,6 +22,7 @@ def test_ingest_data(mock_client):
         collection="TestCollection",
         limit=100,
         randomize=True,
+        auto_tenants=10,
     )
 
     mock_client.collections.get.assert_called_once_with("TestCollection")

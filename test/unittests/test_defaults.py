@@ -92,7 +92,7 @@ def test_create_tenants_defaults(runner):
     mock_collection.tenants.get.return_value = empty_tenants
 
     mock_tenants = {
-        f"{CreateTenantsDefaults.tenant_suffix}{i}": MagicMock(
+        f"{CreateTenantsDefaults.tenant_suffix}-{i}": MagicMock(
             activity_status=TenantActivityStatus.ACTIVE
         )
         for i in range(CreateTenantsDefaults.number_tenants)
@@ -134,7 +134,19 @@ def test_create_data_defaults(runner):
     # Create mock context with config
     ctx = click.Context(create_data_cli)
     ctx.obj = {"config": MagicMock()}
-    ctx.obj["config"].get_client = MagicMock()
+    mock_client = MagicMock()
+    mock_client.collections.exists.return_value = True
+
+    # Mock collection object
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+
+    # Mock multi-tenancy config
+    mock_config = MagicMock()
+    mock_config.multi_tenancy_config.enabled = False
+    mock_collection.config.get.return_value = mock_config
+
+    ctx.obj["config"].get_client.return_value = mock_client
 
     result = runner.invoke(create_data_cli, obj=ctx.obj)
     assert result.exit_code == 0, result.output
@@ -179,7 +191,7 @@ def test_delete_tenants_defaults(runner):
 
     # Mock tenants with side effect to return different values on subsequent calls
     mock_tenants = {
-        f"{DeleteTenantsDefaults.tenant_suffix}{i}": MagicMock()
+        f"{DeleteTenantsDefaults.tenant_suffix}-{i}": MagicMock()
         for i in range(1, DeleteTenantsDefaults.number_tenants + 1)
     }
     empty_tenants = {}
@@ -365,7 +377,7 @@ def test_update_tenants_defaults(runner):
 
     # Mock tenants with side effect to return different values on subsequent calls
     mock_tenants = {
-        f"{UpdateTenantsDefaults.tenant_suffix}{i}": MagicMock(
+        f"{UpdateTenantsDefaults.tenant_suffix}-{i}": MagicMock(
             activity_status=TenantActivityStatus.ACTIVE
         )
         for i in range(UpdateTenantsDefaults.number_tenants)
@@ -373,7 +385,7 @@ def test_update_tenants_defaults(runner):
     mock_collection.tenants.get.return_value = mock_tenants
 
     updated_tenants = {
-        f"{UpdateTenantsDefaults.tenant_suffix}{i}": MagicMock(
+        f"{UpdateTenantsDefaults.tenant_suffix}-{i}": MagicMock(
             activity_status=TenantActivityStatus.ACTIVE
         )
         for i in range(UpdateTenantsDefaults.number_tenants)

@@ -136,8 +136,13 @@ def update_collection_cli(
     default=UpdateTenantsDefaults.state,
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
+@click.option(
+    "--tenants",
+    default=UpdateTenantsDefaults.tenants,
+    help="Comma separated list of tenants to update. Ex: 'Tenant-1,Tenant-2,Tenant-3,Tenant-4'",
+)
 @click.pass_context
-def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
+def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state, tenants):
     """Update tenants in Weaviate."""
 
     client = None
@@ -149,6 +154,7 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             state=state,
+            tenants=tenants,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

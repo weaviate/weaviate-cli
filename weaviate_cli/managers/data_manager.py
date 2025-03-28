@@ -217,7 +217,10 @@ def generate_chunk(args) -> List[Dict]:
     chunk_size, chunk_id, is_update, skip_seed = args
     # Use different seeds for each worker to ensure                                                  unique random data
     base_seed = 42 + chunk_id * 1000 if not skip_seed else None
-    return [generate_movie_object(is_update, base_seed + i) for i in range(chunk_size)]
+    return [
+        generate_movie_object(is_update, base_seed + i if base_seed else None)
+        for i in range(chunk_size)
+    ]
 
 
 class DataManager:
@@ -440,65 +443,107 @@ class DataManager:
             if verbose:
                 print(f"Data generation complete. Beginning ingestion...")
 
-            # Use parallel batch insertion with progress tracking
-            counter = 0
+            # Get collection with consistency level
             cl_collection = collection.with_consistency_level(cl)
 
-            # Split data into batches for parallel processing
-            num_workers = min(MAX_WORKERS, 16)  # Limit workers for network connections
-            batch_size = max(1, len(data_objects) // num_workers)
-            batches = [
-                data_objects[i : i + batch_size]
-                for i in range(0, len(data_objects), batch_size)
-            ]
+            # Determine if parallel processing makes sense based on dataset size
+            MIN_OBJECTS_FOR_PARALLEL = (
+                1000  # Only use parallel for datasets >= this size
+            )
+            MIN_BATCH_SIZE = 100  # Minimum batch size for each worker
 
-            if verbose:
-                print(
-                    f"Processing {len(data_objects)} objects in {len(batches)} batches using {num_workers} workers"
+            # For small datasets, use a single batch
+            if num_objects < MIN_OBJECTS_FOR_PARALLEL:
+                if verbose:
+                    print(
+                        f"Processing {num_objects} objects in a single batch (small dataset)"
+                    )
+
+                counter, failed_objects = self.__ingest_batch(
+                    data_objects,
+                    cl_collection,
+                    vectorizer,
+                    vector_dimensions,
+                    named_vectors,
+                    uuid,
+                    0,
+                    verbose,
                 )
 
-            all_failed_objects = []
-            completed_jobs = 0
-
-            # Process batches in parallel
-            with ThreadPoolExecutor(max_workers=num_workers) as executor:
-                futures = []
-                for i, batch in enumerate(batches):
-                    futures.append(
-                        executor.submit(
-                            self.__ingest_batch,
-                            batch,
-                            cl_collection,
-                            vectorizer,
-                            vector_dimensions,
-                            named_vectors,
-                            uuid,
-                            i,
-                            verbose,
-                        )
-                    )
-
-                # Process results as they complete
-                for future in concurrent.futures.as_completed(futures):
-                    batch_count, batch_failed = future.result()
-                    counter += batch_count
-                    all_failed_objects.extend(batch_failed)
-
-                    completed_jobs += 1
-                    if verbose:
-                        progress = completed_jobs / len(batches) * 100
-                        elapsed = time.time() - start_time
-                        rate = counter / elapsed if elapsed > 0 else 0
+                # Handle any failed objects
+                if failed_objects:
+                    for failed_object in failed_objects:
                         print(
-                            f"Overall progress: {progress:.1f}% ({completed_jobs}/{len(batches)} batches, {counter}/{num_objects} objects) at {rate:.1f} objects/second"
+                            f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
+                        )
+            else:
+                # Use parallel batch insertion with progress tracking for larger datasets
+                counter = 0
+
+                # Calculate optimal number of workers based on dataset size
+                # Ensure each batch is at least MIN_BATCH_SIZE
+                max_possible_workers = max(1, num_objects // MIN_BATCH_SIZE)
+                num_workers = min(
+                    MAX_WORKERS, max_possible_workers, 16
+                )  # Cap at 16 for network connections
+
+                # Calculate batch size to ensure each worker gets a reasonable amount of work
+                batch_size = max(MIN_BATCH_SIZE, num_objects // num_workers)
+
+                # Create batches
+                batches = [
+                    data_objects[i : i + batch_size]
+                    for i in range(0, len(data_objects), batch_size)
+                ]
+
+                if verbose:
+                    print(
+                        f"Processing {len(data_objects)} objects in {len(batches)} batches using {num_workers} workers"
+                        f" (batch size: {batch_size})"
+                    )
+
+                all_failed_objects = []
+                completed_jobs = 0
+
+                # Process batches in parallel
+                with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                    futures = []
+                    for i, batch in enumerate(batches):
+                        futures.append(
+                            executor.submit(
+                                self.__ingest_batch,
+                                batch,
+                                cl_collection,
+                                vectorizer,
+                                vector_dimensions,
+                                named_vectors,
+                                uuid,
+                                i,
+                                verbose,
+                            )
                         )
 
-            # Handle any failed objects
-            if all_failed_objects:
-                for failed_object in all_failed_objects:
-                    print(
-                        f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
-                    )
+                    # Process results as they complete
+                    for future in concurrent.futures.as_completed(futures):
+                        batch_count, batch_failed = future.result()
+                        counter += batch_count
+                        all_failed_objects.extend(batch_failed)
+
+                        completed_jobs += 1
+                        if verbose:
+                            progress = completed_jobs / len(batches) * 100
+                            elapsed = time.time() - start_time
+                            rate = counter / elapsed if elapsed > 0 else 0
+                            print(
+                                f"Overall progress: {progress:.1f}% ({completed_jobs}/{len(batches)} batches, {counter}/{num_objects} objects) at {rate:.1f} objects/second"
+                            )
+
+                # Handle any failed objects
+                if all_failed_objects:
+                    for failed_object in all_failed_objects:
+                        print(
+                            f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
+                        )
 
             total_elapsed = time.time() - start_time
             print(
@@ -544,26 +589,39 @@ class DataManager:
             )
 
         col: Collection = self.client.collections.get(collection)
-        try:
-            existing_tenants = [key for key in col.tenants.get().keys()]
-        except Exception as e:
-            # Check if the error is due to multi-tenancy being disabled
-            if "multi-tenancy is not enabled" in str(e):
-                if (
-                    tenants_list is not None
-                    or auto_tenants != CreateDataDefaults.auto_tenants
-                ):
-                    raise Exception(
-                        f"Collection '{col.name}' does not have multi-tenancy enabled. Adding data to tenants is not possible."
-                    )
+        mt_enabled = col.config.get().multi_tenancy_config.enabled
 
-                existing_tenants = ["None"]
-            else:
-                raise e
-        if (
-            auto_tenants > 0
-            and col.config.get().multi_tenancy_config.auto_tenant_creation is False
-        ):
+        if mt_enabled:
+            existing_tenants = [
+                name
+                for name in col.tenants.get().keys()
+                if name.startswith(tenant_suffix)
+            ]
+            if (
+                auto_tenants == CreateDataDefaults.auto_tenants
+                and len(existing_tenants) == 0
+            ):
+                raise Exception(
+                    f"No tenants present in class '{col.name}' with suffix '{tenant_suffix}'. Please create tenants using <create tenants> command"
+                )
+        else:
+            if (
+                tenants_list is not None
+                or auto_tenants != CreateDataDefaults.auto_tenants
+            ):
+                raise Exception(
+                    f"Collection '{col.name}' does not have multi-tenancy enabled. Adding data to tenants is not possible."
+                )
+
+            existing_tenants = ["None"]
+
+        auto_tenants_activated_enabled = (
+            col.config.get().multi_tenancy_config.auto_tenant_activation
+        )
+        auto_tenants_enabled = (
+            col.config.get().multi_tenancy_config.auto_tenant_creation
+        )
+        if auto_tenants > 0 and auto_tenants_enabled is False:
 
             raise Exception(
                 f"Auto tenant creation is not enabled for class '{col.name}'. Please enable it using <update class> command"
@@ -581,11 +639,11 @@ class DataManager:
                     f"Either --tenants or --auto_tenants must be provided, not both."
                 )
             if existing_tenants == "None":
-                tenants = [f"{tenant_suffix}{i}" for i in range(1, auto_tenants + 1)]
+                tenants = [f"{tenant_suffix}-{i}" for i in range(1, auto_tenants + 1)]
             else:
                 if len(existing_tenants) < auto_tenants:
                     tenants += [
-                        f"{tenant_suffix}{i}"
+                        f"{tenant_suffix}-{i}"
                         for i in range(len(existing_tenants) + 1, auto_tenants + 1)
                     ]
         else:
@@ -595,7 +653,7 @@ class DataManager:
         click.echo(f"Preparing to insert {limit} objects into class '{col.name}'")
         for tenant in tenants:
             if tenant == "None":
-                initial_lenght = len(col)
+                initial_length = len(col)
                 collection = self.__ingest_data(
                     col,
                     limit,
@@ -609,7 +667,23 @@ class DataManager:
                 )
                 after_length = len(col)
             else:
-                initial_lenght = len(col.with_tenant(tenant))
+                if not auto_tenants_enabled and not col.tenants.exists(tenant):
+                    raise Exception(
+                        f"Tenant '{tenant}' does not exist. Please create it using <create tenants> command"
+                    )
+                if (
+                    not auto_tenants_activated_enabled
+                    and col.tenants.exists(tenant)
+                    and col.tenants.get_by_name(tenant).activity_status
+                    != TenantActivityStatus.ACTIVE
+                ):
+                    raise Exception(
+                        f"Tenant '{tenant}' is not active. Please activate it using <update tenants> command"
+                    )
+                if auto_tenants_enabled and not col.tenants.exists(tenant):
+                    initial_length = 0
+                else:
+                    initial_length = len(col.with_tenant(tenant))
                 click.echo(f"Processing objects for tenant '{tenant}'")
                 collection = self.__ingest_data(
                     col.with_tenant(tenant),
@@ -625,9 +699,9 @@ class DataManager:
                 after_length = len(col.with_tenant(tenant))
             if wait_for_indexing:
                 collection.batch.wait_for_vector_indexing()
-            if after_length - initial_lenght != limit:
+            if after_length - initial_length != limit:
                 click.echo(
-                    f"Error occurred while ingesting data for tenant '{tenant}'. Expected number of objects inserted: {limit}. Actual number of objects inserted: {after_length - initial_lenght}. Double check with weaviate-cli get collection"
+                    f"Error occurred while ingesting data for tenant '{tenant}'. Expected number of objects inserted: {limit}. Actual number of objects inserted: {after_length - initial_length}. Double check with weaviate-cli get collection"
                 )
         return collection
 
@@ -996,15 +1070,11 @@ class DataManager:
             return 1
 
         col: Collection = self.client.collections.get(collection)
-        try:
+        mt_enabled = col.config.get().multi_tenancy_config.enabled
+        if mt_enabled:
             existing_tenants = [key for key in col.tenants.get().keys()]
-        except Exception as e:
-            # Check if the error is due to multi-tenancy being disabled
-            if "multi-tenancy is not enabled" in str(e):
-                click.echo(
-                    f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
-                )
-                existing_tenants = ["None"]
+        else:
+            existing_tenants = ["None"]
 
         cl_map = {
             "quorum": wvc.ConsistencyLevel.QUORUM,
@@ -1110,6 +1180,7 @@ class DataManager:
         consistency_level: str = QueryDataDefaults.consistency_level,
         limit: int = QueryDataDefaults.limit,
         properties: str = QueryDataDefaults.properties,
+        tenants: Optional[str] = QueryDataDefaults.tenants,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -1119,19 +1190,27 @@ class DataManager:
             )
 
         col: Collection = self.client.collections.get(collection)
-        try:
-            tenants = [
-                key
-                for key, tenant in col.tenants.get().items()
-                if tenant.activity_status == TenantActivityStatus.ACTIVE
-            ]
-        except Exception as e:
-            # Check if the error is due to multi-tenancy being disabled
-            if "multi-tenancy is not enabled" in str(e):
-                click.echo(
-                    f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
+        mt_enabled = col.config.get().multi_tenancy_config.enabled
+        if mt_enabled:
+            if tenants is not None:
+                tenants_with_status = col.tenants.get_by_names(tenants.split(","))
+                existing_tenants = [
+                    tenant
+                    for tenant, status in tenants_with_status.items()
+                    if status.activity_status == TenantActivityStatus.ACTIVE
+                ]
+            else:
+                existing_tenants = [
+                    key
+                    for key, tenant in col.tenants.get().items()
+                    if tenant.activity_status == TenantActivityStatus.ACTIVE
+                ]
+        else:
+            if tenants is not None:
+                raise Exception(
+                    f"Collection '{col.name}' does not have multi-tenancy enabled. Querying tenants is not possible."
                 )
-                tenants = ["None"]
+            existing_tenants = ["None"]
 
         cl_map = {
             "quorum": wvc.ConsistencyLevel.QUORUM,
@@ -1139,7 +1218,7 @@ class DataManager:
             "one": wvc.ConsistencyLevel.ONE,
         }
 
-        for tenant in tenants:
+        for tenant in existing_tenants:
             if tenant == "None":
                 ret = self.__query_data(
                     col,

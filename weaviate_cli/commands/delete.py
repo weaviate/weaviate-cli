@@ -68,9 +68,18 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
     default=DeleteTenantsDefaults.number_tenants,
     help="Number of tenants to delete (default: 100).",
 )
+@click.option(
+    "--tenants",
+    default=DeleteTenantsDefaults.tenants,
+    help="Comma separated list of tenants to delete. Example: --tenants 'Tenant-1,Tenant-2'",
+)
 @click.pass_context
 def delete_tenants_cli(
-    ctx: click.Context, collection: str, tenant_suffix: str, number_tenants: int
+    ctx: click.Context,
+    collection: str,
+    tenant_suffix: str,
+    number_tenants: int,
+    tenants: str,
 ) -> None:
     """Delete tenants from a collection in Weaviate."""
 
@@ -82,6 +91,7 @@ def delete_tenants_cli(
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
+            tenants_list=tenants.split(",") if tenants else None,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -169,6 +179,7 @@ def delete_role_cli(ctx, role_name):
         client = get_client_from_context(ctx)
         role_manager = RoleManager(client)
         role_manager.delete_role(role_name=role_name)
+        click.echo(f"Role '{role_name}' deleted successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -194,6 +205,7 @@ def delete_user_cli(ctx, user_name):
         client = get_client_from_context(ctx)
         user_manager = UserManager(client)
         user_manager.delete_user(user_name=user_name)
+        click.echo(f"User '{user_name}' deleted successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
