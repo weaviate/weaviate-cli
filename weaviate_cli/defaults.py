@@ -53,7 +53,7 @@ class CreateCollectionDefaults:
 @dataclass
 class CreateTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant-"
+    tenant_suffix: str = "Tenant"
     number_tenants: int = 100
     tenant_batch_size: Optional[int] = None
     state: str = "active"
@@ -103,8 +103,9 @@ class DeleteCollectionDefaults:
 @dataclass
 class DeleteTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant-"
+    tenant_suffix: str = "Tenant"
     number_tenants: int = 100
+    tenants: Optional[list] = None
 
 
 @dataclass
@@ -164,6 +165,7 @@ class QueryDataDefaults:
     consistency_level: str = "quorum"
     limit: int = 10
     properties: str = "title,keywords"
+    tenants: Optional[str] = None
 
 
 @dataclass
@@ -190,9 +192,10 @@ class UpdateCollectionDefaults:
 @dataclass
 class UpdateTenantsDefaults:
     collection: str = "Movies"
-    tenant_suffix: str = "Tenant-"
+    tenant_suffix: str = "Tenant"
     number_tenants: int = 100
     state: str = "active"
+    tenants: Optional[str] = None
 
 
 @dataclass

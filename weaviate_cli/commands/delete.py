@@ -67,9 +67,18 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
     default=DeleteTenantsDefaults.number_tenants,
     help="Number of tenants to delete (default: 100).",
 )
+@click.option(
+    "--tenants",
+    default=DeleteTenantsDefaults.tenants,
+    help="Comma separated list of tenants to delete. Example: --tenants 'Tenant-1,Tenant-2'",
+)
 @click.pass_context
 def delete_tenants_cli(
-    ctx: click.Context, collection: str, tenant_suffix: str, number_tenants: int
+    ctx: click.Context,
+    collection: str,
+    tenant_suffix: str,
+    number_tenants: int,
+    tenants: str,
 ) -> None:
     """Delete tenants from a collection in Weaviate."""
 
@@ -81,6 +90,7 @@ def delete_tenants_cli(
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
+            tenants_list=tenants.split(",") if tenants else None,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
