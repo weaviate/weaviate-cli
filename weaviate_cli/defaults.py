@@ -47,6 +47,7 @@ class CreateCollectionDefaults:
     force_auto_schema: bool = False
     shards: int = 0
     vectorizer: Optional[str] = None
+    vectorizer_base_url: Optional[str] = None
     replication_deletion_strategy: str = "no_automated_resolution"
 
 

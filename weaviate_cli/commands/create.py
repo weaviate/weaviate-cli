@@ -113,9 +113,15 @@ def create() -> None:
             "cohere",
             "jinaai",
             "weaviate",
+            "weaviate-1.5",
         ]
     ),
     help="Vectorizer to use.",
+)
+@click.option(
+    "--vectorizer_base_url",
+    default=CreateCollectionDefaults.vectorizer_base_url,
+    help="Base URL for the vectorizer.",
 )
 @click.option(
     "--replication_deletion_strategy",
@@ -140,6 +146,7 @@ def create_collection_cli(
     force_auto_schema: bool,
     shards: int,
     vectorizer: Optional[str],
+    vectorizer_base_url: Optional[str],
     replication_deletion_strategy: str,
 ) -> None:
     """Create a collection in Weaviate."""
@@ -162,6 +169,7 @@ def create_collection_cli(
             force_auto_schema=force_auto_schema,
             shards=shards,
             vectorizer=vectorizer,
+            vectorizer_base_url=vectorizer_base_url,
             replication_deletion_strategy=replication_deletion_strategy,
         )
     except Exception as e:

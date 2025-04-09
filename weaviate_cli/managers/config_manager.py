@@ -84,9 +84,7 @@ class ConfigManager:
                 if not self.user:
                     raise Exception("User must be specified when auth type is 'user'")
                 if self.user not in self.config["auth"]:
-                    raise Exception(
-                        f"User '{self.user}' not found in config file. Available users: {', '.join(self.config['auth'].keys())}"
-                    )
+                    raise Exception(f"User '{self.user}' not found in config file")
                 auth_config = weaviate.auth.AuthApiKey(
                     api_key=self.config["auth"][self.user]
                 )
