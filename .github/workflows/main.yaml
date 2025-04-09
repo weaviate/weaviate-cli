@@ -47,10 +47,21 @@ jobs:
         name: test-results-${{ matrix.version }}
         path: test-report-${{ matrix.version }}.html
 
-  integration-tests:
+  get-latest-weaviate-version:
+    runs-on: ubuntu-latest
     needs: [unit-tests]
+    name: Get latest Weaviate version
+    outputs:
+      LATEST_WEAVIATE_VERSION: ${{ steps.latest-version.outputs.latest_weaviate_version }}
+    steps:
+      - name: Retrieve latest Weaviate version
+        id: latest-version
+        uses: weaviate/github-common-actions/.github/actions/get-latest-weaviate-version@main
+
+  integration-tests:
+    needs: [unit-tests, get-latest-weaviate-version]
     env:
-      WEAVIATE_VERSION: "1.27.0"
+      WEAVIATE_VERSION: ${{ needs.get-latest-weaviate-version.outputs.LATEST_WEAVIATE_VERSION }}
       MODULES: "text2vec-transformers,text2vec-contextionary"
     name: Run Integration Tests
     runs-on: ubuntu-latest
@@ -71,7 +82,51 @@ jobs:
         weaviate-version: ${{ env.WEAVIATE_VERSION }}
         modules: ${{ env.MODULES }}
         enable-backup: true
+        dynamic-users: true
     - name: Run integration tests with pytest
       run: |
         pip install pytest-html
-        pytest test/integration/ --html=test-report-${{ matrix.version }}.html --self-contained-html
+        pytest test/integration/test_integration.py --html=test-report-${{ matrix.version }}.html --self-contained-html
+  integration-auth-tests:
+    needs: [unit-tests, get-latest-weaviate-version]
+    env:
+      WEAVIATE_VERSION: ${{ needs.get-latest-weaviate-version.outputs.LATEST_WEAVIATE_VERSION }}
+      MODULES: "text2vec-transformers,text2vec-contextionary"
+    name: Run Integration Tests Auth
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.version }}
+    - run: pip install -e .
+    - name: Start up Weaviate cluster
+      uses: weaviate/weaviate-local-k8s@v2
+      with:
+        workers: 1
+        replicas: 1
+        weaviate-version: ${{ env.WEAVIATE_VERSION }}
+        modules: ${{ env.MODULES }}
+        enable-backup: true
+        rbac: true
+        dynamic-users: true
+    - name: Create config directory
+      run: mkdir -p ~/.config/weaviate
+    - name: Create config file
+      run: |
+        echo '{
+          "host": "localhost",
+          "http_port": "8080",
+          "grpc_port": "50051",
+          "auth": {
+              "type": "api_key",
+              "api_key": "admin-key"
+          }
+        }' > ~/.config/weaviate/config.json
+    - name: Run integration auth tests with pytest
+      run: |
+        pip install pytest-html
+        pytest test/integration/test_auth_integration.py --html=test-auth-report-${{ matrix.version }}.html --self-contained-html

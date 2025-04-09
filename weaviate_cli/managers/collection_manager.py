@@ -109,6 +109,9 @@ class CollectionManager:
         force_auto_schema: bool = CreateCollectionDefaults.force_auto_schema,
         shards: int = CreateCollectionDefaults.shards,
         vectorizer: Optional[str] = CreateCollectionDefaults.vectorizer,
+        vectorizer_base_url: Optional[
+            str
+        ] = CreateCollectionDefaults.vectorizer_base_url,
         replication_deletion_strategy: Optional[
             str
         ] = CreateCollectionDefaults.replication_deletion_strategy,
@@ -162,14 +165,26 @@ class CollectionManager:
         vectorizer_map: Dict[str, wvc.VectorizerConfig] = {
             "contextionary": wvc.Configure.Vectorizer.text2vec_contextionary(),
             "transformers": wvc.Configure.Vectorizer.text2vec_transformers(),
-            "openai": wvc.Configure.Vectorizer.text2vec_openai(),
+            "openai": wvc.Configure.Vectorizer.text2vec_openai(
+                base_url=vectorizer_base_url if vectorizer_base_url else None
+            ),
             "ollama": wvc.Configure.Vectorizer.text2vec_ollama(
                 model="snowflake-arctic-embed:33m",
                 api_endpoint="http://ollama.weaviate.svc.cluster.local:11434",
             ),
-            "cohere": wvc.Configure.Vectorizer.text2vec_cohere(),
-            "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(),
-            "weaviate": wvc.Configure.Vectorizer.text2vec_weaviate(),
+            "cohere": wvc.Configure.Vectorizer.text2vec_cohere(
+                base_url=vectorizer_base_url if vectorizer_base_url else None
+            ),
+            "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(
+                base_url=vectorizer_base_url if vectorizer_base_url else None
+            ),
+            "weaviate": wvc.Configure.Vectorizer.text2vec_weaviate(
+                base_url=vectorizer_base_url if vectorizer_base_url else None
+            ),
+            "weaviate-1.5": wvc.Configure.Vectorizer.text2vec_weaviate(
+                base_url=vectorizer_base_url if vectorizer_base_url else None,
+                model="Snowflake/snowflake-arctic-embed-m-v1.5",
+            ),
         }
 
         inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {

@@ -1,8 +1,8 @@
 from typing import Optional, List, Dict
 import json
-from weaviate_cli.utils import parse_permission
+from weaviate_cli.utils import older_than_version, parse_permission
 from weaviate import WeaviateClient
-from weaviate.rbac.models import Role
+from weaviate.rbac.models import Role, RoleBase
 from weaviate_cli.defaults import (
     CreateRoleDefaults,
     DeleteRoleDefaults,
@@ -39,11 +39,24 @@ class RoleManager:
         except Exception as e:
             raise Exception(f"Error getting role '{role_name}': {e}")
 
-    def get_roles_from_user(self, user_name: str) -> Dict[str, Role]:
+    def get_roles_from_user(
+        self, user_name: str, user_type: str = GetRoleDefaults.user_type
+    ) -> Dict[str, RoleBase]:
         try:
-            return self.client.users.get_assigned_roles(user_id=user_name)
+            if older_than_version(self.client, "1.30.0"):
+                return self.client.users.get_assigned_roles(user_id=user_name)
+            if user_type == "db":
+                return self.client.users.db.get_assigned_roles(
+                    user_id=user_name, include_permissions=False
+                )
+            elif user_type == "oidc":
+                return self.client.users.oidc.get_assigned_roles(
+                    user_id=user_name, include_permissions=False
+                )
         except Exception as e:
-            raise Exception(f"Error getting roles from user '{user_name}': {e}")
+            raise Exception(
+                f"Error getting roles from {user_type} user '{user_name}': {e}"
+            )
 
     def delete_role(self, role_name: str = DeleteRoleDefaults.role_name) -> None:
         try:

@@ -47,6 +47,7 @@ class CreateCollectionDefaults:
     force_auto_schema: bool = False
     shards: int = 0
     vectorizer: Optional[str] = None
+    vectorizer_base_url: Optional[str] = None
     replication_deletion_strategy: str = "no_automated_resolution"
 
 
@@ -139,6 +140,7 @@ class GetShardsDefaults:
 class GetRoleDefaults:
     role_name: Optional[str] = None
     user_name: Optional[str] = None
+    user_type: Optional[str] = "db"
 
 
 @dataclass
@@ -151,6 +153,7 @@ class GetBackupDefaults:
 @dataclass
 class GetUserDefaults:
     role_name: Optional[str] = None
+    user_name: Optional[str] = None
 
 
 @dataclass
@@ -206,6 +209,14 @@ class UpdateDataDefaults:
     limit: int = 100
     consistency_level: str = "quorum"
     randomize: bool = False
+
+
+@dataclass
+class UpdateUserDefaults:
+    user_name: Optional[str] = None
+    rotate_api_key: bool = False
+    activate: bool = False
+    deactivate: bool = False
 
 
 @dataclass

@@ -174,12 +174,18 @@ def get_backup_cli(ctx, backend, backup_id, restore):
     help="The user to get the roles of.",
 )
 @click.option(
+    "--user_type",
+    type=click.Choice(["db", "oidc"]),
+    default=GetRoleDefaults.user_type,
+    help="The type of user to get the roles of. If the user was created via OIDC, use 'oidc'.",
+)
+@click.option(
     "--all",
     is_flag=True,
     help="Get all roles in Weaviate.",
 )
 @click.pass_context
-def get_role_cli(ctx, role_name, user_name, all):
+def get_role_cli(ctx, role_name, user_name, user_type, all):
     """Get a specific role or all roles in Weaviate. If no arguments are provided, get the roles of the current user. If --role_name is provided, get the specific role. If --user_name is provided, get the roles of the specific user."""
 
     client = None
@@ -205,11 +211,18 @@ def get_role_cli(ctx, role_name, user_name, all):
             if role_name:
                 roles.append(role_man.get_role(role_name=role_name))
             elif user_name:
-                roles = role_man.get_roles_from_user(user_name=user_name).values()
+                roles_names_from_user = role_man.get_roles_from_user(
+                    user_name=user_name, user_type=user_type
+                ).keys()
+                for role_name in roles_names_from_user:
+                    roles.append(role_man.get_role(role_name=role_name))
             else:
                 roles = role_man.role_of_current_user().values()
-        for role in roles:
-            role_man.print_role(role)
+        if len(roles) == 0:
+            click.echo("No roles found.")
+        else:
+            for role in roles:
+                role_man.print_role(role)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -222,29 +235,54 @@ def get_role_cli(ctx, role_name, user_name, all):
 
 @get.command("user")
 @click.option(
+    "--user_name",
+    default=GetUserDefaults.user_name,
+    help="The name of the user to get.",
+)
+@click.option(
     "--role_name",
     default=GetUserDefaults.role_name,
     help="The name of the role to get the users assigned to.",
 )
+@click.option(
+    "--all",
+    is_flag=True,
+    help="Get all users in Weaviate.",
+)
 @click.pass_context
-def get_user_cli(ctx, role_name: Optional[str]):
+def get_user_cli(ctx, role_name: Optional[str], user_name: Optional[str], all: bool):
     """Get users of a specific role."""
 
     client = None
     try:
-        if not role_name:
-            raise Exception("Currently only --role_name is supported.")
+        if role_name and user_name:
+            raise Exception("Can't provide both --role_name and --user_name.")
+        if all and (role_name or user_name):
+            raise Exception("Can't provide both --all and --role_name or --user_name.")
         client = get_client_from_context(ctx)
         user_man = UserManager(client)
-        users = user_man.get_user_from_role(role_name=role_name)
-        print(f"Users of role '{role_name}':")
-        separator = "-" * 50
-        print(f"\n{separator}")
-        if len(users) == 0:
-            print(f"No users found for role '{role_name}'.")
-        else:
+        if all:
+            users = user_man.get_all_users()
+            click.echo("Users:")
             for user in users:
-                user_man.print_user(user)
+                click.echo("-" * 50)
+                user_man.print_db_user(user)
+        elif role_name:
+            users = user_man.get_user_from_role(role_name=role_name)
+            print(f"Users of role '{role_name}':")
+            separator = "-" * 50
+            print(f"\n{separator}")
+            if len(users) == 0:
+                print(f"No users found for role '{role_name}'.")
+            else:
+                for user in users:
+                    user_man.print_user(user)
+        elif user_name:
+            user = user_man.get_user(user_name=user_name)
+            user_man.print_db_user(user)
+        else:
+            user = user_man.get_user()
+            user_man.print_own_user(user)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

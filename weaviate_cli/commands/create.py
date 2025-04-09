@@ -1,6 +1,7 @@
 import sys
 import click
 from typing import Optional
+import json
 
 from weaviate_cli.completion.complete import (
     role_name_complete,
@@ -12,6 +13,7 @@ from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate_cli.managers.role_manager import RoleManager
+from weaviate_cli.managers.user_manager import UserManager
 from weaviate.exceptions import WeaviateConnectionError
 from weaviate_cli.defaults import (
     CreateBackupDefaults,
@@ -111,9 +113,15 @@ def create() -> None:
             "cohere",
             "jinaai",
             "weaviate",
+            "weaviate-1.5",
         ]
     ),
     help="Vectorizer to use.",
+)
+@click.option(
+    "--vectorizer_base_url",
+    default=CreateCollectionDefaults.vectorizer_base_url,
+    help="Base URL for the vectorizer.",
 )
 @click.option(
     "--replication_deletion_strategy",
@@ -138,6 +146,7 @@ def create_collection_cli(
     force_auto_schema: bool,
     shards: int,
     vectorizer: Optional[str],
+    vectorizer_base_url: Optional[str],
     replication_deletion_strategy: str,
 ) -> None:
     """Create a collection in Weaviate."""
@@ -160,6 +169,7 @@ def create_collection_cli(
             force_auto_schema=force_auto_schema,
             shards=shards,
             vectorizer=vectorizer,
+            vectorizer_base_url=vectorizer_base_url,
             replication_deletion_strategy=replication_deletion_strategy,
         )
     except Exception as e:
@@ -416,6 +426,73 @@ def create_role_cli(ctx: click.Context, role_name: str, permission: tuple[str]) 
         role_man = RoleManager(client)
         role_man.create_role(role_name=role_name, permissions=permission)
         click.echo(f"Role '{role_name}' created successfully in Weaviate.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("user")
+@click.option(
+    "--user_name",
+    default=None,
+    help="The name of the user to create.",
+)
+@click.option(
+    "--store",
+    is_flag=True,
+    help="Store the API key in the config file. Only works when auth type is 'user'.",
+)
+@click.pass_context
+def create_user_cli(ctx: click.Context, user_name: str, store: bool) -> None:
+    """Create a user in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        user_man = UserManager(client)
+        api_key = user_man.create_user(user_name=user_name)
+
+        if store:
+            config_manager = ctx.obj.get("config")
+            if not config_manager:
+                click.echo(
+                    "Error: --store option requires a config manager in the context."
+                )
+                return
+
+            # Get the config file path from the ConfigManager
+            config_path = config_manager.config_path
+
+            # Read the current config directly from the file to ensure we have the latest
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+
+            # Check if auth type is "user"
+            if "auth" not in config or config["auth"].get("type") != "user":
+                click.echo(
+                    "Error: Cannot store API key. Config file must have auth type 'user'."
+                )
+                return
+
+            # Add or update the user's API key
+            config["auth"][user_name] = api_key
+
+            # Write back to config file
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+
+            click.echo(
+                f"User '{user_name}' created and API key stored in config file at {config_path}"
+            )
+        else:
+            click.echo(
+                f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
+            )
+
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

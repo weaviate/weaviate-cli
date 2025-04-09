@@ -1,6 +1,5 @@
 import pytest
 import weaviate
-import click
 from click.testing import CliRunner
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.config_manager import ConfigManager
@@ -12,11 +11,7 @@ import weaviate.classes.config as wvc
 @pytest.fixture
 def client() -> weaviate.Client:
     config = ConfigManager()
-    return weaviate.connect_to_local(
-        host=config.config["host"],
-        port=int(config.config["http_port"]),
-        grpc_port=int(config.config["grpc_port"]),
-    )
+    return config.get_client()
 
 
 @pytest.fixture
