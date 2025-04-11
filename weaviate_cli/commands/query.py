@@ -49,9 +49,14 @@ def query() -> None:
     default=QueryDataDefaults.properties,
     help="Properties from the object to display (default: 'title, keywords').",
 )
+@click.option(
+    "--tenants",
+    default=QueryDataDefaults.tenants,
+    help="Tenants to query (default: 'None').",
+)
 @click.pass_context
 def query_data_cli(
-    ctx, collection, search_type, query, consistency_level, limit, properties
+    ctx, collection, search_type, query, consistency_level, limit, properties, tenants
 ):
     """Query data in a collection in Weaviate."""
 
@@ -67,6 +72,7 @@ def query_data_cli(
             consistency_level=consistency_level,
             limit=limit,
             properties=properties,
+            tenants=tenants,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

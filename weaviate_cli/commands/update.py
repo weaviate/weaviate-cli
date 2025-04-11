@@ -136,8 +136,13 @@ def update_collection_cli(
     default=UpdateTenantsDefaults.state,
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
+@click.option(
+    "--tenants",
+    default=UpdateTenantsDefaults.tenants,
+    help="Comma separated list of tenants to update. Ex: 'Tenant-1,Tenant-2,Tenant-3,Tenant-4'",
+)
 @click.pass_context
-def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
+def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state, tenants):
     """Update tenants in Weaviate."""
 
     client = None
@@ -149,6 +154,7 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state):
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             state=state,
+            tenants=tenants,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -231,8 +237,19 @@ def update_shards_cli(
     help="Consistency level (default: 'quorum').",
 )
 @click.option("--randomize", is_flag=True, help="Randomize the data (default: False).")
+@click.option(
+    "--skip-seed", is_flag=True, help="Skip seeding the random data (default: False)."
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=UpdateDataDefaults.verbose,
+    help="Show detailed progress information (default: True).",
+)
 @click.pass_context
-def update_data_cli(ctx, collection, limit, consistency_level, randomize):
+def update_data_cli(
+    ctx, collection, limit, consistency_level, randomize, skip_seed, verbose
+):
     """Update data in a collection in Weaviate."""
 
     client = None
@@ -245,6 +262,8 @@ def update_data_cli(ctx, collection, limit, consistency_level, randomize):
             limit=limit,
             consistency_level=consistency_level,
             randomize=randomize,
+            skip_seed=skip_seed,
+            verbose=verbose,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
