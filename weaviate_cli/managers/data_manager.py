@@ -824,7 +824,10 @@ class DataManager:
                 # For small batches, simple generation is fine, for larger we can use parallel
                 if batch_count > 100:
                     random_objects = self.__generate_data_object(
-                        batch_count, is_update=True, verbose=False
+                        limit=batch_count,
+                        skip_seed=skip_seed,
+                        is_update=True,
+                        verbose=False,
                     )
                 else:
                     random_objects = [
