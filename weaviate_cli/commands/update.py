@@ -39,6 +39,12 @@ def update() -> None:
     help="Enable async (default: None).",
 )
 @click.option(
+    "--replication_factor",
+    default=UpdateCollectionDefaults.replication_factor,
+    type=int,
+    help="Replication factor (default: None).",
+)
+@click.option(
     "--vector_index",
     default=UpdateCollectionDefaults.vector_index,
     type=click.Choice(
@@ -81,6 +87,7 @@ def update_collection_cli(
     ctx: click.Context,
     collection: str,
     async_enabled: Optional[bool],
+    replication_factor: Optional[int],
     vector_index: Optional[str],
     description: Optional[str],
     training_limit: int,
@@ -98,6 +105,7 @@ def update_collection_cli(
         collection_man.update_collection(
             collection=collection,
             async_enabled=async_enabled,
+            replication_factor=replication_factor,
             vector_index=vector_index,
             description=description,
             training_limit=training_limit,

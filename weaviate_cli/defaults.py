@@ -187,6 +187,7 @@ class RestoreBackupDefaults:
 class UpdateCollectionDefaults:
     collection: str = "Movies"
     async_enabled: Optional[bool] = None
+    replication_factor: Optional[int] = None
     vector_index: Optional[str] = None
     description: Optional[str] = None
     training_limit: int = 10000

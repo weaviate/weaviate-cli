@@ -146,6 +146,7 @@ def test_update_collection(mock_client):
         description="Updated description",
         vector_index="hnsw",
         async_enabled=True,
+        replication_factor=5,
         auto_tenant_creation=True,
         auto_tenant_activation=True,
         replication_deletion_strategy="delete_on_conflict",
@@ -157,7 +158,7 @@ def test_update_collection(mock_client):
         == "Updated description"
     )
     assert (
-        mock_collection.config.update.call_args.kwargs["replication_config"].factor == 3
+        mock_collection.config.update.call_args.kwargs["replication_config"].factor == 5
     )
     assert (
         mock_collection.config.update.call_args.kwargs[
