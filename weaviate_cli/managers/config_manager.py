@@ -127,12 +127,12 @@ class ConfigManager:
             host_parsed = urlparse(self.config["host"])
             grpc_parsed = urlparse(self.config["grpc_host"])
             return weaviate.connect_to_custom(
-                http_host=host_parsed.hostname,
-                grpc_host=grpc_parsed.hostname,
+                http_host=host_parsed.hostname or self.config["host"],
+                grpc_host=grpc_parsed.hostname or self.config["grpc_host"],
                 grpc_secure=grpc_parsed.scheme == "https",
                 http_secure=host_parsed.scheme == "https",
-                http_port=self.__get_port(host_parsed),
-                grpc_port=self.__get_port(grpc_parsed),
+                http_port=self.config["http_port"],
+                grpc_port=self.config["grpc_port"],
                 auth_credentials=auth_config,
                 headers=self.config["headers"] if "headers" in self.config else None,
             )
