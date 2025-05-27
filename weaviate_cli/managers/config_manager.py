@@ -118,7 +118,7 @@ class ConfigManager:
                 headers=self.config["headers"] if "headers" in self.config else None,
             )
         elif self.config["host"].endswith("weaviate.cloud"):
-            return weaviate.connect_to_wcs(
+            return weaviate.connect_to_weaviate_cloud(
                 cluster_url=self.config["host"],
                 auth_credentials=auth_config,
                 headers=self.config["headers"] if "headers" in self.config else None,

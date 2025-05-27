@@ -274,6 +274,7 @@ class CollectionManager:
         vector_index: Optional[str] = UpdateCollectionDefaults.vector_index,
         training_limit: int = UpdateCollectionDefaults.training_limit,
         async_enabled: Optional[bool] = UpdateCollectionDefaults.async_enabled,
+        replication_factor: Optional[int] = UpdateCollectionDefaults.replication_factor,
         auto_tenant_creation: Optional[
             bool
         ] = UpdateCollectionDefaults.auto_tenant_creation,
@@ -316,7 +317,11 @@ class CollectionManager:
         }
 
         col_obj: Collection = self.client.collections.get(collection)
-        rf = col_obj.config.get().replication_config.factor
+        rf = (
+            replication_factor
+            if replication_factor is not None
+            else col_obj.config.get().replication_config.factor
+        )
         rds_map = {
             "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
             "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
