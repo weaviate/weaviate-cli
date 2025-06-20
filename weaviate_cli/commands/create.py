@@ -69,6 +69,7 @@ def create() -> None:
             "hnsw_pq",
             "hnsw_bq",
             "hnsw_sq",
+            "hnsw_rq",
             "hnsw_acorn",
             "hnsw_multivector",
             "flat_bq",
