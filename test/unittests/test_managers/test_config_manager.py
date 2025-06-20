@@ -139,3 +139,126 @@ def test_get_client_with_api_key_auth():
                     call_kwargs["auth_credentials"], weaviate.auth.AuthApiKey
                 )
                 assert call_kwargs["auth_credentials"].api_key == "test-key"
+
+
+def test_get_client_with_ip_address():
+    config_data = {
+        "host": "127.0.0.1",
+        "grpc_host": "127.0.0.1",
+        "http_port": 8080,
+        "grpc_port": 50051,
+    }
+
+    with patch("builtins.open", mock_open(read_data=json.dumps(config_data))):
+        with patch("os.path.isfile") as mock_isfile:
+            mock_isfile.return_value = True
+            with patch("weaviate.connect_to_custom") as mock_connect:
+                config = ConfigManager(config_file="test_config.json")
+                config.get_client()
+
+                mock_connect.assert_called_once()
+                call_kwargs = mock_connect.call_args.kwargs
+                assert call_kwargs["http_host"] == "127.0.0.1"
+                assert call_kwargs["grpc_host"] == "127.0.0.1"
+                assert call_kwargs["http_port"] == 8080
+                assert call_kwargs["grpc_port"] == 50051
+                assert call_kwargs["http_secure"] == False
+                assert call_kwargs["grpc_secure"] == False
+
+
+def test_get_client_with_ip_address_and_secure_ports():
+    config_data = {
+        "host": "127.0.0.1",
+        "grpc_host": "127.0.0.1",
+        "http_port": 443,
+        "grpc_port": 443,
+    }
+
+    with patch("builtins.open", mock_open(read_data=json.dumps(config_data))):
+        with patch("os.path.isfile") as mock_isfile:
+            mock_isfile.return_value = True
+            with patch("weaviate.connect_to_custom") as mock_connect:
+                config = ConfigManager(config_file="test_config.json")
+                config.get_client()
+
+                mock_connect.assert_called_once()
+                call_kwargs = mock_connect.call_args.kwargs
+                assert call_kwargs["http_host"] == "127.0.0.1"
+                assert call_kwargs["grpc_host"] == "127.0.0.1"
+                assert call_kwargs["http_port"] == 443
+                assert call_kwargs["grpc_port"] == 443
+                assert call_kwargs["http_secure"] == True
+                assert call_kwargs["grpc_secure"] == True
+
+
+def test_get_client_with_ip_address_with_https():
+    config_data = {
+        "host": "https://85.10.20.30",
+        "grpc_host": "https://85.10.20.31",
+        "http_port": 443,
+        "grpc_port": 443,
+    }
+
+    with patch("builtins.open", mock_open(read_data=json.dumps(config_data))):
+        with patch("os.path.isfile") as mock_isfile:
+            mock_isfile.return_value = True
+            with patch("weaviate.connect_to_custom") as mock_connect:
+                config = ConfigManager(config_file="test_config.json")
+                config.get_client()
+
+                mock_connect.assert_called_once()
+                call_kwargs = mock_connect.call_args.kwargs
+                assert call_kwargs["http_host"] == "85.10.20.30"
+                assert call_kwargs["grpc_host"] == "85.10.20.31"
+                assert call_kwargs["http_port"] == 443
+                assert call_kwargs["grpc_port"] == 443
+                assert call_kwargs["http_secure"] == True
+                assert call_kwargs["grpc_secure"] == True
+
+
+def test_get_client_with_host_and_custom():
+    config_data = {
+        "host": "https://weaviate.google.my-cloud.com",
+        "grpc_host": "https://grpc.weaviate.google.my-cloud.com",
+    }
+
+    with patch("builtins.open", mock_open(read_data=json.dumps(config_data))):
+        with patch("os.path.isfile") as mock_isfile:
+            mock_isfile.return_value = True
+            with patch("weaviate.connect_to_custom") as mock_connect:
+                config = ConfigManager(config_file="test_config.json")
+                config.get_client()
+
+                mock_connect.assert_called_once()
+                call_kwargs = mock_connect.call_args.kwargs
+                assert call_kwargs["http_host"] == "weaviate.google.my-cloud.com"
+                assert call_kwargs["grpc_host"] == "grpc.weaviate.google.my-cloud.com"
+                assert call_kwargs["http_port"] == 443
+                assert call_kwargs["grpc_port"] == 443
+                assert call_kwargs["http_secure"] == True
+                assert call_kwargs["grpc_secure"] == True
+
+
+def test_get_client_with_host_and_custom_with_ports():
+    config_data = {
+        "host": "https://weaviate.google.my-cloud.com",
+        "grpc_host": "https://grpc.weaviate.google.my-cloud.com",
+        "http_port": 8080,
+        "grpc_port": 8080,
+    }
+
+    with patch("builtins.open", mock_open(read_data=json.dumps(config_data))):
+        with patch("os.path.isfile") as mock_isfile:
+            mock_isfile.return_value = True
+            with patch("weaviate.connect_to_custom") as mock_connect:
+                config = ConfigManager(config_file="test_config.json")
+                config.get_client()
+
+                mock_connect.assert_called_once()
+                call_kwargs = mock_connect.call_args.kwargs
+                assert call_kwargs["http_host"] == "weaviate.google.my-cloud.com"
+                assert call_kwargs["grpc_host"] == "grpc.weaviate.google.my-cloud.com"
+                assert call_kwargs["http_port"] == 8080
+                assert call_kwargs["grpc_port"] == 8080
+                assert call_kwargs["http_secure"] == True  # URL contains https
+                assert call_kwargs["grpc_secure"] == True  # URL contains https

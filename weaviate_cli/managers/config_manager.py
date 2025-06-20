@@ -85,6 +85,14 @@ class ConfigManager:
         else:
             return 80
 
+    def __is_url(self, host: str) -> bool:
+        """Check if the host is a URL (has a scheme and a network location)."""
+        try:
+            result = urlparse(host)
+            return all([result.scheme, result.netloc])
+        except ValueError:
+            return False
+
     def get_client(self) -> weaviate.WeaviateClient:
         """Get weaviate client from config"""
         auth_config: Optional[weaviate.auth.AuthCredentials] = None
@@ -124,15 +132,44 @@ class ConfigManager:
                 headers=self.config["headers"] if "headers" in self.config else None,
             )
         else:
-            host_parsed = urlparse(self.config["host"])
-            grpc_parsed = urlparse(self.config["grpc_host"])
-            return weaviate.connect_to_custom(
-                http_host=host_parsed.hostname,
-                grpc_host=grpc_parsed.hostname,
-                grpc_secure=grpc_parsed.scheme == "https",
-                http_secure=host_parsed.scheme == "https",
-                http_port=self.__get_port(host_parsed),
-                grpc_port=self.__get_port(grpc_parsed),
-                auth_credentials=auth_config,
-                headers=self.config["headers"] if "headers" in self.config else None,
-            )
+            # Check if host is a URL or IP/hostname
+            if self.__is_url(self.config["host"]):
+                # Handle URL format
+                host_parsed = urlparse(self.config["host"])
+                grpc_parsed = urlparse(self.config["grpc_host"])
+                return weaviate.connect_to_custom(
+                    http_host=host_parsed.hostname,
+                    grpc_host=grpc_parsed.hostname,
+                    grpc_secure=grpc_parsed.scheme == "https",
+                    http_secure=host_parsed.scheme == "https",
+                    http_port=(
+                        self.__get_port(host_parsed)
+                        if "http_port" not in self.config
+                        or self.config["http_port"] == ""
+                        else self.config["http_port"]
+                    ),
+                    grpc_port=(
+                        self.__get_port(grpc_parsed)
+                        if "grpc_port" not in self.config
+                        or self.config["grpc_port"] == ""
+                        else self.config["grpc_port"]
+                    ),
+                    auth_credentials=auth_config,
+                    headers=(
+                        self.config["headers"] if "headers" in self.config else None
+                    ),
+                )
+            else:
+                # Handle IP/hostname format
+                return weaviate.connect_to_custom(
+                    http_host=self.config["host"],
+                    grpc_host=self.config["grpc_host"],
+                    grpc_secure=self.config["grpc_port"] == 443,  # Secure if port 443
+                    http_secure=self.config["http_port"] == 443,  # Secure if port 443
+                    http_port=self.config["http_port"],
+                    grpc_port=self.config["grpc_port"],
+                    auth_credentials=auth_config,
+                    headers=(
+                        self.config["headers"] if "headers" in self.config else None
+                    ),
+                )
