@@ -238,7 +238,7 @@ def create_tenants_cli(
 ):
     """Create tenants in Weaviate."""
 
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         # Call the function from create_tenants.py with general and specific arguments
@@ -294,7 +294,7 @@ def create_tenants_cli(
 def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_backup):
     """Create a backup in Weaviate."""
 
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         backup_manager = BackupManager(client)
@@ -414,7 +414,7 @@ def create_data_cli(
         click.echo("Error: --uuid has no effect unless --limit=1 is enabled.")
         sys.exit(1)
 
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
@@ -461,7 +461,7 @@ def create_data_cli(
 @click.pass_context
 def create_role_cli(ctx: click.Context, role_name: str, permission: tuple[str]) -> None:
     """Create a role in Weaviate."""
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         role_man = RoleManager(client)
@@ -595,14 +595,14 @@ def create_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> No
 @click.pass_context
 def create_replication_cli(
     ctx: click.Context,
-    collection: str | None,
-    shard: str | None,
-    source_node: str | None,
-    target_node: str | None,
+    collection: Optional[str],
+    shard: Optional[str],
+    source_node: Optional[str],
+    target_node: Optional[str],
     type_: str,
 ) -> None:
     """Create and start a replication operation in Weaviate."""
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
 
     if collection is None:
         click.echo("No collection provided. Please provide the name of the collection.")
