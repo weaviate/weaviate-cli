@@ -631,10 +631,7 @@ def create_replication_cli(
             target_node=target_node,
             type_=type_,
         )
-        click.echo(f"UUID: {uuid}")
-        click.echo(
-            f"Replication started successfully from {source_node} to {target_node}."
-        )
+        click.echo(f"Replication successfully started with UUID: {uuid}.")
     except WeaviateConnectionError as e:
         click.echo(f"Connection error: {e}")
         sys.exit(1)

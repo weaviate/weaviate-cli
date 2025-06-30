@@ -3,6 +3,7 @@ from typing import Callable
 from prettytable import PrettyTable
 
 import weaviate.classes.replication as wvcr
+import weaviate.outputs.cluster as wvoc
 import weaviate.outputs.replication as wvor
 from weaviate.client import WeaviateClient
 
@@ -154,13 +155,13 @@ class ClusterManager:
         table.field_names = [
             "UUID",
             "Status",
-            "Last Error",
             "Collection",
             "Shard",
             "Source Node",
             "Target Node",
             "Type",
             "History",
+            "Last Error",
         ]
 
         for replication in replications:
@@ -168,19 +169,19 @@ class ClusterManager:
                 [
                     replication.uuid,
                     replication.status.state.value,
-                    self.__get_last_error(replication),
                     replication.collection,
                     replication.shard,
                     replication.source_node,
                     replication.target_node,
                     replication.transfer_type.value,
                     (
-                        "| ".join(
+                        " | ".join(
                             status.state.value for status in replication.status_history
                         )
                         if replication.status_history
                         else ""
                     ),
+                    self.__get_last_error(replication),
                 ]
             )
 
@@ -195,3 +196,25 @@ class ClusterManager:
                 if len(status.errors) > 0:
                     return status.errors[0]
         return ""
+
+    def query_sharding_state(self, collection: str, shard: str | None):
+        """Query the sharding state of a collection or shard."""
+        try:
+            return self.client.cluster.query_sharding_state(
+                collection=collection, shard=shard
+            )
+        except Exception as e:
+            raise Exception(
+                f"Error querying sharding state for collection '{collection}' and shard '{shard}': {e}"
+            )
+
+    def print_sharding_state(self, sharding_state: wvoc.ShardingState) -> None:
+        """Print the sharding state in a human-readable format."""
+        table = PrettyTable()
+
+        table.field_names = ["Shard", "Replicas"]
+        for shard in sharding_state.shards:
+            replicas = " | ".join(shard.replicas) if shard.replicas else "None"
+            table.add_row([shard.name, replicas])
+
+        self.printer(str(table))
