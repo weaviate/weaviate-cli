@@ -157,3 +157,51 @@ def query_replications_cli(
     finally:
         if client:
             client.close()
+
+
+@query.command("sharding-state")
+@click.argument("collection")
+@click.option(
+    "--shard",
+    default=None,
+    help="The shard to query. If not provided, the state of all shards will be queried.",
+)
+@click.pass_context
+def query_sharding_state_cli(
+    ctx: click.Context,
+    collection: str,
+    shard: str | None,
+):
+    """Query the sharding state of a COLLECTION in Weaviate."""
+
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        manager = ClusterManager(client, click.echo)
+
+        state = manager.query_sharding_state(collection, shard)
+
+        if not state:
+            click.echo(f"No sharding state found for collection '{collection}'")
+            return
+
+        if shard:
+            click.echo(
+                f"Sharding state for collection '{collection}', shard '{shard}':"
+            )
+        else:
+            click.echo(f"Sharding state for collection '{collection}':")
+
+        manager.print_sharding_state(state)
+
+    except WeaviateConnectionError as e:
+        click.echo(f"Connection error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
