@@ -3,6 +3,7 @@ Utility functions.
 """
 
 from collections.abc import Sequence
+import click
 import string
 import random
 import semver
@@ -11,7 +12,7 @@ from weaviate.rbac.models import Permissions, RoleScope, PermissionsCreateType
 from typing import Optional, Union, List
 
 
-def get_client_from_context(ctx) -> weaviate.Client:
+def get_client_from_context(ctx: click.Context) -> weaviate.WeaviateClient:
     """
         Get Configuration object from the specified file.
     :param ctx:

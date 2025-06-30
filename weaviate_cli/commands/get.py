@@ -13,8 +13,8 @@ from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.backup_manager import BackupManager
+from weaviate_cli.managers.cluster_manager import ClusterManager
 from weaviate_cli.managers.shard_manager import ShardManager
-from weaviate.exceptions import WeaviateConnectionError
 from weaviate.rbac.models import Role
 from weaviate_cli.defaults import (
     GetBackupDefaults,
@@ -410,6 +410,55 @@ def get_alias_cli(
                 click.echo(f"\n{separator}")
             else:
                 click.echo(f"Alias '{alias_name}' not found.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@get.command("replication", help="Get a replication operation in Weaviate.")
+@click.argument("op_id")
+@click.option(
+    "--history/--no-history",
+    default=False,
+    help="Include the history of the replication operation.",
+)
+@click.pass_context
+def get_replication_cli(ctx: click.Context, op_id: str, history: bool) -> None:
+    """Get a replication operation in Weaviate by OP-ID."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        manager = ClusterManager(client, click.echo)
+        op = manager.get_replication(op_id=op_id, include_history=history)
+        if op is not None:
+            manager.print_replication(op)
+        else:
+            click.echo(f"No replication operation found with UUID '{op_id}'")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@get.command("all-replications", help="Get all replication operations in Weaviate.")
+@click.pass_context
+def get_replications_cli(ctx: click.Context) -> None:
+    """Get all replication operations in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        manager = ClusterManager(client, click.echo)
+        ops = manager.get_all_replications()
+        manager.print_replications(ops)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
