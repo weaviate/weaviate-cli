@@ -1,6 +1,7 @@
 import sys
 import click
 
+from typing import Optional
 from weaviate import WeaviateClient
 
 from weaviate_cli.completion.complete import collection_name_complete
@@ -224,7 +225,7 @@ def delete_user_cli(ctx, user_name):
 @click.pass_context
 def delete_replication_cli(ctx: click.Context, op_id: str) -> None:
     """Delete a replication operation in Weaviate."""
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         manager = ClusterManager(client)
@@ -248,7 +249,7 @@ def delete_replication_cli(ctx: click.Context, op_id: str) -> None:
 @click.pass_context
 def delete_all_replications_cli(ctx: click.Context) -> None:
     """Delete all replication operations in Weaviate."""
-    client: WeaviateClient | None = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         manager = ClusterManager(client)

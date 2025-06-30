@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 from prettytable import PrettyTable
 
@@ -197,7 +197,7 @@ class ClusterManager:
                     return status.errors[0]
         return ""
 
-    def query_sharding_state(self, collection: str, shard: str | None):
+    def query_sharding_state(self, collection: str, shard: Optional[str]):
         """Query the sharding state of a collection or shard."""
         try:
             return self.client.cluster.query_sharding_state(

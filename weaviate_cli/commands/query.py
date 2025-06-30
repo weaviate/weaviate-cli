@@ -1,6 +1,8 @@
 import sys
 import click
 
+from typing import Optional
+
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.data_manager import DataManager
@@ -112,9 +114,9 @@ def query_data_cli(
 @click.pass_context
 def query_replications_cli(
     ctx: click.Context,
-    collection: str | None,
-    shard: str | None,
-    target_node: str | None,
+    collection: Optional[str],
+    shard: Optional[str],
+    target_node: Optional[str],
     history: bool,
 ) -> None:
     """Query replication operations by collection, collection and shard, or target node in Weaviate."""
@@ -170,7 +172,7 @@ def query_replications_cli(
 def query_sharding_state_cli(
     ctx: click.Context,
     collection: str,
-    shard: str | None,
+    shard: Optional[str],
 ):
     """Query the sharding state of a COLLECTION in Weaviate."""
 
