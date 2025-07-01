@@ -147,6 +147,8 @@ def query_replications_cli(
 
         for op in ops:
             manager.print_replication(op)
+        if not ops:
+            click.echo("No replication operations found.")
 
     except WeaviateConnectionError as e:
         click.echo(f"Connection error: {e}")
