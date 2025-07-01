@@ -63,15 +63,17 @@ class NodeManager:
                 continue
 
             for shard in node.shards:
-                if shard.name not in shard_dict:
-                    shard_dict[shard.name] = ShardInfo(
+                # Use composite key of collection + shard name to handle tenant names that appear in multiple collections
+                shard_key = f"{shard.collection}:{shard.name}"
+                if shard_key not in shard_dict:
+                    shard_dict[shard_key] = ShardInfo(
                         name=shard.name,
                         collection=shard.collection,
                         node_objects={},
                         vector_indexing_status=shard.vector_indexing_status,
                         loaded=shard.loaded,
                     )
-                shard_dict[shard.name].node_objects[node.name] = shard.object_count
+                shard_dict[shard_key].node_objects[node.name] = shard.object_count
 
         return list(shard_dict.values())
 

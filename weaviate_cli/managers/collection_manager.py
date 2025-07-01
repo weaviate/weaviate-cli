@@ -129,6 +129,58 @@ class CollectionManager:
             "hnsw": wvc.Configure.VectorIndex.hnsw(),
             "flat": wvc.Configure.VectorIndex.flat(),
             "dynamic": wvc.Configure.VectorIndex.dynamic(),
+            "dynamic_flat_bq": wvc.Configure.VectorIndex.dynamic(
+                flat=wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                )
+            ),
+            "dynamic_flat_bq_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
+                flat=wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                ),
+                hnsw=wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
+                        training_limit=training_limit
+                    )
+                ),
+            ),
+            "dynamic_flat_bq_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
+                flat=wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                ),
+                hnsw=wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
+                        training_limit=training_limit
+                    )
+                ),
+            ),
+            "dynamic_flat_bq_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
+                flat=wvc.Configure.VectorIndex.flat(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                ),
+                hnsw=wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                ),
+            ),
+            "dynamic_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
+                hnsw=wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
+                        training_limit=training_limit
+                    )
+                )
+            ),
+            "dynamic_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
+                hnsw=wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
+                        training_limit=training_limit
+                    )
+                )
+            ),
+            "dynamic_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
+                hnsw=wvc.Configure.VectorIndex.hnsw(
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                )
+            ),
             "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                     training_limit=training_limit
@@ -150,14 +202,6 @@ class CollectionManager:
             ),
             "hnsw_multivector": wvc.Configure.VectorIndex.hnsw(
                 multi_vector=wvc.Configure.VectorIndex.MultiVector.multi_vector(),
-            ),
-            # Should fail at the moment as Flat and PQ are not compatible
-            "flat_pq": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.pq()
-            ),
-            # Should fail at the moment as Flat and PQ are not compatible
-            "flat_sq": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.sq()
             ),
             "flat_bq": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
