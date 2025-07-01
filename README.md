@@ -46,10 +46,10 @@ weaviate-cli query data --collection movies --search-type hybrid --query "action
 
 ## Core Commands
 
-- **create**: Create collections, tenants, backups or import data
-- **delete**: Remove collections, tenants or data
+- **create**: Create collections, tenants, backups, replications or import data
+- **delete**: Remove collections, tenants, replications or data
 - **update**: Modify collection settings, tenant states or data
-- **get**: Retrieve collection info, tenant details or shard status
+- **get**: Retrieve collection info, tenant details, replication operations or shard status
 - **query**: Search data using various methods
 - **restore**: Restore backups from supported backends
 - **assign**: Assign roles and permissions to users
