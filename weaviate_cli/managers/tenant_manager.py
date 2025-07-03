@@ -184,25 +184,34 @@ class TenantManager:
             raise Exception(
                 f"Collection '{collection.name}' does not have multi-tenancy enabled. Recreate or modify the class with <create class> command"
             )
-        if tenants_list is not None:
-            # Extract the tenant suffix from the first tenant name in the list
-            tenant_suffix = tenants_list[0].split("-")[0]
-        tenants_list_with_suffix = {
-            name: tenant
-            for name, tenant in collection.tenants.get().items()
-            if name.startswith(tenant_suffix)
-        }
+
+        if tenant_suffix == "*":
+            click.echo(
+                f"Deleting {number_tenants} existing tenants from {collection.name} (not taking into account the tenant suffix)"
+            )
+            tenants_list_with_suffix = collection.tenants.get()
+        else:
+            if tenants_list is not None:
+                # Extract the tenant suffix from the first tenant name in the list
+                tenant_suffix = tenants_list[0].split("-")[0]
+            tenants_list_with_suffix = {
+                name: tenant
+                for name, tenant in collection.tenants.get().items()
+                if name.startswith(tenant_suffix)
+            }
         total_tenants = len(tenants_list_with_suffix)
         try:
             if total_tenants == 0:
-
                 raise Exception(f"No tenants present in class {collection.name}.")
             if tenants_list:
                 deleting_tenants = collection.tenants.get_by_names(tenants_list)
             else:
 
                 if number_tenants < total_tenants:
-                    deleting_tenants = tenants_list_with_suffix[:number_tenants]
+                    # Convert dict to list of items, slice, then convert back to dict
+                    deleting_tenants = dict(
+                        list(tenants_list_with_suffix.items())[:number_tenants]
+                    )
                 else:
                     deleting_tenants = tenants_list_with_suffix
 
@@ -217,11 +226,14 @@ class TenantManager:
 
             raise Exception(f"Failed to delete tenants: {e}")
 
-        remaining_tenants = {
-            name: tenant
-            for name, tenant in collection.tenants.get().items()
-            if name.startswith(tenant_suffix)
-        }
+        if tenant_suffix == "*":
+            remaining_tenants = collection.tenants.get()
+        else:
+            remaining_tenants = {
+                name: tenant
+                for name, tenant in collection.tenants.get().items()
+                if name.startswith(tenant_suffix)
+            }
         removed_tenants = len(deleting_tenants)
         assert (
             len(remaining_tenants) == total_tenants - removed_tenants

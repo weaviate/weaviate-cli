@@ -61,7 +61,7 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
 @click.option(
     "--tenant_suffix",
     default=DeleteTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant-').",
+    help="The suffix to add to the tenant name (default: 'Tenant-'). If passing the asterisk as a suffix * it will delete as many tenants as specified in --number_tenants, it will not take into account the tenant suffix.",
 )
 @click.option(
     "--number_tenants",

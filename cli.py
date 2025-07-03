@@ -1,3 +1,9 @@
+import warnings
+
+warnings.filterwarnings(
+    "ignore", message="pkg_resources is deprecated as an API.", category=UserWarning
+)
+
 from typing import Optional
 import click
 import sys
