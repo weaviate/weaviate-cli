@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from weaviate_cli.defaults import (
     MAX_OBJECTS_PER_BATCH,
     QUERY_MAXIMUM_RESULTS,
+    CreateCollectionDefaults,
     CreateDataDefaults,
     CreateTenantsDefaults,
     QueryDataDefaults,
@@ -366,6 +367,7 @@ class DataManager:
         uuid: Optional[str],
         batch_index: int = 0,
         verbose: bool = False,
+        multi_vector: bool = False,
     ) -> Tuple[int, List]:
         """Process a single batch of objects for ingestion"""
         counter = 0
@@ -380,15 +382,27 @@ class DataManager:
 
         with collection.batch.dynamic() as batch:
             for i, obj in enumerate(batch_objects):
-                if vectorizer == "none":
-                    # Generate vector(s) for the object
-                    if named_vectors is None:
-                        vector = (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                    else:
+                if vectorizer is None:
+                    if multi_vector:
                         vector = {
-                            name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                            for name in named_vectors
+                            CreateCollectionDefaults.named_vector: [
+                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                            ]
                         }
+                    else:
+                        # Generate vector(s) for the object
+                        if named_vectors is None:
+                            vector = (
+                                2 * np.random.rand(vector_dimensions) - 1
+                            ).tolist()
+                        else:
+                            vector = {
+                                name: (
+                                    2 * np.random.rand(vector_dimensions) - 1
+                                ).tolist()
+                                for name in named_vectors
+                            }
                     batch.add_object(properties=obj, uuid=uuid, vector=vector)
                 else:
                     # Let the vectorizer generate the vector
@@ -428,6 +442,7 @@ class DataManager:
         uuid: Optional[str] = None,
         named_vectors: Optional[List[str]] = None,
         verbose: bool = False,
+        multi_vector: bool = False,
     ) -> Collection:
         if randomize:
             click.echo(f"Generating {num_objects} objects")
@@ -468,6 +483,7 @@ class DataManager:
                     uuid,
                     0,
                     verbose,
+                    multi_vector,
                 )
 
                 # Handle any failed objects
@@ -580,6 +596,7 @@ class DataManager:
         named_vectors: Optional[List[str]] = None,
         wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
         verbose: bool = CreateDataDefaults.verbose,
+        multi_vector: bool = CreateDataDefaults.multi_vector,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -664,6 +681,7 @@ class DataManager:
                     uuid,
                     named_vectors,
                     verbose,
+                    multi_vector,
                 )
                 after_length = len(col)
             else:
@@ -695,6 +713,7 @@ class DataManager:
                     uuid,
                     named_vectors,
                     verbose,
+                    multi_vector,
                 )
                 after_length = len(col.with_tenant(tenant))
             if wait_for_indexing:
