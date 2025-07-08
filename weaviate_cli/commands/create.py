@@ -122,12 +122,12 @@ def create() -> None:
             "cohere",
             "jinaai",
             "jinaai_colbert",
-            "none_multi_vector",
             "weaviate",
             "weaviate-1.5",
+            "none",
         ]
     ),
-    help="Vectorizer to use.",
+    help="Vectorizer to use. Note: jinaai_colbert is only supported with named vectors.",
 )
 @click.option(
     "--vectorizer_base_url",
@@ -135,9 +135,14 @@ def create() -> None:
     help="Base URL for the vectorizer.",
 )
 @click.option(
-    "--multi_vector",
+    "--named_vector",
     is_flag=True,
-    help="Enable multi-vector (default: False).",
+    help="Enable named vectors (default: False).",
+)
+@click.option(
+    "--named_vector_name",
+    default=CreateCollectionDefaults.named_vector_name,
+    help="Name of the named vector to use. Only used if --named_vector is enabled. Default: 'default'.",
 )
 @click.option(
     "--replication_deletion_strategy",
@@ -164,7 +169,8 @@ def create_collection_cli(
     vectorizer: Optional[str],
     vectorizer_base_url: Optional[str],
     replication_deletion_strategy: str,
-    multi_vector: bool,
+    named_vector: bool,
+    named_vector_name: Optional[str],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -188,7 +194,8 @@ def create_collection_cli(
             vectorizer=vectorizer,
             vectorizer_base_url=vectorizer_base_url,
             replication_deletion_strategy=replication_deletion_strategy,
-            multi_vector=multi_vector,
+            named_vector=named_vector,
+            named_vector_name=named_vector_name,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
