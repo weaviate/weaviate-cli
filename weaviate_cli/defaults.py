@@ -49,11 +49,11 @@ class CreateCollectionDefaults:
     auto_tenant_activation: bool = False
     force_auto_schema: bool = False
     shards: int = 0
-    vectorizer: Optional[str] = None
+    vectorizer: str = "none"
     vectorizer_base_url: Optional[str] = None
     replication_deletion_strategy: str = "no_automated_resolution"
-    multi_vector: bool = False
-    named_vector: Optional[str] = "default"
+    named_vector: bool = False
+    named_vector_name: Optional[str] = "default"
 
 
 @dataclass

@@ -56,6 +56,7 @@ class CollectionManager:
                 "Objects",
                 "Repl. Factor",
                 "Vector Index",
+                "Named Vectors",
                 "Vectorizer",
             ]
             table.align = "l"
@@ -63,6 +64,30 @@ class CollectionManager:
             for col_name in collections:
                 col_obj = self.client.collections.get(col_name)
                 schema = col_obj.config.get()
+                vectorizer = "None"
+                vector_index_type = "None"
+                named_vectors = "False"
+                if schema.vector_config and not schema.vectorizer:
+                    # Named vectors
+                    named_vectors = "True"
+                    vectorizer = schema.vector_config[
+                        list(schema.vector_config.keys())[0]
+                    ].vectorizer.vectorizer.value
+                    if not schema.vector_index_type:
+                        vector_index_type = schema.vector_config[
+                            list(schema.vector_config.keys())[0]
+                        ].vector_index_config.vector_index_type()
+                    else:
+                        vector_index_type = schema.vector_index_type
+                else:
+                    vectorizer = (
+                        schema.vectorizer.value if schema.vectorizer else "None"
+                    )
+                    vector_index_type = (
+                        schema.vector_index_type.value
+                        if schema.vector_index_type
+                        else "None"
+                    )
 
                 table.add_row(
                     [
@@ -79,12 +104,9 @@ class CollectionManager:
                             else len(col_obj)
                         ),
                         schema.replication_config.factor,
-                        (
-                            schema.vector_index_type
-                            if schema.vector_index_type
-                            else "None"
-                        ),
-                        schema.vectorizer if schema.vectorizer else "None",
+                        (vector_index_type if vector_index_type else "None"),
+                        named_vectors,
+                        vectorizer if vectorizer else "None",
                     ]
                 )
 
@@ -108,21 +130,26 @@ class CollectionManager:
         auto_tenant_activation: bool = CreateCollectionDefaults.auto_tenant_activation,
         force_auto_schema: bool = CreateCollectionDefaults.force_auto_schema,
         shards: int = CreateCollectionDefaults.shards,
-        vectorizer: Optional[str] = CreateCollectionDefaults.vectorizer,
+        vectorizer: str = CreateCollectionDefaults.vectorizer,
         vectorizer_base_url: Optional[
             str
         ] = CreateCollectionDefaults.vectorizer_base_url,
         replication_deletion_strategy: Optional[
             str
         ] = CreateCollectionDefaults.replication_deletion_strategy,
-        multi_vector: bool = CreateCollectionDefaults.multi_vector,
-        named_vector: Optional[str] = CreateCollectionDefaults.named_vector,
+        named_vector: bool = CreateCollectionDefaults.named_vector,
+        named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
     ) -> None:
 
         if self.client.collections.exists(collection):
 
             raise Exception(
                 f"Error: Collection '{collection}' already exists in Weaviate. Delete using <delete collection> command."
+            )
+
+        if named_vector_name != "default" and not named_vector:
+            raise Exception(
+                "Error: Named vector name is only supported with named vectors. Please use --named_vector to enable named vectors."
             )
 
         vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
@@ -211,40 +238,88 @@ class CollectionManager:
             ),
         }
 
-        vectorizer_map: Dict[str, wvc.VectorizerConfig] = {
-            "contextionary": wvc.Configure.Vectorizer.text2vec_contextionary(),
-            "transformers": wvc.Configure.Vectorizer.text2vec_transformers(),
-            "openai": wvc.Configure.Vectorizer.text2vec_openai(
-                base_url=vectorizer_base_url if vectorizer_base_url else None
+        # Vectorizer configurations
+        vectorizers_config = {
+            "contextionary": (
+                wvc.Configure.NamedVectors.text2vec_contextionary,
+                wvc.Configure.Vectorizer.text2vec_contextionary,
+                {},
             ),
-            "ollama": wvc.Configure.Vectorizer.text2vec_ollama(
-                model="snowflake-arctic-embed:33m",
-                api_endpoint="http://ollama.weaviate.svc.cluster.local:11434",
+            "transformers": (
+                wvc.Configure.NamedVectors.text2vec_transformers,
+                wvc.Configure.Vectorizer.text2vec_transformers,
+                {},
             ),
-            "cohere": wvc.Configure.Vectorizer.text2vec_cohere(
-                base_url=vectorizer_base_url if vectorizer_base_url else None
+            "openai": (
+                wvc.Configure.NamedVectors.text2vec_openai,
+                wvc.Configure.Vectorizer.text2vec_openai,
+                {"base_url": vectorizer_base_url if vectorizer_base_url else None},
             ),
-            "jinaai": wvc.Configure.Vectorizer.text2vec_jinaai(
-                base_url=vectorizer_base_url if vectorizer_base_url else None
+            "ollama": (
+                wvc.Configure.NamedVectors.text2vec_ollama,
+                wvc.Configure.Vectorizer.text2vec_ollama,
+                {
+                    "model": "snowflake-arctic-embed:33m",
+                    "api_endpoint": "http://ollama.weaviate.svc.cluster.local:11434",
+                },
             ),
-            "weaviate": wvc.Configure.Vectorizer.text2vec_weaviate(
-                base_url=vectorizer_base_url if vectorizer_base_url else None
+            "cohere": (
+                wvc.Configure.NamedVectors.text2vec_cohere,
+                wvc.Configure.Vectorizer.text2vec_cohere,
+                {"base_url": vectorizer_base_url if vectorizer_base_url else None},
             ),
-            "weaviate-1.5": wvc.Configure.Vectorizer.text2vec_weaviate(
-                base_url=vectorizer_base_url if vectorizer_base_url else None,
-                model="Snowflake/snowflake-arctic-embed-m-v1.5",
+            "jinaai": (
+                wvc.Configure.NamedVectors.text2vec_jinaai,
+                wvc.Configure.Vectorizer.text2vec_jinaai,
+                {
+                    "base_url": vectorizer_base_url if vectorizer_base_url else None,
+                },
             ),
-            "jinaai_colbert": wvc.Configure.NamedVectors.text2colbert_jinaai(
-                name=named_vector,
-                vector_index_config=vector_index_map[vector_index],
+            "weaviate": (
+                wvc.Configure.NamedVectors.text2vec_weaviate,
+                wvc.Configure.Vectorizer.text2vec_weaviate,
+                {"base_url": vectorizer_base_url if vectorizer_base_url else None},
             ),
-            "none_multi_vector": [
-                wvc.Configure.NamedVectors.none(
-                    name=named_vector,
-                    vector_index_config=vector_index_map[vector_index],
-                )
-            ],
+            "weaviate-1.5": (
+                wvc.Configure.NamedVectors.text2vec_weaviate,
+                wvc.Configure.Vectorizer.text2vec_weaviate,
+                {
+                    "base_url": vectorizer_base_url if vectorizer_base_url else None,
+                    "model": "Snowflake/snowflake-arctic-embed-m-v1.5",
+                },
+            ),
+            "none": (
+                wvc.Configure.NamedVectors.none,
+                wvc.Configure.Vectorizer.none,
+                {},
+            ),
         }
+
+        vectorizer_map: Dict[str, wvc.VectorizerConfig] = {}
+        if named_vector:
+            # Common arguments for named vectors
+            named_vector_args = {
+                "name": named_vector_name,
+                "vector_index_config": vector_index_map[vector_index],
+            }
+            for name, (
+                named_func,
+                _,
+                params,
+            ) in vectorizers_config.items():
+                vectorizer_map[name] = named_func(**named_vector_args, **params)
+
+            # Add jinaai_colbert only for named vectors
+            vectorizer_map["jinaai_colbert"] = (
+                wvc.Configure.NamedVectors.text2colbert_jinaai(**named_vector_args)
+            )
+        else:
+            for name, (
+                _,
+                default_func,
+                params,
+            ) in vectorizers_config.items():
+                vectorizer_map[name] = default_func(**params)
 
         inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {
             "timestamp": wvc.Configure.inverted_index(index_timestamps=True),
@@ -292,10 +367,15 @@ class CollectionManager:
         }
 
         try:
+            if vectorizer not in vectorizer_map.keys():
+                raise Exception(
+                    f"Error: Vectorizer '{vectorizer}' is not supported. Please use one of the following: {list(vectorizer_map.keys())}"
+                )
+
             self.client.collections.create(
                 name=collection,
                 vector_index_config=(
-                    vector_index_map[vector_index] if not multi_vector else None
+                    vector_index_map[vector_index] if not named_vector else None
                 ),
                 inverted_index_config=(
                     inverted_index_map[inverted_index] if inverted_index else None
@@ -317,10 +397,12 @@ class CollectionManager:
                     auto_tenant_creation=auto_tenant_creation,
                     auto_tenant_activation=auto_tenant_activation,
                 ),
-                vectorizer_config=(vectorizer_map[vectorizer] if vectorizer else None),
-                properties=(
-                    properties if not force_auto_schema and not multi_vector else None
+                vectorizer_config=(
+                    [vectorizer_map[vectorizer]]
+                    if named_vector
+                    else vectorizer_map[vectorizer]
                 ),
+                properties=(properties if not force_auto_schema else None),
             )
         except Exception as e:
 
