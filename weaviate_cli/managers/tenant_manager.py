@@ -271,9 +271,9 @@ class TenantManager:
             tenants = self.client.collections.get(collection).tenants.get()
 
         if verbose:
-            click.echo(f"{'Tenant Name':<20}{'Activity Status':<20}")
+            click.echo(f"{'Tenant Name':<30}{'Activity Status':<20}")
             for name, tenant in tenants.items():
-                click.echo(f"{name:<20}{tenant.activity_status.value:<20}")
+                click.echo(f"{name:<30}{tenant.activity_status.value:<20}")
         else:
             active_tenants = [
                 tenant
