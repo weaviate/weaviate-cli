@@ -1,4 +1,4 @@
-weaviate-client>=4.14.3
+git+https://github.com/weaviate/weaviate-python-client.git@1.31/move-replication-under-cluster
 click==8.1.7
 twine
 pytest
