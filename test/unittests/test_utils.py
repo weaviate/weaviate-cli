@@ -144,6 +144,22 @@ def test_parse_permissions_tenant():
         delete=True,
     )
 
+    assert parse_permission(
+        "read_tenants:Books:MyTenant*,YourTenant*"
+    ) == Permissions.tenants(
+        collection="Books", tenant=["MyTenant*", "YourTenant*"], read=True
+    )
+
+    assert parse_permission(
+        "crd_tenants:Books,Movies:MyTenant*,YourTenant*"
+    ) == Permissions.tenants(
+        collection=["Books", "Movies"],
+        tenant=["MyTenant*", "YourTenant*"],
+        create=True,
+        read=True,
+        delete=True,
+    )
+
 
 def test_parse_permission_data():
     # Test basic data permissions
@@ -288,6 +304,51 @@ def test_parse_permission_nodes():
     assert parse_permission(
         "read_nodes:verbose:Movies,Books,Films"
     ) == Permissions.Nodes.verbose(collection=["Movies", "Books", "Films"], read=True)
+
+
+def test_parse_permission_aliases():
+    assert parse_permission("crud_aliases:Movies") == Permissions.alias(
+        alias="*", collection="Movies", create=True, read=True, update=True, delete=True
+    )
+
+    assert parse_permission("cud_aliases:Movies") == Permissions.alias(
+        alias="*", collection="Movies", create=True, update=True, delete=True
+    )
+
+    assert parse_permission("rd_aliases:Movies*") == Permissions.alias(
+        alias="*", collection="Movies*", read=True, delete=True
+    )
+
+    assert parse_permission("cr_aliases:Movies,Books,Films*") == Permissions.alias(
+        alias="*",
+        collection=["Movies", "Books", "Films*"],
+        create=True,
+        read=True,
+        update=False,
+        delete=False,
+    )
+
+    assert parse_permission("cr_aliases") == Permissions.alias(
+        alias="*", collection="*", create=True, read=True, update=False, delete=False
+    )
+
+    assert parse_permission("create_aliases:Movies,Books:Alias*") == Permissions.alias(
+        alias="Alias*", collection=["Movies", "Books"], create=True
+    )
+
+    assert parse_permission(
+        "cru_aliases:*:Alias*,MyAlias*,Forget"
+    ) == Permissions.alias(
+        alias=["Alias*", "MyAlias*", "Forget"],
+        collection="*",
+        create=True,
+        read=True,
+        update=True,
+    )
+
+    assert parse_permission("create_aliases:Banks") == Permissions.alias(
+        alias="*", collection="Banks", create=True
+    )
 
 
 def test_parse_permission_cluster():

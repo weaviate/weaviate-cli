@@ -6,6 +6,7 @@ from weaviate_cli.completion.complete import (
     role_name_complete,
     collection_name_complete,
 )
+from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
@@ -23,6 +24,7 @@ from weaviate_cli.defaults import (
     GetRoleDefaults,
     GetUserDefaults,
     GetNodesDefaults,
+    GetAliasDefaults,
 )
 from weaviate_cli.managers.node_manager import NodeManager
 
@@ -332,6 +334,82 @@ def get_nodes_cli(ctx, minimal, shards, collections, collection):
             collections=collections,
             collection=collection,
         )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@get.command("alias")
+@click.option(
+    "--alias_name",
+    default=GetAliasDefaults.alias_name,
+    help="The name of the alias to get.",
+)
+@click.option(
+    "--collection",
+    default=GetAliasDefaults.collection,
+    help="The name of the collection to get aliases from.",
+)
+@click.option(
+    "--all",
+    is_flag=True,
+    help="Get all aliases in Weaviate.",
+)
+@click.pass_context
+def get_alias_cli(
+    ctx: click.Context, alias_name: Optional[str], collection: Optional[str], all: bool
+) -> None:
+    """Get an alias for a collection in Weaviate."""
+    client = None
+    try:
+        if all and alias_name:
+            raise Exception("Can't provide both --all and --alias_name.")
+        if all and collection:
+            raise Exception("Can't provide both --all and --collection.")
+        if alias_name and collection:
+            raise Exception("Can't provide both --alias_name and --collection.")
+        if not all and not alias_name and not collection:
+            raise Exception("Either --all or --alias_name or --collection is required.")
+
+        client = get_client_from_context(ctx)
+        alias_man = AliasManager(client)
+        if all:
+            aliases = alias_man.list_aliases()
+            click.echo("Aliases")
+            separator = "-" * 50
+            click.echo(f"\n{separator}")
+            if len(aliases) == 0:
+                click.echo("No aliases found.")
+            else:
+                for alias in aliases.values():
+                    alias_man.print_alias(alias)
+                    click.echo(f"\n{separator}")
+        elif collection:
+            aliases = alias_man.list_aliases(collection=collection)
+            click.echo(f"Aliases for collection '{collection}'")
+            separator = "-" * 50
+            click.echo(f"\n{separator}")
+            if len(aliases) == 0:
+                click.echo(f"No aliases found for collection '{collection}'.")
+            else:
+                for alias in aliases.values():
+                    alias_man.print_alias(alias)
+                    click.echo(f"\n{separator}")
+        else:
+            click.echo(f"Alias '{alias_name}'")
+            separator = "-" * 50
+            click.echo(f"\n{separator}")
+            alias = alias_man.get_alias(alias_name=alias_name)
+            if alias:
+                alias_man.print_alias(alias)
+                click.echo(f"\n{separator}")
+            else:
+                click.echo(f"Alias '{alias_name}' not found.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

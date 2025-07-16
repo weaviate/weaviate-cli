@@ -7,6 +7,7 @@ from weaviate_cli.completion.complete import (
     role_name_complete,
     collection_name_complete,
 )
+from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -530,6 +531,27 @@ def create_user_cli(ctx: click.Context, user_name: str, store: bool) -> None:
                 f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
             )
 
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("alias")
+@click.argument("alias_name")
+@click.argument("collection")
+@click.pass_context
+def create_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> None:
+    """Create an alias for a collection in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        alias_man = AliasManager(client)
+        alias_man.create_alias(alias_name=alias_name, collection=collection)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
