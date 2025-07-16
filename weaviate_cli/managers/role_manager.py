@@ -161,7 +161,7 @@ class RoleManager:
             print("\nTenants Permissions:")
             for perm in role.tenants_permissions:
                 print(
-                    f"  - Collection: {perm.collection}, Tenant: *, Action: {', '.join([action.value for action in perm.actions])}"
+                    f"  - Collection: {perm.collection}, Tenant: {perm.tenant}, Action: {', '.join([action.value for action in perm.actions])}"
                 )
 
         if role.data_permissions:
@@ -169,4 +169,18 @@ class RoleManager:
             for perm in role.data_permissions:
                 print(
                     f"  - Collection: {perm.collection}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
+
+        if role.replicate_permissions:
+            print("\nReplicate Permissions:")
+            for perm in role.replicate_permissions:
+                print(
+                    f"  - Collection: {perm.collection}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
+
+        if role.alias_permissions:
+            print("\nAliases Permissions:")
+            for perm in role.alias_permissions:
+                print(
+                    f"  - Collection: {perm.collection}, Alias: {perm.alias}, Action: {', '.join([action.value for action in perm.actions])}"
                 )

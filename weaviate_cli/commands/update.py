@@ -4,6 +4,7 @@ import json
 from typing import Optional, Union
 
 from weaviate_cli.completion.complete import collection_name_complete
+from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.utils import get_client_from_context
@@ -376,6 +377,27 @@ def update_user_cli(
         elif deactivate:
             click.echo(f"User '{user_name}' deactivated successfully.")
 
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@update.command("alias")
+@click.argument("alias_name")
+@click.argument("collection")
+@click.pass_context
+def update_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> None:
+    """Update an alias for a collection in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        alias_man = AliasManager(client)
+        alias_man.update_alias(alias_name=alias_name, collection=collection)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

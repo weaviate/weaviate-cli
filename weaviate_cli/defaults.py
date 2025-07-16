@@ -13,24 +13,39 @@ PERMISSION_HELP_STRING = (
     "  Data management: create_data, read_data, update_data, delete_data\n\n"
     "  User management: assign_and_revoke_users, read_users\n\n"
     "  Node management: read_nodes\n\n"
+    "  Alias management: create_aliases, read_aliases, update_aliases, delete_aliases\n\n"
     "  CRUD shorthands for collections, roles, tenants, users and data:\n\n"
     "    crud_collections:collection,cud_data:collection,rd_collections,\n\n"
     "    crud_roles:role,cud_tenants:tenant,rd_tenants,\n\n"
     "    crud_users:user,cud_data:*,rd_data:*\n\n"
+    "    crud_aliases:Movies,cud_aliases:Movies,rd_aliases:Movies\n\n"
+    "Subfields:\n\n"
+    "  - *_collections:collection name, can be specified multiple times\n\n"
+    "  - *_roles:role name:scope, can be specified multiple times.\n\n"
+    "  - *_users:user_name, can be specified multiple times\n\n"
+    "  - *_tenants:collection_name:tenant_name, can be specified multiple times\n\n"
+    "  - *_aliases:collection_name:alias_name, can be specified multiple times\n\n"
+    "  - *_data:collection_name, can be specified multiple times\n\n"
+    "  - *_backups:collection_name, can be specified multiple times\n\n"
+    "  - read_nodes:verbosity (verbosity level)\n\n"
     "Examples:\n\n"
     "  --permission crud_collections:Movies\n\n"
     "  --permission cud_tenants:Person_*\n\n"
     "  --permission rucd_data:Person_*\n\n"
-    '  --permission "assign_and_revoke_users:user-1,user-2"\n\n'
-    '  --permission "create_collections:Movies,Books"\n\n'
-    '  --permission "create_tenants:Movies,Books"\n\n'
-    '  --permission "crud_roles:Admin,Editor"\n\n'
-    "  --permission create_roles:Editor:all\n\n"
-    "  --permission read_roles:Editor:match\n\n"
+    "  --permission assign_and_revoke_users:user-1,user-2\n\n"
+    "  --permission create_collections:Movies,Books\n\n"
+    "  --permission create_tenants:Movies,Books\n\n"
+    "  --permission crud_tenants:Movies,Books:MyTenant*,YourTenant*\n\n"
+    "  --permission crud_roles:Admin,Editor:all\n\n"
+    "  --permission create_roles:Editor:match\n\n"
+    "  --permission read_roles:Admin,Editor:match\n\n"
     "  --permission read_nodes:verbose:Movies\n\n"
     "  --permission read_nodes:minimal\n\n"
     "  --permission manage_backups:Movies\n\n"
-    "  --permission read_cluster"
+    "  --permission read_cluster\n\n"
+    "  --permission crud_aliases:Movies,Books:Alias*\n\n"
+    "  --permission create_aliases:Banks\n\n"
+    "  --permission crud_users:user-1,user-2\n\n"
 )
 QUERY_MAXIMUM_RESULTS = 10000
 MAX_OBJECTS_PER_BATCH = 5000
@@ -237,3 +252,10 @@ class UpdateUserDefaults:
 @dataclass
 class GetNodesDefaults:
     collection: Optional[str] = None
+
+
+@dataclass
+class GetAliasDefaults:
+    alias_name: Optional[str] = None
+    collection: Optional[str] = None
+    all: bool = False
