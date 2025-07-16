@@ -382,10 +382,10 @@ class DataManager:
 
         with collection.batch.dynamic() as batch:
             for i, obj in enumerate(batch_objects):
-                if vectorizer is None:
+                if vectorizer == "none":
                     if multi_vector:
                         vector = {
-                            CreateCollectionDefaults.named_vector: [
+                            named_vectors[0]: [
                                 (2 * np.random.rand(vector_dimensions) - 1).tolist(),
                                 (2 * np.random.rand(vector_dimensions) - 1).tolist(),
                             ]
@@ -440,7 +440,6 @@ class DataManager:
         skip_seed: bool,
         vector_dimensions: Optional[int] = 1536,
         uuid: Optional[str] = None,
-        named_vectors: Optional[List[str]] = None,
         verbose: bool = False,
         multi_vector: bool = False,
     ) -> Collection:
@@ -449,7 +448,17 @@ class DataManager:
             start_time = time.time()
 
             # Determine vector dimensions based on vectorizer
-            vectorizer = collection.config.get().vectorizer
+            config = collection.config.get()
+            if not config.vectorizer and config.vector_config:
+                # Named vectors
+                named_vectors = list(config.vector_config.keys())
+                vectorizer = config.vector_config[
+                    named_vectors[0]
+                ].vectorizer.vectorizer
+            elif config.vectorizer:
+                # Standard vectorizer
+                vectorizer = config.vectorizer
+                named_vectors = None
 
             # Generate all the data objects
             data_objects = self.__generate_data_object(
@@ -475,15 +484,15 @@ class DataManager:
                     )
 
                 counter, failed_objects = self.__ingest_batch(
-                    data_objects,
-                    cl_collection,
-                    vectorizer,
-                    vector_dimensions,
-                    named_vectors,
-                    uuid,
-                    0,
-                    verbose,
-                    multi_vector,
+                    batch_objects=data_objects,
+                    collection=cl_collection,
+                    vectorizer=vectorizer,
+                    vector_dimensions=vector_dimensions,
+                    named_vectors=named_vectors,
+                    uuid=uuid,
+                    batch_index=0,
+                    verbose=verbose,
+                    multi_vector=multi_vector,
                 )
 
                 # Handle any failed objects
@@ -528,14 +537,15 @@ class DataManager:
                         futures.append(
                             executor.submit(
                                 self.__ingest_batch,
-                                batch,
-                                cl_collection,
-                                vectorizer,
-                                vector_dimensions,
-                                named_vectors,
-                                uuid,
-                                i,
-                                verbose,
+                                batch_objects=batch,
+                                collection=cl_collection,
+                                vectorizer=vectorizer,
+                                vector_dimensions=vector_dimensions,
+                                multi_vector=multi_vector,
+                                named_vectors=named_vectors,
+                                uuid=uuid,
+                                batch_index=i,
+                                verbose=verbose,
                             )
                         )
 
@@ -593,7 +603,6 @@ class DataManager:
         tenants_list: Optional[List[str]] = None,
         vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
         uuid: Optional[str] = None,
-        named_vectors: Optional[List[str]] = None,
         wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
         verbose: bool = CreateDataDefaults.verbose,
         multi_vector: bool = CreateDataDefaults.multi_vector,
@@ -672,16 +681,15 @@ class DataManager:
             if tenant == "None":
                 initial_length = len(col)
                 collection = self.__ingest_data(
-                    col,
-                    limit,
-                    cl_map[consistency_level],
-                    randomize,
-                    skip_seed,
-                    vector_dimensions,
-                    uuid,
-                    named_vectors,
-                    verbose,
-                    multi_vector,
+                    collection=col,
+                    num_objects=limit,
+                    cl=cl_map[consistency_level],
+                    randomize=randomize,
+                    skip_seed=skip_seed,
+                    vector_dimensions=vector_dimensions,
+                    uuid=uuid,
+                    verbose=verbose,
+                    multi_vector=multi_vector,
                 )
                 after_length = len(col)
             else:
@@ -704,16 +712,15 @@ class DataManager:
                     initial_length = len(col.with_tenant(tenant))
                 click.echo(f"Processing objects for tenant '{tenant}'")
                 collection = self.__ingest_data(
-                    col.with_tenant(tenant),
-                    limit,
-                    cl_map[consistency_level],
-                    randomize,
-                    skip_seed,
-                    vector_dimensions,
-                    uuid,
-                    named_vectors,
-                    verbose,
-                    multi_vector,
+                    collection=col.with_tenant(tenant),
+                    num_objects=limit,
+                    cl=cl_map[consistency_level],
+                    randomize=randomize,
+                    skip_seed=skip_seed,
+                    vector_dimensions=vector_dimensions,
+                    uuid=uuid,
+                    verbose=verbose,
+                    multi_vector=multi_vector,
                 )
                 after_length = len(col.with_tenant(tenant))
             if wait_for_indexing:
