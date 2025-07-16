@@ -197,6 +197,9 @@ class CollectionManager:
                     training_limit=training_limit
                 )
             ),
+            "hnsw_rq": wvc.Configure.VectorIndex.hnsw(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.rq()
+            ),
             "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
                 filter_strategy=VectorFilterStrategy.ACORN
             ),
