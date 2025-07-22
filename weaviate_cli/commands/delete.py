@@ -2,6 +2,7 @@ import sys
 import click
 
 from weaviate_cli.completion.complete import collection_name_complete
+from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -206,6 +207,27 @@ def delete_user_cli(ctx, user_name):
         user_manager = UserManager(client)
         user_manager.delete_user(user_name=user_name)
         click.echo(f"User '{user_name}' deleted successfully.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@delete.command("alias")
+@click.argument("alias_name")
+@click.pass_context
+def delete_alias_cli(ctx: click.Context, alias_name: str) -> None:
+    """Delete an alias for a collection in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        alias_man = AliasManager(client)
+        alias_man.delete_alias(alias_name=alias_name)
+        click.echo(f"Alias '{alias_name}' deleted successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
