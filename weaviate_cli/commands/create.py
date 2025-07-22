@@ -3,6 +3,8 @@ import click
 from typing import Optional
 import json
 
+from weaviate import WeaviateClient
+
 from weaviate_cli.completion.complete import (
     role_name_complete,
     collection_name_complete,
@@ -13,6 +15,7 @@ from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
+from weaviate_cli.managers.cluster_manager import ClusterManager
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.user_manager import UserManager
 from weaviate.exceptions import WeaviateConnectionError
@@ -235,7 +238,7 @@ def create_tenants_cli(
 ):
     """Create tenants in Weaviate."""
 
-    client = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         # Call the function from create_tenants.py with general and specific arguments
@@ -291,7 +294,7 @@ def create_tenants_cli(
 def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_backup):
     """Create a backup in Weaviate."""
 
-    client = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         backup_manager = BackupManager(client)
@@ -411,7 +414,7 @@ def create_data_cli(
         click.echo("Error: --uuid has no effect unless --limit=1 is enabled.")
         sys.exit(1)
 
-    client = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         data_manager = DataManager(client)
@@ -458,7 +461,7 @@ def create_data_cli(
 @click.pass_context
 def create_role_cli(ctx: click.Context, role_name: str, permission: tuple[str]) -> None:
     """Create a role in Weaviate."""
-    client = None
+    client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         role_man = RoleManager(client)
@@ -552,6 +555,86 @@ def create_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> No
         client = get_client_from_context(ctx)
         alias_man = AliasManager(client)
         alias_man.create_alias(alias_name=alias_name, collection=collection)
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command(
+    "replication", help="Create and start a replication operation in Weaviate."
+)
+@click.option(
+    "--collection",
+    help="The name of the collection in which the shard should be replicated.",
+    shell_complete=collection_name_complete,
+)
+@click.option(
+    "--shard",
+    help="The shard to replicate.",
+)
+@click.option(
+    "--source-node",
+    help="The source node of the shard replication.",
+)
+@click.option(
+    "--target-node",
+    help="The target node of the shard replication.",
+)
+@click.option(
+    "--type",
+    "type_",
+    default="MOVE",
+    type=click.Choice(["COPY", "MOVE"]),
+    help="The type of replication to perform.",
+)
+@click.pass_context
+def create_replication_cli(
+    ctx: click.Context,
+    collection: Optional[str],
+    shard: Optional[str],
+    source_node: Optional[str],
+    target_node: Optional[str],
+    type_: str,
+) -> None:
+    """Create and start a replication operation in Weaviate."""
+    client: Optional[WeaviateClient] = None
+
+    if collection is None:
+        click.echo("No collection provided. Please provide the name of the collection.")
+        sys.exit(1)
+    if shard is None:
+        click.echo("No shard provided. Please provide the name of the shard.")
+        sys.exit(1)
+    if source_node is None:
+        click.echo(
+            "No source node provided. Please provide the name of the source node."
+        )
+        sys.exit(1)
+    if target_node is None:
+        click.echo(
+            "No target node provided. Please provide the name of the target node."
+        )
+        sys.exit(1)
+
+    try:
+        client = get_client_from_context(ctx)
+        manager = ClusterManager(client)
+        uuid = manager.start_replication(
+            collection=collection,
+            shard=shard,
+            source_node=source_node,
+            target_node=target_node,
+            type_=type_,
+        )
+        click.echo(f"Replication successfully started with UUID: {uuid}.")
+    except WeaviateConnectionError as e:
+        click.echo(f"Connection error: {e}")
+        sys.exit(1)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

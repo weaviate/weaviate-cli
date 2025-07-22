@@ -1,12 +1,16 @@
 import sys
 import click
 
+from typing import Optional
+from weaviate import WeaviateClient
+
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.data_manager import DataManager
+from weaviate_cli.managers.cluster_manager import ClusterManager
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.defaults import (
@@ -228,6 +232,51 @@ def delete_alias_cli(ctx: click.Context, alias_name: str) -> None:
         alias_man = AliasManager(client)
         alias_man.delete_alias(alias_name=alias_name)
         click.echo(f"Alias '{alias_name}' deleted successfully.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@delete.command("replication", help="Delete a replication operation in Weaviate.")
+@click.argument("op_id")
+@click.pass_context
+def delete_replication_cli(ctx: click.Context, op_id: str) -> None:
+    """Delete a replication operation in Weaviate."""
+    client: Optional[WeaviateClient] = None
+    try:
+        client = get_client_from_context(ctx)
+        manager = ClusterManager(client)
+        manager.delete_replication(op_id=op_id)
+        click.echo(
+            f"Replication scheduled for deletion successfully with UUID: {op_id}"
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@delete.command(
+    "all-replications", help="Delete all replication operations in Weaviate."
+)
+@click.pass_context
+def delete_all_replications_cli(ctx: click.Context) -> None:
+    """Delete all replication operations in Weaviate."""
+    client: Optional[WeaviateClient] = None
+    try:
+        client = get_client_from_context(ctx)
+        manager = ClusterManager(client)
+        manager.delete_all_replication()
+        click.echo("All replications scheduled for deletion successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
