@@ -3,6 +3,14 @@ import warnings
 warnings.filterwarnings(
     "ignore", message="pkg_resources is deprecated as an API.", category=UserWarning
 )
+warnings.filterwarnings(
+    "ignore",
+    message=(
+        r"Protobuf gencode version [\d\.]+ is exactly one major version older than the runtime version [\d\.]+ at v1/tenants\.proto\. "
+        r"Please update the gencode to avoid compatibility violations in the next runtime release\."
+    ),
+    category=UserWarning,
+)
 
 from typing import Optional
 import click
