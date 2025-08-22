@@ -291,6 +291,11 @@ class CollectionManager:
                     "model": "Snowflake/snowflake-arctic-embed-m-v1.5",
                 },
             ),
+            "model2vec": (
+                wvc.Configure.NamedVectors.text2vec_model2vec,
+                wvc.Configure.Vectorizer.text2vec_model2vec,
+                {},
+            ),
             "none": (
                 wvc.Configure.NamedVectors.none,
                 wvc.Configure.Vectorizer.none,

@@ -128,6 +128,7 @@ def create() -> None:
             "jinaai_colbert",
             "weaviate",
             "weaviate-1.5",
+            "model2vec",
             "none",
         ]
     ),
