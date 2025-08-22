@@ -105,6 +105,21 @@ class CreateDataDefaults:
 
 
 @dataclass
+class CreateBenchmarkDefaults:
+    max_duration: int = 300
+    collection: str = "Movies"
+    term: str = "Action movies"
+    certainty: bool = False
+    output: str = "stdout"
+    query_type: str = "hybrid"
+    limit: int = 10
+    qps: Optional[int] = None
+    warmup_duration: int = 5
+    test_duration: int = 10
+    latency_threshold: int = 10000
+
+
+@dataclass
 class CreateRoleDefaults:
     role_name: str = "NewRole"
     permission: tuple = ()

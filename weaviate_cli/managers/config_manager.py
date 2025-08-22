@@ -95,7 +95,17 @@ class ConfigManager:
             return False
 
     def get_client(self) -> weaviate.WeaviateClient:
-        """Get weaviate client from config"""
+        """Get synchronous weaviate client from config"""
+        return self._create_client(async_client=False)
+
+    def get_async_client(self) -> weaviate.WeaviateAsyncClient:
+        """Get asynchronous weaviate client from config"""
+        return self._create_client(async_client=True)
+
+    def _create_client(
+        self, async_client: bool
+    ) -> Union[weaviate.WeaviateClient, weaviate.WeaviateAsyncClient]:
+        """Internal method to create client based on async flag"""
         auth_config: Optional[weaviate.auth.AuthCredentials] = None
 
         if "auth" in self.config:
@@ -111,81 +121,152 @@ class ConfigManager:
                 auth_config = weaviate.auth.AuthApiKey(
                     api_key=self.config["auth"]["api_key"]
                 )
-            # elif self.config["auth"]["type"] == "client_secret":
-            #     auth_config = self.config["auth"]["secret"]
-            # elif self.config["auth"]["type"] == "username_pass":
-            # auth_config = weaviate.auth.AuthClientP(self.config["auth"]["user"], self.config["auth"]["pass"])
-            # else:
-            # click.echo("Fatal Error: Unknown authentication type in config!")
-            # sys.exit(1)
+
         if self.config["host"] == "localhost":
-            return weaviate.connect_to_local(
-                host=self.__get_host(self.config["http_port"]),
-                port=self.config["http_port"],
-                grpc_port=self.config["grpc_port"],
-                auth_credentials=auth_config,
-                headers=self.config["headers"] if "headers" in self.config else None,
-            )
-        elif self.config["host"].endswith("weaviate.cloud"):
-            try:
-                return weaviate.connect_to_weaviate_cloud(
-                    cluster_url=self.config["host"],
-                    auth_credentials=auth_config,
-                    headers=(
-                        self.config["headers"] if "headers" in self.config else None
-                    ),
-                )
-            except WeaviateGRPCUnavailableError as e:
-                click.echo(
-                    f"GRPC connection seems to be unavailable, re-connecting skipping checks: {e}"
-                )
-                return weaviate.connect_to_weaviate_cloud(
-                    cluster_url=self.config["host"],
-                    auth_credentials=auth_config,
-                    headers=(
-                        self.config["headers"] if "headers" in self.config else None
-                    ),
-                    skip_init_checks=True,
-                )
-        else:
-            # Check if host is a URL or IP/hostname
-            if self.__is_url(self.config["host"]):
-                # Handle URL format
-                host_parsed = urlparse(self.config["host"])
-                grpc_parsed = urlparse(self.config["grpc_host"])
-                return weaviate.connect_to_custom(
-                    http_host=host_parsed.hostname,
-                    grpc_host=grpc_parsed.hostname,
-                    grpc_secure=grpc_parsed.scheme == "https",
-                    http_secure=host_parsed.scheme == "https",
-                    http_port=(
-                        self.__get_port(host_parsed)
-                        if "http_port" not in self.config
-                        or self.config["http_port"] == ""
-                        else self.config["http_port"]
-                    ),
-                    grpc_port=(
-                        self.__get_port(grpc_parsed)
-                        if "grpc_port" not in self.config
-                        or self.config["grpc_port"] == ""
-                        else self.config["grpc_port"]
-                    ),
-                    auth_credentials=auth_config,
-                    headers=(
-                        self.config["headers"] if "headers" in self.config else None
-                    ),
-                )
-            else:
-                # Handle IP/hostname format
-                return weaviate.connect_to_custom(
-                    http_host=self.config["host"],
-                    grpc_host=self.config["grpc_host"],
-                    grpc_secure=self.config["grpc_port"] == 443,  # Secure if port 443
-                    http_secure=self.config["http_port"] == 443,  # Secure if port 443
-                    http_port=self.config["http_port"],
+            if async_client:
+                return weaviate.use_async_with_local(
+                    host=self.__get_host(self.config["http_port"]),
+                    port=self.config["http_port"],
                     grpc_port=self.config["grpc_port"],
                     auth_credentials=auth_config,
                     headers=(
                         self.config["headers"] if "headers" in self.config else None
                     ),
                 )
+            else:
+                return weaviate.connect_to_local(
+                    host=self.__get_host(self.config["http_port"]),
+                    port=self.config["http_port"],
+                    grpc_port=self.config["grpc_port"],
+                    auth_credentials=auth_config,
+                    headers=(
+                        self.config["headers"] if "headers" in self.config else None
+                    ),
+                )
+        elif self.config["host"].endswith("weaviate.cloud"):
+            if async_client:
+                try:
+                    return weaviate.use_async_with_weaviate_cloud(
+                        cluster_url=self.config["host"],
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                    )
+                except WeaviateGRPCUnavailableError as e:
+                    click.echo(
+                        f"GRPC connection seems to be unavailable, re-connecting skipping checks: {e}"
+                    )
+                    return weaviate.connect_to_weaviate_cloud(
+                        cluster_url=self.config["host"],
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                        skip_init_checks=True,
+                    )
+            else:
+                try:
+                    return weaviate.connect_to_weaviate_cloud(
+                        cluster_url=self.config["host"],
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                    )
+                except WeaviateGRPCUnavailableError as e:
+                    click.echo(
+                        f"GRPC connection seems to be unavailable, re-connecting skipping checks: {e}"
+                    )
+                    return weaviate.connect_to_weaviate_cloud(
+                        cluster_url=self.config["host"],
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                        skip_init_checks=True,
+                    )
+        else:
+            # Check if host is a URL or IP/hostname
+            if self.__is_url(self.config["host"]):
+                # Handle URL format
+                host_parsed = urlparse(self.config["host"])
+                grpc_parsed = urlparse(self.config["grpc_host"])
+                if async_client:
+                    return weaviate.use_async_with_custom(
+                        http_host=host_parsed.hostname,
+                        grpc_host=grpc_parsed.hostname,
+                        grpc_secure=grpc_parsed.scheme == "https",
+                        http_secure=host_parsed.scheme == "https",
+                        http_port=(
+                            self.__get_port(host_parsed)
+                            if "http_port" not in self.config
+                            or self.config["http_port"] == ""
+                            else self.config["http_port"]
+                        ),
+                        grpc_port=(
+                            self.__get_port(grpc_parsed)
+                            if "grpc_port" not in self.config
+                            or self.config["grpc_port"] == ""
+                            else self.config["grpc_port"]
+                        ),
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                    )
+                else:
+                    return weaviate.connect_to_custom(
+                        http_host=host_parsed.hostname,
+                        grpc_host=grpc_parsed.hostname,
+                        grpc_secure=grpc_parsed.scheme == "https",
+                        http_secure=host_parsed.scheme == "https",
+                        http_port=(
+                            self.__get_port(host_parsed)
+                            if "http_port" not in self.config
+                            or self.config["http_port"] == ""
+                            else self.config["http_port"]
+                        ),
+                        grpc_port=(
+                            self.__get_port(grpc_parsed)
+                            if "grpc_port" not in self.config
+                            or self.config["grpc_port"] == ""
+                            else self.config["grpc_port"]
+                        ),
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                    )
+            else:
+                # Handle IP/hostname format
+                if async_client:
+                    return weaviate.use_async_with_custom(
+                        http_host=self.config["host"],
+                        grpc_host=self.config["grpc_host"],
+                        grpc_secure=self.config["grpc_port"]
+                        == 443,  # Secure if port 443
+                        http_secure=self.config["http_port"]
+                        == 443,  # Secure if port 443
+                        http_port=self.config["http_port"],
+                        grpc_port=self.config["grpc_port"],
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                    )
+                else:
+                    return weaviate.connect_to_custom(
+                        http_host=self.config["host"],
+                        grpc_host=self.config["grpc_host"],
+                        grpc_secure=self.config["grpc_port"]
+                        == 443,  # Secure if port 443
+                        http_secure=self.config["http_port"]
+                        == 443,  # Secure if port 443
+                        http_port=self.config["http_port"],
+                        grpc_port=self.config["grpc_port"],
+                        auth_credentials=auth_config,
+                        headers=(
+                            self.config["headers"] if "headers" in self.config else None
+                        ),
+                    )

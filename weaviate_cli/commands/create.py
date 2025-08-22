@@ -11,7 +11,7 @@ from weaviate_cli.completion.complete import (
 )
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.backup_manager import BackupManager
-from weaviate_cli.utils import get_client_from_context
+from weaviate_cli.utils import get_client_from_context, get_async_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
