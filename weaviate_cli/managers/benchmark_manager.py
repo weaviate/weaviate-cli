@@ -267,6 +267,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         EWMA_ALPHA = 0.3
         ewma_latency_ms: Optional[float] = None
         recent_latencies = deque(maxlen=2000)
+        completion_times = deque(maxlen=20000)
 
         # Worker pool (we only scale up)
         workers: List[asyncio.Task] = []
@@ -318,6 +319,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                             took if ewma_latency_ms is None
                             else EWMA_ALPHA * took + (1 - EWMA_ALPHA) * ewma_latency_ms
                         )
+                        completion_times.append(loop.time())
                         if phase_name == "Main Test" and took > latency_threshold:
                             latency_exceeded = True
                             goto_finally = True
@@ -368,6 +370,16 @@ class BenchmarkQPSManager(BenchmarkManager):
                     self._report_percentiles(
                         response_times, certainty_values, show_certainty, csv_writer, phase_name
                     )
+                    now = loop.time()
+                    window = 5.0
+                    cnt = 0
+                    for t in reversed(completion_times):
+                        if t >= now - window:
+                            cnt += 1
+                        else:
+                            break  # deque is time-ordered; early exit
+                    current_qps = cnt / window if window > 0 else 0.0
+                    click.echo(f"Current QPS: {current_qps:.2f}\n")
 
         prod_task = asyncio.create_task(producer())
         ctrl_task = asyncio.create_task(controller())
