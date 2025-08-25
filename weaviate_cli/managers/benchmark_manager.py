@@ -156,6 +156,7 @@ class BenchmarkManager(ABC):
         p99 = np.percentile(response_times, 99)
         total_queries = len(response_times)
         actual_qps = total_queries / max(actual_duration, 1e-9)
+        click.echo(f"\n-------------------------------\n")
         click.echo(f"Total queries: {total_queries}")
         click.echo(f"Actual QPS: {actual_qps:.2f}")
         click.echo(f"P50 latency: {p50:.2f} ms")
