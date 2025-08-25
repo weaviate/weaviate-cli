@@ -116,7 +116,7 @@ class BenchmarkManager(ABC):
         click.echo(f"Current P50 latency: {p50:.2f} ms")
         click.echo(f"Current P90 latency: {p90:.2f} ms")
         click.echo(f"Current P95 latency: {p95:.2f} ms")
-        click.echo(f"Current P99 latency: {p99:.2f} ms\n")
+        click.echo(f"Current P99 latency: {p99:.2f} ms")
 
         if show_certainty and certainty_values:
             p50c = np.percentile(certainty_values, 50)
