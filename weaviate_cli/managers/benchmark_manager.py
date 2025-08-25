@@ -285,7 +285,7 @@ class BenchmarkQPSManager(BenchmarkManager):
 
         click.echo(
             f"Starting {phase_name} phase at {qps} QPS for {duration} seconds "
-            f"with {'auto' if concurrency is None else f'concurrency={concurrency}'}."
+            f"with {'auto' if concurrency is None else f'concurrency={concurrency}'} conccurency."
         )
 
         async def worker():
