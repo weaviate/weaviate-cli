@@ -3,16 +3,15 @@ import csv
 import random
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any
 from pathlib import Path
 from collections import deque
 
 import numpy as np
 import click
-from weaviate.collections import Collection, CollectionAsync
+from weaviate.collections import CollectionAsync
 from weaviate.collections.classes.filters import _FilterOr
 import weaviate.classes as wvc
-from weaviate.classes.init import AdditionalConfig, Timeout
 
 
 class BenchmarkManager(ABC):
@@ -48,20 +47,20 @@ class BenchmarkManager(ABC):
         filename = f"benchmark_results_{timestamp_str}.csv"
         csv_file = open(filename, "w", newline="")
         csv_writer = csv.writer(csv_file)
-        header = ["timestamp","phase_name","p50_latency","p90_latency","p95_latency","p99_latency"]
+        header = ["timestamp", "phase_name", "p50_latency", "p90_latency", "p95_latency", "p99_latency"]
         if certainty:
-            header += ["p50_certainty","p90_certainty","p95_certainty","p99_certainty"]
-        header += ["total_queries","actual_qps"]
+            header += ["p50_certainty", "p90_certainty", "p95_certainty", "p99_certainty"]
+        header += ["total_queries", "actual_qps"]
         csv_writer.writerow(header)
         return csv_writer, csv_file
 
     async def _run_query_and_collect_latency(
-        self,
-        collection_obj: CollectionAsync,
-        query_term: str,
-        limit: int,
-        filters: Optional[List],
-        query_type: str,
+            self,
+            collection_obj: CollectionAsync,
+            query_term: str,
+            limit: int,
+            filters: Optional[List],
+            query_type: str,
     ) -> Tuple[Optional[int], Optional[List[float]]]:
         start_time = time.time()
         try:
@@ -101,13 +100,15 @@ class BenchmarkManager(ABC):
             return None, None
 
     def _report_percentiles(
-        self,
-        response_times: List[int],
-        certainty_values: List[float],
-        show_certainty: bool,
-        csv_writer: Optional[csv.writer],
-        phase_name: str,
+            self,
+            response_times: List[int],
+            certainty_values: List[float],
+            show_certainty: bool,
+            csv_writer: Optional[csv.writer],
+            phase_name: str,
     ) -> None:
+        if not response_times:
+            return
         p50 = np.percentile(response_times, 50)
         p90 = np.percentile(response_times, 90)
         p95 = np.percentile(response_times, 95)
@@ -135,61 +136,66 @@ class BenchmarkManager(ABC):
             csv_writer.writerow(row)
 
     def _report_final_results(
-        self,
-        response_times: List[int],
-        certainty_values: List[float],
-        show_certainty: bool,
-        csv_writer: Optional[csv.writer],
-        phase_name: str,
-        actual_duration: float,
+            self,
+            response_times: List[int],
+            certainty_values: List[float],
+            show_certainty: bool,
+            csv_writer: Optional[csv.writer],
+            phase_name: str,
+            actual_duration: float,
     ) -> None:
-        if phase_name == "Main Test":
-            p50 = np.percentile(response_times, 50)
-            p90 = np.percentile(response_times, 90)
-            p95 = np.percentile(response_times, 95)
-            p99 = np.percentile(response_times, 99)
-            total_queries = len(response_times)
-            actual_qps = total_queries / actual_duration
-            click.echo(f"Total queries: {total_queries}")
-            click.echo(f"Actual QPS: {actual_qps:.2f}")
-            click.echo(f"P50 latency: {p50:.2f} ms")
-            click.echo(f"P90 latency: {p90:.2f} ms")
-            click.echo(f"P95 latency: {p95:.2f} ms")
-            click.echo(f"P99 latency: {p99:.2f} ms\n")
+        if phase_name != "Main Test":
+            return
 
+        if not response_times:
+            click.echo("No successful queries were completed in Main Test.")
+            return
+        p50 = np.percentile(response_times, 50)
+        p90 = np.percentile(response_times, 90)
+        p95 = np.percentile(response_times, 95)
+        p99 = np.percentile(response_times, 99)
+        total_queries = len(response_times)
+        actual_qps = total_queries / max(actual_duration, 1e-9)
+        click.echo(f"Total queries: {total_queries}")
+        click.echo(f"Actual QPS: {actual_qps:.2f}")
+        click.echo(f"P50 latency: {p50:.2f} ms")
+        click.echo(f"P90 latency: {p90:.2f} ms")
+        click.echo(f"P95 latency: {p95:.2f} ms")
+        click.echo(f"P99 latency: {p99:.2f} ms\n")
+
+        if show_certainty and certainty_values:
+            p50c = np.percentile(certainty_values, 50)
+            p90c = np.percentile(certainty_values, 90)
+            p95c = np.percentile(certainty_values, 95)
+            p99c = np.percentile(certainty_values, 99)
+            click.echo(f"P50 certainty: {p50c:.2f}")
+            click.echo(f"P90 certainty: {p90c:.2f}")
+            click.echo(f"P95 certainty: {p95c:.2f}")
+            click.echo(f"P99 certainty: {p99c:.2f}")
+
+        if csv_writer:
+            row = [time.time(), phase_name, f"{p50:.2f}", f"{p90:.2f}", f"{p95:.2f}", f"{p99:.2f}"]
             if show_certainty and certainty_values:
-                p50c = np.percentile(certainty_values, 50)
-                p90c = np.percentile(certainty_values, 90)
-                p95c = np.percentile(certainty_values, 95)
-                p99c = np.percentile(certainty_values, 99)
-                click.echo(f"P50 certainty: {p50c:.2f}")
-                click.echo(f"P90 certainty: {p90c:.2f}")
-                click.echo(f"P95 certainty: {p95c:.2f}")
-                click.echo(f"P99 certainty: {p99c:.2f}")
-
-            if csv_writer:
-                row = [time.time(), phase_name, f"{p50:.2f}", f"{p90:.2f}", f"{p95:.2f}", f"{p99:.2f}"]
-                if show_certainty and certainty_values:
-                    row.extend([f"{p50c:.2f}", f"{p90c:.2f}", f"{p95c:.2f}", f"{p99c:.2f}"])
-                row.extend([f"{total_queries}", f"{actual_qps:.2f}"])
-                csv_writer.writerow(row)
+                row.extend([f"{p50c:.2f}", f"{p90c:.2f}", f"{p95c:.2f}", f"{p99c:.2f}"])
+            row.extend([f"{total_queries}", f"{actual_qps:.2f}"])
+            csv_writer.writerow(row)
 
 
 class BenchmarkQPSManager(BenchmarkManager):
     async def run_benchmark(
-        self,
-        collection: str,
-        max_duration: int = 300,
-        certainty: bool = False,
-        output: str = "stdout",
-        query_type: str = "hybrid",
-        limit: int = 10,
-        qps: Optional[int] = None,
-        query_terms: Optional[List[str]] = None,
-        warmup_duration: int = 5,
-        test_duration: int = 10,
-        latency_threshold: int = 10000,
-        concurrency: Optional[int] = None,  # if None => automatic
+            self,
+            collection: str,
+            max_duration: int = 300,
+            certainty: bool = False,
+            output: str = "stdout",
+            query_type: str = "hybrid",
+            limit: int = 10,
+            qps: Optional[int] = None,
+            query_terms: Optional[List[str]] = None,
+            warmup_duration: int = 5,
+            test_duration: int = 10,
+            latency_threshold: int = 10000,
+            concurrency: Optional[int] = None,  # if None => auto (scale-up-only)
     ) -> None:
         if not query_terms:
             query_terms = self._get_default_query_terms()
@@ -198,7 +204,6 @@ class BenchmarkQPSManager(BenchmarkManager):
 
         try:
             await self.async_client.connect()
-
             if not await self.async_client.collections.exists(collection):
                 raise Exception(f"Collection '{collection}' does not exist")
 
@@ -218,7 +223,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                 warmup_duration=warmup_duration,
                 test_duration=test_duration,
                 latency_threshold=latency_threshold,
-                concurrency=concurrency,  # may be None (auto)
+                concurrency=concurrency,
             )
 
             if not qps:
@@ -230,23 +235,22 @@ class BenchmarkQPSManager(BenchmarkManager):
             await self.async_client.close()
 
     async def _run_phase(
-        self,
-        collection_obj: CollectionAsync,
-        query_terms: List[str],
-        limit: int,
-        qps: int,
-        duration: int,
-        phase_name: str,
-        show_certainty: bool,
-        csv_writer: Optional[csv.writer],
-        query_type: str,
-        latency_threshold: int,
-        concurrency: Optional[int] = None,  # if None => automatic
+            self,
+            collection_obj: CollectionAsync,
+            query_terms: List[str],
+            limit: int,
+            qps: int,
+            duration: int,
+            phase_name: str,
+            show_certainty: bool,
+            csv_writer: Optional[csv.writer],
+            query_type: str,
+            latency_threshold: int,
+            concurrency: Optional[int] = None,  # None => auto (scale-up-only)
     ) -> Tuple[List[int], bool]:
         """
         Run a benchmark phase at a specific QPS with bounded or adaptive concurrency.
-        - If `concurrency` is None, we adapt it every second using Little's Law:
-          target_conc = qps * avg_latency_sec * SAFETY
+        Auto mode uses scale-up-only: it increases workers based on observed latency, never decreases mid-phase.
         """
         loop = asyncio.get_event_loop()
         start_time = loop.time()
@@ -258,34 +262,36 @@ class BenchmarkQPSManager(BenchmarkManager):
         latency_exceeded = False
         goto_finally = False
 
-        # For adaptive mode
+        # Adaptive bits
         SAFETY = 1.3
-        EWMA_ALPHA = 0.3  # responsiveness of latency smoothing
+        EWMA_ALPHA = 0.3
         ewma_latency_ms: Optional[float] = None
-        last_latencies = deque(maxlen=2000)  # recent latencies for robust avg
+        recent_latencies = deque(maxlen=2000)
 
-        # Worker pool (we can scale up/down)
+        # Worker pool (we only scale up)
         workers: List[asyncio.Task] = []
 
+        def active_count() -> int:
+            return sum(1 for t in workers if not t.done())
+
         def current_target_workers() -> int:
-            nonlocal ewma_latency_ms
             if concurrency is not None:
                 return max(1, concurrency)
-            # no latency yet? start small but non-zero
             if ewma_latency_ms is None:
-                return min(max(4, qps), max(1, qps))  # small initial pool ~qps
+                # start small but viable
+                return max(1, min(qps, 8))
             avg_sec = max(ewma_latency_ms / 1000.0, 0.001)
             target = int(qps * avg_sec * SAFETY) or 1
-            # reasonable caps
             cap = max(qps * 4, 32)
             return max(1, min(target, cap))
 
-        # Work queue; keep small buffer to avoid unbounded growth
-        queue: asyncio.Queue = asyncio.Queue(maxsize=max(1, current_target_workers() * 2))
+        # Bounded queue for backpressure; sized to initial target (will be conservative)
+        queue_maxsize = max(1, current_target_workers() * 2)
+        queue: asyncio.Queue = asyncio.Queue(maxsize=queue_maxsize)
 
         click.echo(
             f"Starting {phase_name} phase at {qps} QPS for {duration} seconds "
-            f"with {'auto' if concurrency is None else f'concurrency={concurrency}'} conccurency."
+            f"with {'auto' if concurrency is None else f'concurrency={concurrency}'}."
         )
 
         async def worker():
@@ -295,10 +301,6 @@ class BenchmarkQPSManager(BenchmarkManager):
                     item = await queue.get()
                 except asyncio.CancelledError:
                     break
-                if item is None:
-                    queue.task_done()
-                    break
-
                 query_term = item
                 took = None
                 certainties = None
@@ -311,7 +313,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                 finally:
                     if took is not None:
                         response_times.append(took)
-                        last_latencies.append(took)
+                        recent_latencies.append(took)
                         ewma_latency_ms = (
                             took if ewma_latency_ms is None
                             else EWMA_ALPHA * took + (1 - EWMA_ALPHA) * ewma_latency_ms
@@ -322,38 +324,28 @@ class BenchmarkQPSManager(BenchmarkManager):
                         if show_certainty and certainties is not None:
                             certainty_values.extend(certainties)
                     queue.task_done()
-
                     if latency_exceeded:
                         goto_finally = True
                         break
 
-        async def scale_workers_to(target: int):
-            """Increase or decrease worker count to match target."""
-            nonlocal workers
-            cur = len(workers)
-            if target > cur:
-                # scale up
-                add = target - cur
-                for _ in range(add):
-                    workers.append(asyncio.create_task(worker()))
-            elif target < cur:
-                # scale down: send sentinels to gracefully stop surplus workers
-                stop = cur - target
-                for _ in range(stop):
-                    await queue.put(None)
+        async def ensure_workers_at_least(target: int):
+            # Only scale UP; never down during the phase
+            cur = active_count()
+            add = max(0, target - cur)
+            for _ in range(add):
+                workers.append(asyncio.create_task(worker()))
 
         async def controller():
-            """Every 1s, recompute target workers and scale the pool."""
-            # start with initial pool
-            await scale_workers_to(current_target_workers())
+            # Kick off initial pool
+            await ensure_workers_at_least(current_target_workers())
             while loop.time() < end_time and not goto_finally:
                 await asyncio.sleep(1.0)
                 if goto_finally:
                     break
-                await scale_workers_to(current_target_workers())
+                await ensure_workers_at_least(current_target_workers())
 
         async def producer():
-            """Pace at QPS: one job per tick, correcting for drift."""
+            """Metronome: one job per tick. Backpressure if queue fills."""
             nonlocal goto_finally
             next_t = loop.time()
             while loop.time() < end_time and not goto_finally:
@@ -361,16 +353,13 @@ class BenchmarkQPSManager(BenchmarkManager):
                 if goto_finally:
                     break
                 query_term = random.choice(query_terms)
-                await queue.put(query_term)  # backpressure if workers can't keep up
+                await queue.put(query_term)  # blocks if workers can't keep up
                 next_t += interval
                 now = loop.time()
-                # drift correction: skip missed ticks if we fell behind a lot
+                # Drift correction: skip missed ticks if we fell behind
                 if now - next_t > interval:
                     missed = int((now - next_t) / interval)
                     next_t += missed * interval
-            # tell all workers to stop
-            for _ in range(len(workers)):
-                await queue.put(None)
 
         async def reporter():
             while loop.time() < end_time and not goto_finally:
@@ -385,9 +374,9 @@ class BenchmarkQPSManager(BenchmarkManager):
         report_task = asyncio.create_task(reporter())
 
         try:
-            # Wait for producer and workers to finish
+            # Wait producer+controller to end (time-bound)
             await asyncio.wait([prod_task, ctrl_task], return_when=asyncio.ALL_COMPLETED)
-            # Drain queue and wait workers
+            # Drain remaining work
             await queue.join()
         finally:
             goto_finally = True
@@ -410,25 +399,25 @@ class BenchmarkQPSManager(BenchmarkManager):
         return response_times, latency_exceeded
 
     async def _find_max_qps(
-        self,
-        collection_obj: CollectionAsync,
-        query_terms: List[str],
-        limit: int,
-        max_duration: int,
-        fixed_qps: Optional[int],
-        show_certainty: bool,
-        csv_writer: Optional[csv.writer],
-        query_type: str,
-        warmup_duration: int,
-        test_duration: int,
-        latency_threshold: int,
-        concurrency: Optional[int] = None,  # can be None (auto)
+            self,
+            collection_obj: CollectionAsync,
+            query_terms: List[str],
+            limit: int,
+            max_duration: int,
+            fixed_qps: Optional[int],
+            show_certainty: bool,
+            csv_writer: Optional[csv.writer],
+            query_type: str,
+            warmup_duration: int,
+            test_duration: int,
+            latency_threshold: int,
+            concurrency: Optional[int] = None,  # None => auto
     ) -> int:
         if fixed_qps:
             click.echo(f"\nRunning test at fixed QPS of {fixed_qps}")
             await self._run_phase(
-                collection_obj, query_terms, limit, fixed_qps, max_duration,
-                "Main Test", show_certainty, csv_writer, query_type, latency_threshold,
+                collection_obj, query_terms, limit, fixed_qps, max_duration, "Main Test",
+                show_certainty, csv_writer, query_type, latency_threshold,
                 concurrency=concurrency,
             )
             return fixed_qps
@@ -465,19 +454,3 @@ class BenchmarkQPSManager(BenchmarkManager):
                     qps += 10
 
         return qps - 10 if latency_exceeded else qps
-
-
-# Example of how to add new benchmark types in the future:
-# class BenchmarkRecallManager(BenchmarkManager):
-#     """Manager for recall benchmarking."""
-#
-#     async def run_benchmark(self, **kwargs) -> None:
-#         # Implementation for recall benchmarking
-#         pass
-#
-# class BenchmarkThroughputManager(BenchmarkManager):
-#     """Manager for throughput benchmarking."""
-#
-#     async def run_benchmark(self, **kwargs) -> None:
-#         # Implementation for throughput benchmarking
-#         pass
