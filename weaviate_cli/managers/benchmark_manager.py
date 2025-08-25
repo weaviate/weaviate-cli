@@ -126,7 +126,7 @@ class BenchmarkManager(ABC):
             click.echo(f"Current P50 certainty: {p50c:.2f}")
             click.echo(f"Current P90 certainty: {p90c:.2f}")
             click.echo(f"Current P95 certainty: {p95c:.2f}")
-            click.echo(f"Current P99 certainty: {p99c:.2f}\n")
+            click.echo(f"Current P99 certainty: {p99c:.2f}")
 
         if csv_writer:
             row = [time.time(), phase_name, f"{p50:.2f}", f"{p90:.2f}", f"{p95:.2f}", f"{p99:.2f}"]
@@ -267,7 +267,12 @@ class BenchmarkQPSManager(BenchmarkManager):
         EWMA_ALPHA = 0.3
         ewma_latency_ms: Optional[float] = None
         recent_latencies = deque(maxlen=2000)
-        completion_times = deque(maxlen=20000)
+        # QPS tracking (smooth & warm-started)
+        completed_total = 0
+        ewma_qps = float(qps)
+        last_completed_total = 0
+        last_report_time = start_time
+        QPS_EWMA_ALPHA = 0.3
 
         # Worker pool (we only scale up)
         workers: List[asyncio.Task] = []
@@ -296,7 +301,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         )
 
         async def worker():
-            nonlocal latency_exceeded, goto_finally, ewma_latency_ms
+            nonlocal latency_exceeded, goto_finally, ewma_latency_ms, completed_total
             while not goto_finally:
                 try:
                     item = await queue.get()
@@ -319,7 +324,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                             took if ewma_latency_ms is None
                             else EWMA_ALPHA * took + (1 - EWMA_ALPHA) * ewma_latency_ms
                         )
-                        completion_times.append(loop.time())
+                        completed_total += 1
                         if phase_name == "Main Test" and took > latency_threshold:
                             latency_exceeded = True
                             goto_finally = True
@@ -364,6 +369,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                     next_t += missed * interval
 
         async def reporter():
+            nonlocal ewma_qps, last_completed_total, last_report_time
             while loop.time() < end_time and not goto_finally:
                 await asyncio.sleep(1.0)
                 if response_times:
@@ -371,15 +377,14 @@ class BenchmarkQPSManager(BenchmarkManager):
                         response_times, certainty_values, show_certainty, csv_writer, phase_name
                     )
                     now = loop.time()
-                    window = 5.0
-                    cnt = 0
-                    for t in reversed(completion_times):
-                        if t >= now - window:
-                            cnt += 1
-                        else:
-                            break  # deque is time-ordered; early exit
-                    current_qps = cnt / window if window > 0 else 0.0
-                    click.echo(f"Current QPS: {current_qps:.2f}\n")
+                    dt = max(1e-6, now - last_report_time)
+                    delta = completed_total - last_completed_total
+                    inst_rate = delta / dt
+                    ewma_qps = QPS_EWMA_ALPHA * inst_rate + (1 - QPS_EWMA_ALPHA) * ewma_qps
+                    last_completed_total = completed_total
+                    last_report_time = now
+
+                    click.echo(f"Current QPS: {ewma_qps:.2f}\n")
 
         prod_task = asyncio.create_task(producer())
         ctrl_task = asyncio.create_task(controller())
