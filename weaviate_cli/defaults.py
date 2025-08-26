@@ -105,6 +105,7 @@ class CreateDataDefaults:
     verbose: bool = False
     multi_vector: bool = False
     batch_size: int = 1000
+    dynamic_batch: bool = False
 
 
 @dataclass

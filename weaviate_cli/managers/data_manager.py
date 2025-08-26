@@ -209,7 +209,24 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
     }
 
 
+# Standalone small-chunk generator for streaming + multiprocessing
+# Generates a list[dict] using generate_movie_object; args: (chunk_size, base_seed, start_index, is_update)
+def _streaming_generate_chunk(args) -> List[Dict]:
+    chunk_size, base_seed, start_index, is_update = args
+    results: List[Dict] = []
+    for i in range(chunk_size):
+        seed = (base_seed + start_index + i) if base_seed is not None else None
+        results.append(generate_movie_object(is_update, seed))
+    return results
+
+
 class DataManager:
+    def __init__(self, client: WeaviateClient):
+        self.client = client
+        self.fake = Faker()
+        # Seed the Faker instance for reproducibility
+        Faker.seed(42)
+
     def __producer_consumer_ingest(
         self,
         collection: Collection,
@@ -218,30 +235,134 @@ class DataManager:
         vector_dimensions: int,
         named_vectors: Optional[List[str]],
         uuid: Optional[str],
+        dynamic_batch: bool,
         batch_size: int,
         concurrent_requests: int,
         multi_vector: bool,
         skip_seed: bool,
         verbose: bool,
     ) -> Tuple[int, List]:
-        """Memory-safe producer→queue→single-consumer ingestion batch API.
-        Producers generate properties only; the consumer adds vectors as needed and
-        streams into the batcher, which handles HTTP parallelism via concurrent_requests.
+        """Memory-safe producer→queue→consumer ingestion with adaptive strategy.
+
+        For dynamic_batch=True: Uses multiprocessing producer (fast) + single dynamic consumer
+        For dynamic_batch=False: Uses thread producers + single fixed_size consumer (batcher handles HTTP concurrency)
         """
         from queue import Queue, Empty
         import threading
 
-        q: Queue[Optional[dict]] = Queue(maxsize=max(1, batch_size * 10))
         failed_objects: List = []
+
+        if dynamic_batch:
+            # Fast streaming generation via multiprocessing with bounded queue of small chunks
+            import multiprocessing as mp
+
+            # Tunables
+            gen_chunk_size = max(2000, batch_size * 10)  # objects per generated chunk
+            max_prefetch_chunks = 4  # keep at most N chunks in memory
+            producer_processes = min(
+                max(1, (mp.cpu_count() or 4) - 1), concurrent_requests, 16
+            )
+            if verbose:
+                print(
+                    f"Dynamic mode: streaming with {producer_processes} generator processes, chunk_size={gen_chunk_size}, prefetch={max_prefetch_chunks}"
+                )
+
+            # Queue of List[Dict] chunks
+            q: Queue[Optional[List[Dict]]] = Queue(maxsize=max_prefetch_chunks)
+            consumed = 0
+            base_seed = 42 if skip_seed else None
+
+            # Prepare args for chunks
+            num_chunks = math.ceil(num_objects / gen_chunk_size)
+            task_args: List[Tuple[int, Optional[int], int, bool]] = []
+            produced_total = 0
+            for chunk_idx in range(num_chunks):
+                start_index = chunk_idx * gen_chunk_size
+                size = min(gen_chunk_size, num_objects - start_index)
+                if size <= 0:
+                    break
+                task_args.append((size, base_seed, start_index, False))
+                produced_total += size
+
+            def feeder():
+                with mp.Pool(processes=producer_processes) as pool:
+                    for chunk in pool.imap_unordered(
+                        _streaming_generate_chunk, task_args
+                    ):
+                        q.put(chunk)  # blocks when buffer full
+                # signal end
+                q.put(None)
+
+            def _gen_vector():
+                if vectorizer == "none":
+                    if multi_vector and named_vectors and len(named_vectors) > 0:
+                        return {
+                            named_vectors[0]: [
+                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                            ]
+                        }
+                    if named_vectors is None:
+                        return (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                    return {
+                        name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                        for name in named_vectors
+                    }
+                return None
+
+            def consumer():
+                nonlocal consumed
+                start_time = time.time()
+                last_log = start_time
+                with collection.batch.dynamic() as batch:
+                    while True:
+                        try:
+                            chunk = q.get(timeout=0.5)
+                        except Empty:
+                            continue
+                        if chunk is None:
+                            break
+                        for item in chunk:
+                            vec = _gen_vector()
+                            if vec is None:
+                                batch.add_object(properties=item, uuid=uuid)
+                            else:
+                                batch.add_object(properties=item, uuid=uuid, vector=vec)
+                            consumed += 1
+                        if verbose and time.time() - last_log >= 2.0:
+                            elapsed = time.time() - start_time
+                            qps = consumed / elapsed if elapsed > 0 else 0
+                            print(
+                                f"Submitted {consumed}/{num_objects} (~{qps:.0f} obj/s), chunks_in_queue={q.qsize()}"
+                            )
+                            last_log = time.time()
+
+            feeder_t = threading.Thread(target=feeder, daemon=True)
+            consumer_t = threading.Thread(target=consumer, daemon=True)
+            feeder_t.start()
+            consumer_t.start()
+            feeder_t.join()
+            consumer_t.join()
+
+            # best-effort failed objects
+            if getattr(collection.batch, "failed_objects", None):
+                failed_objects.extend(collection.batch.failed_objects)
+
+            return consumed, failed_objects
+
+        # fixed_size path (existing behavior): threads produce properties; single consumer submits
+        q: Queue[Optional[dict]] = Queue(maxsize=max(1, batch_size * 20))
         produced = 0
         consumed = 0
 
-        # Keep producer count modest to avoid CPU contention; provide back-pressure via Queue
+        # modest producers, single consumer (batcher handles concurrency)
         producer_threads = min(4, max(1, num_objects // max(1, batch_size * 10)))
-        if producer_threads < 1:
-            producer_threads = 1
+        if verbose:
+            print(
+                f"Fixed-size mode: {producer_threads} producers, 1 consumer; batch_size={batch_size}, concurrent_requests={concurrent_requests}"
+            )
 
-        # Work partitioning
+        # partition work
         base = num_objects // producer_threads
         remainder = num_objects % producer_threads
         ranges: List[Tuple[int, int]] = []
@@ -259,11 +380,10 @@ class DataManager:
             for i in range(lo, hi):
                 seed = (base_seed + seed_offset + i) if base_seed is not None else None
                 item = self.__generate_single_object(is_update=False, seed=seed)
-                q.put(item)  # blocks when full -> back-pressure limits RAM
+                q.put(item)
                 produced += 1
 
-        def _gen_vector():
-            # Create vector payload matching collection config
+        def _gen_vector_fixed():
             if vectorizer == "none":
                 if multi_vector and named_vectors and len(named_vectors) > 0:
                     return {
@@ -278,62 +398,53 @@ class DataManager:
                     name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
                     for name in named_vectors
                 }
-            return None  # let server-side vectorizer handle it
+            return None
 
-        def consumer():
+        def consumer_fixed():
             nonlocal consumed
             start_time = time.time()
             last_log = start_time
-
-            # Use fixed_size with concurrent_requests
-            with collection.batch.fixed_size(batch_size=batch_size, concurrent_requests=max(1, concurrent_requests)) as batch:
+            with collection.batch.fixed_size(
+                batch_size=batch_size, concurrent_requests=max(1, concurrent_requests)
+            ) as batch:
                 while True:
                     try:
                         item = q.get(timeout=0.25)
                     except Empty:
-                        # Exit when all producers finished and queue is empty
                         if all(not t.is_alive() for t in prod_threads) and q.empty():
                             return
                         continue
-
-                    vec = _gen_vector()
+                    vec = _gen_vector_fixed()
                     if vec is None:
                         batch.add_object(properties=item, uuid=uuid)
                     else:
                         batch.add_object(properties=item, uuid=uuid, vector=vec)
                     consumed += 1
-
                     if verbose and time.time() - last_log >= 2.0:
                         elapsed = time.time() - start_time
                         qps = consumed / elapsed if elapsed > 0 else 0
-                        print(f"Submitted {consumed}/{num_objects} (~{qps:.0f} obj/s), queue={q.qsize()}")
+                        print(
+                            f"Submitted {consumed}/{num_objects} (~{qps:.0f} obj/s), queue={q.qsize()}"
+                        )
                         last_log = time.time()
 
-        # Start threads
+        # start
         prod_threads = [
             threading.Thread(target=producer, args=(lo, hi, idx * 1000), daemon=True)
             for idx, (lo, hi) in enumerate(ranges)
         ]
         for t in prod_threads:
             t.start()
-
-        cons_thread = threading.Thread(target=consumer, daemon=True)
+        cons_thread = threading.Thread(target=consumer_fixed, daemon=True)
         cons_thread.start()
-
         for t in prod_threads:
             t.join()
         cons_thread.join()
 
-        # Best-effort failure reporting from the last used batcher (exposed on collection.batch)
         if getattr(collection.batch, "failed_objects", None):
             failed_objects.extend(collection.batch.failed_objects)
 
         return consumed, failed_objects
-    def __init__(self, client: WeaviateClient):
-        self.client = client
-        self.fake = Faker()
-        # Seed the Faker instance for reproducibility
-        Faker.seed(42)
 
     def __import_json(
         self,
@@ -417,6 +528,7 @@ class DataManager:
         uuid: Optional[str] = None,
         verbose: bool = False,
         multi_vector: bool = False,
+        dynamic_batch: bool = False,
         batch_size: int = 100,
         concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
@@ -428,7 +540,9 @@ class DataManager:
             config = collection.config.get()
             if not config.vectorizer and config.vector_config:
                 named_vectors = list(config.vector_config.keys())
-                vectorizer = config.vector_config[named_vectors[0]].vectorizer.vectorizer
+                vectorizer = config.vector_config[
+                    named_vectors[0]
+                ].vectorizer.vectorizer
             elif config.vectorizer:
                 vectorizer = config.vectorizer
                 named_vectors = None
@@ -446,6 +560,7 @@ class DataManager:
                 vector_dimensions=vector_dimensions or 1536,
                 named_vectors=named_vectors,
                 uuid=uuid,
+                dynamic_batch=dynamic_batch,
                 batch_size=batch_size,
                 concurrent_requests=concurrent_requests,
                 multi_vector=multi_vector,
@@ -479,7 +594,6 @@ class DataManager:
             )
             return collection
 
-
     def create_data(
         self,
         collection: Optional[str] = CreateDataDefaults.collection,
@@ -495,6 +609,7 @@ class DataManager:
         wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
         verbose: bool = CreateDataDefaults.verbose,
         multi_vector: bool = CreateDataDefaults.multi_vector,
+        dynamic_batch: bool = CreateDataDefaults.dynamic_batch,
         batch_size: int = CreateDataDefaults.batch_size,
         concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
@@ -581,6 +696,7 @@ class DataManager:
                     uuid=uuid,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
                     concurrent_requests=concurrent_requests,
                 )
@@ -614,6 +730,7 @@ class DataManager:
                     uuid=uuid,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
                     concurrent_requests=concurrent_requests,
                 )

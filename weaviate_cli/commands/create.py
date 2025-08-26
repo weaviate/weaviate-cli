@@ -392,6 +392,11 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     help="Enable multi-vector (default: False).",
 )
 @click.option(
+    "--dynamic_batch",
+    is_flag=True,
+    help="Enable dynamic batching (default: False).",
+)
+@click.option(
     "--batch_size",
     default=CreateDataDefaults.batch_size,
     help="Number of objects to ingest in each batch (default: 100).",
@@ -417,6 +422,7 @@ def create_data_cli(
     wait_for_indexing,
     verbose,
     multi_vector,
+    dynamic_batch,
     batch_size,
     concurrent_requests,
 ):
@@ -434,6 +440,12 @@ def create_data_cli(
 
     if uuid is not None and limit != 1:
         click.echo("Error: --uuid has no effect unless --limit=1 is enabled.")
+        sys.exit(1)
+
+    if dynamic_batch and not randomize:
+        click.echo(
+            "Error: --dynamic_batch has no effect unless --randomize is enabled."
+        )
         sys.exit(1)
 
     client: Optional[WeaviateClient] = None
@@ -455,6 +467,7 @@ def create_data_cli(
             wait_for_indexing=wait_for_indexing,
             verbose=verbose,
             multi_vector=multi_vector,
+            dynamic_batch=dynamic_batch,
             batch_size=batch_size,
             concurrent_requests=concurrent_requests,
         )
