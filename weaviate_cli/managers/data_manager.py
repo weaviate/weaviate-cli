@@ -28,9 +28,7 @@ import importlib.resources as resources
 from pathlib import Path
 import math
 from faker import Faker
-import concurrent.futures
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 PROPERTY_NAME_MAPPING = {
     "releaseDate": "release_date",
@@ -242,75 +240,78 @@ class DataManager:
         skip_seed: bool,
         verbose: bool,
     ) -> Tuple[int, List]:
-        """Memory-safe producer→queue→consumer ingestion with adaptive strategy.
-
-        For dynamic_batch=True: Uses multiprocessing producer (fast) + single dynamic consumer
-        For dynamic_batch=False: Uses thread producers + single fixed_size consumer (batcher handles HTTP concurrency)
+        """Memory-safe producer→queue ingestion with two clear modes:
+        - dynamic_batch=True: Fast streaming generation via multiprocessing feeding a single dynamic batcher.
+        - dynamic_batch=False: Modest thread producers + single fixed_size batcher (which handles HTTP concurrency).
         """
         from queue import Queue, Empty
         import threading
 
         failed_objects: List = []
 
+        # Shared helper: build vector payload according to vectorizer configuration
+        def build_vector() -> (
+            Optional[
+                Union[List[float], Dict[str, List[float]], Dict[str, List[List[float]]]]
+            ]
+        ):
+            if vectorizer != "none":
+                return None
+            if multi_vector and named_vectors and len(named_vectors) > 0:
+                return {
+                    named_vectors[0]: [
+                        (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                        (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                    ]
+                }
+            if named_vectors is None:
+                return (2 * np.random.rand(vector_dimensions) - 1).tolist()
+            return {
+                name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
+                for name in named_vectors
+            }
+
+        # Use deterministic base seed if requested
+        base_seed: Optional[int] = 42 if skip_seed else None
+
+        # --- Dynamic mode: multiprocessing producer → single dynamic batch consumer ---
         if dynamic_batch:
-            # Fast streaming generation via multiprocessing with bounded queue of small chunks
             import multiprocessing as mp
 
-            # Tunables
-            gen_chunk_size = max(2000, batch_size * 10)  # objects per generated chunk
-            max_prefetch_chunks = 4  # keep at most N chunks in memory
+            # Tunables for streaming generation
+            gen_chunk_size = max(2000, batch_size * 10)
+            max_prefetch_chunks = 4
             producer_processes = min(
-                max(1, (mp.cpu_count() or 4) - 1), concurrent_requests, 16
+                max(1, (mp.cpu_count() or 4)), concurrent_requests, 16
             )
             if verbose:
                 print(
                     f"Dynamic mode: streaming with {producer_processes} generator processes, chunk_size={gen_chunk_size}, prefetch={max_prefetch_chunks}"
                 )
 
-            # Queue of List[Dict] chunks
+            # Bounded queue of property-chunks to keep memory in check
             q: Queue[Optional[List[Dict]]] = Queue(maxsize=max_prefetch_chunks)
             consumed = 0
-            base_seed = 42 if skip_seed else None
 
-            # Prepare args for chunks
+            # Prepare generation tasks
             num_chunks = math.ceil(num_objects / gen_chunk_size)
             task_args: List[Tuple[int, Optional[int], int, bool]] = []
-            produced_total = 0
             for chunk_idx in range(num_chunks):
                 start_index = chunk_idx * gen_chunk_size
                 size = min(gen_chunk_size, num_objects - start_index)
-                if size <= 0:
-                    break
-                task_args.append((size, base_seed, start_index, False))
-                produced_total += size
+                if size > 0:
+                    task_args.append((size, base_seed, start_index, False))
 
-            def feeder():
+            def feeder() -> None:
                 with mp.Pool(processes=producer_processes) as pool:
                     for chunk in pool.imap_unordered(
                         _streaming_generate_chunk, task_args
                     ):
-                        q.put(chunk)  # blocks when buffer full
-                # signal end
+                        q.put(chunk)  # Blocks when buffer full -> back-pressure
+                # Signal completion
                 q.put(None)
 
-            def _gen_vector():
-                if vectorizer == "none":
-                    if multi_vector and named_vectors and len(named_vectors) > 0:
-                        return {
-                            named_vectors[0]: [
-                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                            ]
-                        }
-                    if named_vectors is None:
-                        return (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                    return {
-                        name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                        for name in named_vectors
-                    }
-                return None
-
-            def consumer():
+            def consumer() -> None:
                 nonlocal consumed
                 start_time = time.time()
                 last_log = start_time
@@ -323,7 +324,7 @@ class DataManager:
                         if chunk is None:
                             break
                         for item in chunk:
-                            vec = _gen_vector()
+                            vec = build_vector()
                             if vec is None:
                                 batch.add_object(properties=item, uuid=uuid)
                             else:
@@ -337,6 +338,7 @@ class DataManager:
                             )
                             last_log = time.time()
 
+            # Run feeder and consumer
             feeder_t = threading.Thread(target=feeder, daemon=True)
             consumer_t = threading.Thread(target=consumer, daemon=True)
             feeder_t.start()
@@ -344,28 +346,29 @@ class DataManager:
             feeder_t.join()
             consumer_t.join()
 
-            # best-effort failed objects
+            # Best-effort failure reporting (exposed on collection.batch)
             if getattr(collection.batch, "failed_objects", None):
                 failed_objects.extend(collection.batch.failed_objects)
 
             return consumed, failed_objects
 
-        # fixed_size path (existing behavior): threads produce properties; single consumer submits
-        q: Queue[Optional[dict]] = Queue(maxsize=max(1, batch_size * 20))
+        # --- Fixed-size mode: thread producers → single fixed_size batch consumer ---
+        # The batcher manages HTTP concurrency via concurrent_requests; a single consumer is optimal here
+        q: Queue[Optional[Dict]] = Queue(maxsize=max(1, batch_size * 20))
         produced = 0
         consumed = 0
 
-        # modest producers, single consumer (batcher handles concurrency)
+        # Modest producer parallelism to avoid GIL contention during property generation
         producer_threads = min(4, max(1, num_objects // max(1, batch_size * 10)))
         if verbose:
             print(
                 f"Fixed-size mode: {producer_threads} producers, 1 consumer; batch_size={batch_size}, concurrent_requests={concurrent_requests}"
             )
 
-        # partition work
+        # Partition the work across producers
+        ranges: List[Tuple[int, int]] = []
         base = num_objects // producer_threads
         remainder = num_objects % producer_threads
-        ranges: List[Tuple[int, int]] = []
         start_idx = 0
         for i in range(producer_threads):
             end_idx = start_idx + base + (1 if i < remainder else 0)
@@ -373,9 +376,7 @@ class DataManager:
                 ranges.append((start_idx, end_idx))
             start_idx = end_idx
 
-        base_seed = 42 if skip_seed else None
-
-        def producer(lo: int, hi: int, seed_offset: int):
+        def producer(lo: int, hi: int, seed_offset: int) -> None:
             nonlocal produced
             for i in range(lo, hi):
                 seed = (base_seed + seed_offset + i) if base_seed is not None else None
@@ -383,24 +384,7 @@ class DataManager:
                 q.put(item)
                 produced += 1
 
-        def _gen_vector_fixed():
-            if vectorizer == "none":
-                if multi_vector and named_vectors and len(named_vectors) > 0:
-                    return {
-                        named_vectors[0]: [
-                            (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                            (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                        ]
-                    }
-                if named_vectors is None:
-                    return (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                return {
-                    name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                    for name in named_vectors
-                }
-            return None
-
-        def consumer_fixed():
+        def consumer_fixed() -> None:
             nonlocal consumed
             start_time = time.time()
             last_log = start_time
@@ -414,7 +398,7 @@ class DataManager:
                         if all(not t.is_alive() for t in prod_threads) and q.empty():
                             return
                         continue
-                    vec = _gen_vector_fixed()
+                    vec = build_vector()
                     if vec is None:
                         batch.add_object(properties=item, uuid=uuid)
                     else:
@@ -428,7 +412,7 @@ class DataManager:
                         )
                         last_log = time.time()
 
-        # start
+        # Start producers and consumer
         prod_threads = [
             threading.Thread(target=producer, args=(lo, hi, idx * 1000), daemon=True)
             for idx, (lo, hi) in enumerate(ranges)
