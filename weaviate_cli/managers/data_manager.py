@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from weaviate_cli.defaults import (
     MAX_OBJECTS_PER_BATCH,
     QUERY_MAXIMUM_RESULTS,
+    MAX_WORKERS,
     CreateCollectionDefaults,
     CreateDataDefaults,
     CreateTenantsDefaults,
@@ -27,8 +28,6 @@ import importlib.resources as resources
 from pathlib import Path
 import math
 from faker import Faker
-import multiprocessing
-from functools import partial
 import concurrent.futures
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -41,10 +40,7 @@ PROPERTY_NAME_MAPPING = {
 }
 
 # Constants for data generation optimization
-CHUNK_SIZE = 10000  # Number of objects to generate per chunk/worker
-MAX_WORKERS = min(
-    32, multiprocessing.cpu_count() + 4
-)  # Use more than CPU count to account for I/O-bound tasks
+# Use more than CPU count to account for I/O-bound tasks
 
 # Define movie-related data outside the class to be accessible by worker processes
 MOVIE_GENRES = [
@@ -213,17 +209,6 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
     }
 
 
-def generate_chunk(args) -> List[Dict]:
-    """Generate a chunk of movie objects - standalone function for multiprocessing"""
-    chunk_size, chunk_id, is_update, skip_seed = args
-    # Use different seeds for each worker to ensure                                                  unique random data
-    base_seed = 42 + chunk_id * 1000 if not skip_seed else None
-    return [
-        generate_movie_object(is_update, base_seed + i if base_seed else None)
-        for i in range(chunk_size)
-    ]
-
-
 class DataManager:
     def __init__(self, client: WeaviateClient):
         self.client = client
@@ -296,140 +281,11 @@ class DataManager:
             return date.strftime("%Y-%m-%dT%H:%M:%SZ")
         return value
 
-    def __generate_single_object(self, is_update: bool = False) -> Dict:
+    def __generate_single_object(
+        self, is_update: bool = False, seed: Optional[int] = None
+    ) -> Dict:
         """Method to generate a single object for non-parallel use cases"""
-        return generate_movie_object(is_update)
-
-    def __generate_data_object(
-        self,
-        limit: int,
-        skip_seed: bool,
-        is_update: bool = False,
-        verbose: bool = False,
-    ) -> Union[List[Dict], Dict]:
-        """Generate data objects, using parallel processing for large batches"""
-
-        # For small numbers, don't bother with parallel processing
-        if limit <= 1000:
-            return [
-                self.__generate_single_object(is_update=is_update) for _ in range(limit)
-            ]
-
-        # For large numbers, use parallel processing
-        start_time = time.time()
-
-        # Calculate chunks
-        num_chunks = math.ceil(limit / CHUNK_SIZE)
-        chunk_sizes = [CHUNK_SIZE] * (num_chunks - 1)
-        # The last chunk might be smaller
-        chunk_sizes.append(limit - sum(chunk_sizes))
-
-        # Prepare arguments for worker processes
-        task_args = [
-            (size, i, is_update, skip_seed)
-            for i, size in enumerate(chunk_sizes)
-            if size > 0
-        ]
-
-        # Use multiprocessing Pool to avoid pickling issues with ProcessPoolExecutor
-        results = []
-        with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
-            # Map the generation function to the chunk arguments
-            for i, chunk_result in enumerate(
-                pool.imap_unordered(generate_chunk, task_args)
-            ):
-                results.extend(chunk_result)
-                # Report progress periodically
-                current_count = len(results)
-                progress = current_count / limit * 100
-                if verbose and (
-                    i % max(1, num_chunks // 10) == 0 or i == len(task_args) - 1
-                ):
-                    print(
-                        f"Data generation progress: {progress:.1f}% ({current_count}/{limit})"
-                    )
-
-        elapsed = time.time() - start_time
-        if verbose:
-            print(
-                f"Generated {len(results)} objects in {elapsed:.2f} seconds ({len(results)/elapsed:.0f} objects/second)"
-            )
-
-        return results
-
-    def __ingest_batch(
-        self,
-        batch_objects: List[Dict],
-        collection: Collection,
-        vectorizer: str,
-        vector_dimensions: int,
-        named_vectors: Optional[List[str]],
-        uuid: Optional[str],
-        batch_index: int = 0,
-        verbose: bool = False,
-        multi_vector: bool = False,
-    ) -> Tuple[int, List]:
-        """Process a single batch of objects for ingestion"""
-        counter = 0
-        failed_objects = []
-        batch_size = len(batch_objects)
-
-        if verbose:
-            print(f"Starting batch {batch_index+1} with {batch_size} objects")
-
-        log_interval = max(1, batch_size // 5)  # Log 5 times per batch
-        start_time = time.time()
-
-        with collection.batch.dynamic() as batch:
-            for i, obj in enumerate(batch_objects):
-                if vectorizer == "none":
-                    if multi_vector:
-                        vector = {
-                            named_vectors[0]: [
-                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                                (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                            ]
-                        }
-                    else:
-                        # Generate vector(s) for the object
-                        if named_vectors is None:
-                            vector = (
-                                2 * np.random.rand(vector_dimensions) - 1
-                            ).tolist()
-                        else:
-                            vector = {
-                                name: (
-                                    2 * np.random.rand(vector_dimensions) - 1
-                                ).tolist()
-                                for name in named_vectors
-                            }
-                    batch.add_object(properties=obj, uuid=uuid, vector=vector)
-                else:
-                    # Let the vectorizer generate the vector
-                    batch.add_object(properties=obj, uuid=uuid)
-                counter += 1
-
-                # Log progress periodically
-                if verbose and (i + 1) % log_interval == 0:
-                    progress = (i + 1) / batch_size * 100
-                    elapsed = time.time() - start_time
-                    rate = (i + 1) / elapsed if elapsed > 0 else 0
-                    print(
-                        f"Batch {batch_index+1}: {progress:.1f}% ({i+1}/{batch_size}) at {rate:.1f} objects/second"
-                    )
-
-            # Collect failed objects
-            if collection.batch.failed_objects:
-                failed_objects.extend(batch.failed_objects)
-
-        if verbose:
-            total_elapsed = time.time() - start_time
-            rate = batch_size / total_elapsed if total_elapsed > 0 else 0
-            print(
-                f"Completed batch {batch_index+1}: {counter} objects in {total_elapsed:.2f}s ({rate:.1f} objects/second)"
-            )
-
-        return counter, failed_objects
+        return generate_movie_object(is_update, seed)
 
     def __ingest_data(
         self,
@@ -442,9 +298,11 @@ class DataManager:
         uuid: Optional[str] = None,
         verbose: bool = False,
         multi_vector: bool = False,
+        batch_size: int = 100,
+        concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
         if randomize:
-            click.echo(f"Generating {num_objects} objects")
+            click.echo(f"Generating and ingesting {num_objects} objects")
             start_time = time.time()
 
             # Determine vector dimensions based on vectorizer
@@ -460,13 +318,6 @@ class DataManager:
                 vectorizer = config.vectorizer
                 named_vectors = None
 
-            # Generate all the data objects
-            data_objects = self.__generate_data_object(
-                num_objects, skip_seed, verbose=verbose
-            )
-            if verbose:
-                print(f"Data generation complete. Beginning ingestion...")
-
             # Get collection with consistency level
             cl_collection = collection.with_consistency_level(cl)
 
@@ -474,25 +325,25 @@ class DataManager:
             MIN_OBJECTS_FOR_PARALLEL = (
                 1000  # Only use parallel for datasets >= this size
             )
-            MIN_BATCH_SIZE = 100  # Minimum batch size for each worker
 
-            # For small datasets, use a single batch
+            # For small datasets, use streaming generation with single batch
             if num_objects < MIN_OBJECTS_FOR_PARALLEL:
                 if verbose:
                     print(
-                        f"Processing {num_objects} objects in a single batch (small dataset)"
+                        f"Processing {num_objects} objects in streaming mode (small dataset)"
                     )
 
-                counter, failed_objects = self.__ingest_batch(
-                    batch_objects=data_objects,
+                counter, failed_objects = self.__ingest_streaming_batch(
+                    num_objects=num_objects,
                     collection=cl_collection,
                     vectorizer=vectorizer,
                     vector_dimensions=vector_dimensions,
                     named_vectors=named_vectors,
                     uuid=uuid,
-                    batch_index=0,
+                    batch_size=batch_size,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    skip_seed=skip_seed,
                 )
 
                 # Handle any failed objects
@@ -502,52 +353,55 @@ class DataManager:
                             f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
                         )
             else:
-                # Use parallel batch insertion with progress tracking for larger datasets
+                # Use true streaming with parallel ingestion - no upfront generation
                 counter = 0
 
                 # Calculate optimal number of workers based on dataset size
-                # Ensure each batch is at least MIN_BATCH_SIZE
-                max_possible_workers = max(1, num_objects // MIN_BATCH_SIZE)
+                # Ensure each batch is at least batch_size
+                max_possible_workers = max(1, num_objects // batch_size)
                 num_workers = min(
-                    MAX_WORKERS, max_possible_workers, 16
+                    concurrent_requests, max_possible_workers, 16
                 )  # Cap at 16 for network connections
 
-                # Calculate batch size to ensure each worker gets a reasonable amount of work
-                batch_size = max(MIN_BATCH_SIZE, num_objects // num_workers)
-
-                # Create batches
-                batches = [
-                    data_objects[i : i + batch_size]
-                    for i in range(0, len(data_objects), batch_size)
-                ]
+                # Calculate how many objects each worker should process
+                objects_per_worker = num_objects // num_workers
+                remaining_objects = num_objects % num_workers
 
                 if verbose:
                     print(
-                        f"Processing {len(data_objects)} objects in {len(batches)} batches using {num_workers} workers"
-                        f" (batch size: {batch_size})"
+                        f"Processing {num_objects} objects using {num_workers} workers in streaming mode"
+                        f" (objects per worker: ~{objects_per_worker})"
                     )
 
                 all_failed_objects = []
                 completed_jobs = 0
 
-                # Process batches in parallel
+                # Process in parallel using true streaming generation
                 with ThreadPoolExecutor(max_workers=num_workers) as executor:
                     futures = []
-                    for i, batch in enumerate(batches):
-                        futures.append(
-                            executor.submit(
-                                self.__ingest_batch,
-                                batch_objects=batch,
-                                collection=cl_collection,
-                                vectorizer=vectorizer,
-                                vector_dimensions=vector_dimensions,
-                                multi_vector=multi_vector,
-                                named_vectors=named_vectors,
-                                uuid=uuid,
-                                batch_index=i,
-                                verbose=verbose,
-                            )
+
+                    for i in range(num_workers):
+                        # Distribute remaining objects evenly
+                        worker_objects = objects_per_worker + (
+                            1 if i < remaining_objects else 0
                         )
+                        if worker_objects > 0:
+                            futures.append(
+                                executor.submit(
+                                    self.__ingest_streaming_batch,
+                                    num_objects=worker_objects,
+                                    collection=cl_collection,
+                                    vectorizer=vectorizer,
+                                    vector_dimensions=vector_dimensions,
+                                    multi_vector=multi_vector,
+                                    named_vectors=named_vectors,
+                                    uuid=uuid,
+                                    batch_size=batch_size,
+                                    verbose=verbose,
+                                    skip_seed=skip_seed,
+                                    worker_id=i,
+                                )
+                            )
 
                     # Process results as they complete
                     for future in concurrent.futures.as_completed(futures):
@@ -557,11 +411,11 @@ class DataManager:
 
                         completed_jobs += 1
                         if verbose:
-                            progress = completed_jobs / len(batches) * 100
+                            progress = completed_jobs / len(futures) * 100
                             elapsed = time.time() - start_time
                             rate = counter / elapsed if elapsed > 0 else 0
                             print(
-                                f"Overall progress: {progress:.1f}% ({completed_jobs}/{len(batches)} batches, {counter}/{num_objects} objects) at {rate:.1f} objects/second"
+                                f"Overall progress: {progress:.1f}% ({completed_jobs}/{len(futures)} workers, {counter}/{num_objects} objects) at {rate:.1f} objects/second"
                             )
 
                 # Handle any failed objects
@@ -591,6 +445,114 @@ class DataManager:
             )
             return collection
 
+    def __ingest_streaming_batch(
+        self,
+        num_objects: int,
+        collection: Collection,
+        vectorizer: str,
+        vector_dimensions: int,
+        named_vectors: Optional[List[str]],
+        uuid: Optional[str],
+        batch_size: int,
+        verbose: bool = False,
+        multi_vector: bool = False,
+        skip_seed: bool = False,
+        worker_id: int = 0,
+    ) -> Tuple[int, List]:
+        """Streaming batch ingestion that generates objects on-demand instead of keeping them all in memory"""
+        counter = 0
+        failed_objects = []
+
+        if verbose:
+            print(
+                f"Worker {worker_id}: Starting streaming ingestion of {num_objects} objects"
+            )
+
+        # Calculate number of batches needed
+        num_batches = math.ceil(num_objects / batch_size)
+        start_time = time.time()
+
+        for batch_idx in range(num_batches):
+            # Calculate objects for this batch
+            start_obj = batch_idx * batch_size
+            end_obj = min(start_obj + batch_size, num_objects)
+            current_batch_size = end_obj - start_obj
+
+            if verbose:
+                print(
+                    f"Worker {worker_id}: Processing batch {batch_idx+1}/{num_batches} ({current_batch_size} objects)"
+                )
+
+            if skip_seed:
+                seed = 42 + worker_id * 1000
+            else:
+                seed = None
+
+            # Generate objects for this batch only
+            batch_objects = [
+                self.__generate_single_object(is_update=False, seed=seed)
+                for _ in range(current_batch_size)
+            ]
+
+            # Use fixed_size batching with concurrent_requests for proper parallel processing
+            with collection.batch.fixed_size(
+                batch_size=current_batch_size, concurrent_requests=1
+            ) as batch:
+                for i, obj in enumerate(batch_objects):
+                    if vectorizer == "none":
+                        if multi_vector:
+                            vector = {
+                                named_vectors[0]: [
+                                    (
+                                        2 * np.random.rand(vector_dimensions) - 1
+                                    ).tolist(),
+                                    (
+                                        2 * np.random.rand(vector_dimensions) - 1
+                                    ).tolist(),
+                                ]
+                            }
+                        else:
+                            # Generate vector(s) for the object
+                            if named_vectors is None:
+                                vector = (
+                                    2 * np.random.rand(vector_dimensions) - 1
+                                ).tolist()
+                            else:
+                                vector = {
+                                    name: (
+                                        2 * np.random.rand(vector_dimensions) - 1
+                                    ).tolist()
+                                    for name in named_vectors
+                                }
+                        batch.add_object(properties=obj, uuid=uuid, vector=vector)
+                    else:
+                        # Let the vectorizer generate the vector
+                        batch.add_object(properties=obj, uuid=uuid)
+
+                # Collect failed objects from this batch
+                if collection.batch.failed_objects:
+                    failed_objects.extend(collection.batch.failed_objects)
+
+            counter += current_batch_size
+
+            # Log progress for this worker
+            if verbose:
+                progress = (batch_idx + 1) / num_batches * 100
+                elapsed = time.time() - start_time
+                rate = counter / elapsed if elapsed > 0 else 0
+                print(
+                    f"Worker {worker_id}: {progress:.1f}% ({counter}/{num_objects} objects) at {rate:.1f} objects/second"
+                )
+
+        if verbose:
+            total_elapsed = time.time() - start_time
+            rate = counter / total_elapsed if total_elapsed > 0 else 0
+            print(
+                f"Worker {worker_id}: Completed {counter} objects in {total_elapsed:.2f}s ({rate:.1f} objects/second)"
+            )
+
+        return counter, failed_objects
+
     def create_data(
         self,
         collection: Optional[str] = CreateDataDefaults.collection,
@@ -606,6 +568,8 @@ class DataManager:
         wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
         verbose: bool = CreateDataDefaults.verbose,
         multi_vector: bool = CreateDataDefaults.multi_vector,
+        batch_size: int = CreateDataDefaults.batch_size,
+        concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -690,6 +654,8 @@ class DataManager:
                     uuid=uuid,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    batch_size=batch_size,
+                    concurrent_requests=concurrent_requests,
                 )
                 after_length = len(col)
             else:
@@ -721,6 +687,8 @@ class DataManager:
                     uuid=uuid,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    batch_size=batch_size,
+                    concurrent_requests=concurrent_requests,
                 )
                 after_length = len(col.with_tenant(tenant))
             if wait_for_indexing:
@@ -846,20 +814,10 @@ class DataManager:
                 if i == 0 and verbose:
                     print(f"Updating objects with random data...")
 
-                # Generate new properties for this batch
-                # For small batches, simple generation is fine, for larger we can use parallel
-                if batch_count > 100:
-                    random_objects = self.__generate_data_object(
-                        limit=batch_count,
-                        skip_seed=skip_seed,
-                        is_update=True,
-                        verbose=False,
-                    )
-                else:
-                    random_objects = [
-                        self.__generate_single_object(is_update=True)
-                        for _ in range(batch_count)
-                    ]
+                random_objects = [
+                    self.__generate_single_object(is_update=True)
+                    for _ in range(batch_count)
+                ]
 
                 # Process each update in current batch
                 for j, (obj, updated_props) in enumerate(
@@ -1118,12 +1076,12 @@ class DataManager:
 
         for tenant in tenants:
             if tenant == "None":
-                ret = self.__delete_data(
+                ret = self.__update_data(
                     col, limit, cl_map[consistency_level], uuid, verbose
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
-                ret = self.__delete_data(
+                ret = self.__update_data(
                     col.with_tenant(tenant),
                     limit,
                     cl_map[consistency_level],
@@ -1166,6 +1124,7 @@ class DataManager:
             # Keyword logic
             response = collection.with_consistency_level(cl).query.bm25(
                 query=query,
+                return_objects=True,
                 return_metadata=MetadataQuery(score=True, explain_score=True),
                 limit=num_objects,
             )
@@ -1235,7 +1194,7 @@ class DataManager:
             else:
                 existing_tenants = [
                     key
-                    for key, tenant in col.tenants.get().items()
+                    for key, tenant in col.tenants.get().keys()
                     if tenant.activity_status == TenantActivityStatus.ACTIVE
                 ]
         else:

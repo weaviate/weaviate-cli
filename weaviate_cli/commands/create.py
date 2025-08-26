@@ -26,6 +26,7 @@ from weaviate_cli.defaults import (
     CreateDataDefaults,
     CreateRoleDefaults,
     PERMISSION_HELP_STRING,
+    MAX_WORKERS,
 )
 
 
@@ -389,6 +390,16 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     is_flag=True,
     help="Enable multi-vector (default: False).",
 )
+@click.option(
+    "--batch_size",
+    default=CreateDataDefaults.batch_size,
+    help="Number of objects to ingest in each batch (default: 100).",
+)
+@click.option(
+    "--concurrent_requests",
+    default=MAX_WORKERS,
+    help=f"Number of concurrent requests to send to the server (default: {MAX_WORKERS}).",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -405,6 +416,8 @@ def create_data_cli(
     wait_for_indexing,
     verbose,
     multi_vector,
+    batch_size,
+    concurrent_requests,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -441,6 +454,8 @@ def create_data_cli(
             wait_for_indexing=wait_for_indexing,
             verbose=verbose,
             multi_vector=multi_vector,
+            batch_size=batch_size,
+            concurrent_requests=concurrent_requests,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
