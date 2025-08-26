@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import multiprocessing
 from typing import Optional, List, Dict
 
 
@@ -49,6 +50,7 @@ PERMISSION_HELP_STRING = (
 )
 QUERY_MAXIMUM_RESULTS = 10000
 MAX_OBJECTS_PER_BATCH = 5000
+MAX_WORKERS = min(32, multiprocessing.cpu_count() + 4)
 
 
 @dataclass
@@ -102,6 +104,7 @@ class CreateDataDefaults:
     wait_for_indexing: bool = False
     verbose: bool = False
     multi_vector: bool = False
+    batch_size: int = 1000
 
 
 @dataclass
