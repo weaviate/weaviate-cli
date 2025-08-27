@@ -237,9 +237,18 @@ class DataManager:
         file_name: str,
         cl: wvc.ConsistencyLevel,
         num_objects: Optional[int] = None,
+        alias: Optional[str] = None,
     ) -> int:
         counter = 0
-        properties: List[wvc.Property] = collection.config.get().properties
+        if alias is None:
+            properties: List[wvc.Property] = collection.config.get().properties
+        else:
+            collection_from_alias = self.client.alias.get(alias_name=alias).collection
+            properties: List[wvc.Property] = (
+                self.client.collections.get(collection_from_alias)
+                .config.get()
+                .properties
+            )
 
         try:
             with (
@@ -442,13 +451,21 @@ class DataManager:
         uuid: Optional[str] = None,
         verbose: bool = False,
         multi_vector: bool = False,
+        alias: Optional[str] = None,
     ) -> Collection:
         if randomize:
             click.echo(f"Generating {num_objects} objects")
             start_time = time.time()
 
             # Determine vector dimensions based on vectorizer
-            config = collection.config.get()
+            if alias is None:
+                config = collection.config.get()
+            else:
+                collection_from_alias = self.client.alias.get(
+                    alias_name=alias
+                ).collection
+                config = self.client.collections.get(collection_from_alias).config.get()
+
             if not config.vectorizer and config.vector_config:
                 # Named vectors
                 named_vectors = list(config.vector_config.keys())
@@ -582,9 +599,11 @@ class DataManager:
             )
             return cl_collection
         else:
-            click.echo(f"Importing {num_objects} objects from Movies dataset")
+            click.echo(
+                f"Importing {num_objects} objects from Movies dataset {'using alias' if alias else ''}"
+            )
             num_objects_inserted = self.__import_json(
-                collection, "movies.json", cl, num_objects
+                collection, "movies.json", cl, num_objects, alias
             )
             print(
                 f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
@@ -608,11 +627,16 @@ class DataManager:
         multi_vector: bool = CreateDataDefaults.multi_vector,
     ) -> Collection:
 
+        alias = None
         if not self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
+                )
+            else:
+                alias = collection
+                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
@@ -681,7 +705,9 @@ class DataManager:
             if tenant == "None":
                 initial_length = len(col)
                 collection = self.__ingest_data(
-                    collection=col,
+                    collection=(
+                        col if alias is None else self.client.collections.get(alias)
+                    ),
                     num_objects=limit,
                     cl=cl_map[consistency_level],
                     randomize=randomize,
@@ -690,6 +716,7 @@ class DataManager:
                     uuid=uuid,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    alias=alias,
                 )
                 after_length = len(col)
             else:
@@ -712,7 +739,11 @@ class DataManager:
                     initial_length = len(col.with_tenant(tenant))
                 click.echo(f"Processing objects for tenant '{tenant}'")
                 collection = self.__ingest_data(
-                    collection=col.with_tenant(tenant),
+                    collection=(
+                        col.with_tenant(tenant)
+                        if alias is None
+                        else self.client.collections.get(alias).with_tenant(tenant)
+                    ),
                     num_objects=limit,
                     cl=cl_map[consistency_level],
                     randomize=randomize,
@@ -721,6 +752,7 @@ class DataManager:
                     uuid=uuid,
                     verbose=verbose,
                     multi_vector=multi_vector,
+                    alias=alias,
                 )
                 after_length = len(col.with_tenant(tenant))
             if wait_for_indexing:
@@ -951,11 +983,16 @@ class DataManager:
         verbose: bool = UpdateDataDefaults.verbose,
     ) -> None:
 
+        alias = None
         if not self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
+                )
+            else:
+                alias = collection
+                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         try:
@@ -975,6 +1012,8 @@ class DataManager:
         }
 
         click.echo(f"Preparing to update {limit} objects into class '{col.name}'")
+        # Override collection if alias is provided
+        col = col if alias is None else self.client.collections.get(alias)
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__update_data(
@@ -1091,10 +1130,16 @@ class DataManager:
         verbose: bool = DeleteDataDefaults.verbose,
     ) -> None:
 
+        alias = None
         if not self.client.collections.exists(collection):
-            print(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
+                )
+            else:
+                alias = collection
+                collection = str(alias_list[collection].collection)
 
             return 1
 
@@ -1115,6 +1160,9 @@ class DataManager:
             tenants = tenants_list
         else:
             tenants = existing_tenants
+
+        # Override collection if alias is provided
+        col = col if alias is None else self.client.collections.get(alias)
 
         for tenant in tenants:
             if tenant == "None":
@@ -1216,11 +1264,16 @@ class DataManager:
         target_vector: Optional[str] = QueryDataDefaults.target_vector,
     ) -> None:
 
+        alias = None
         if not self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
+                )
+            else:
+                alias = collection
+                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
@@ -1250,6 +1303,8 @@ class DataManager:
             "all": wvc.ConsistencyLevel.ALL,
             "one": wvc.ConsistencyLevel.ONE,
         }
+        # Override collection if alias is provided
+        col = col if alias is None else self.client.collections.get(alias)
 
         for tenant in existing_tenants:
             if tenant == "None":
