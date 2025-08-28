@@ -513,7 +513,7 @@ class DataManager:
         verbose: bool = False,
         multi_vector: bool = False,
         dynamic_batch: bool = False,
-        batch_size: int = 100,
+        batch_size: int = 1000,
         concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
         if randomize:
