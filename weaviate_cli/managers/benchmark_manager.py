@@ -110,10 +110,6 @@ class BenchmarkManager(ABC):
             took_ms = int(_ns_to_ms(_now_ns() - t0))
             certainties = [o.metadata.certainty for o in response.objects if hasattr(o.metadata, "certainty")]
 
-            # sampled logging to reduce loop stalls
-            if random.random() < self.LOG_SAMPLE_RATE:
-                click.echo(f"Query '{query_term[:30]}...' took: {took_ms}ms")
-
             return took_ms, certainties
 
         except asyncio.CancelledError:
