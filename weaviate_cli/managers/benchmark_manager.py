@@ -14,7 +14,20 @@ from weaviate.collections.classes.filters import _FilterOr
 import weaviate.classes as wvc
 
 
+def _now_ns() -> int:
+    return time.perf_counter_ns()  # monotonic, high-res
+
+
+def _ns_to_ms(ns: int) -> float:
+    return ns / 1e6
+
+
 class BenchmarkManager(ABC):
+    # sample ~1% of per-request logs to avoid event-loop stalls
+    LOG_SAMPLE_RATE = 0.01
+    # how many most recent samples to use for rolling percentile reporting
+    ROLLING_WINDOW = 5000
+
     def __init__(self, async_client) -> None:
         self.async_client = async_client
 
@@ -62,7 +75,13 @@ class BenchmarkManager(ABC):
             filters: Optional[List],
             query_type: str,
     ) -> Tuple[Optional[int], Optional[List[float]]]:
-        start_time = time.time()
+        """
+        Measures *client-side* RTT only:
+        t0 = just before awaiting the Weaviate call
+        t1 = immediately after await returns
+        Returns RTT in ms and list of certainties (if present).
+        """
+        t0 = _now_ns()
         try:
             if query_type == "hybrid":
                 response = await collection_obj.query.hybrid(
@@ -88,10 +107,14 @@ class BenchmarkManager(ABC):
             else:
                 raise ValueError(f"Unsupported query type: {query_type}")
 
-            took = int((time.time() - start_time) * 1000)
+            took_ms = int(_ns_to_ms(_now_ns() - t0))
             certainties = [o.metadata.certainty for o in response.objects if hasattr(o.metadata, "certainty")]
-            click.echo(f"Query '{query_term[:30]}...' took: {took}ms")
-            return took, certainties
+
+            # sampled logging to reduce loop stalls
+            if random.random() < self.LOG_SAMPLE_RATE:
+                click.echo(f"Query '{query_term[:30]}...' took: {took_ms}ms")
+
+            return took_ms, certainties
 
         except asyncio.CancelledError:
             return None, None
@@ -109,20 +132,24 @@ class BenchmarkManager(ABC):
     ) -> None:
         if not response_times:
             return
-        p50 = np.percentile(response_times, 50)
-        p90 = np.percentile(response_times, 90)
-        p95 = np.percentile(response_times, 95)
-        p99 = np.percentile(response_times, 99)
+
+        # compute on a rolling tail to keep it cheap
+        tail = response_times[-self.ROLLING_WINDOW:]
+        p50 = np.percentile(tail, 50)
+        p90 = np.percentile(tail, 90)
+        p95 = np.percentile(tail, 95)
+        p99 = np.percentile(tail, 99)
         click.echo(f"Current P50 latency: {p50:.2f} ms")
         click.echo(f"Current P90 latency: {p90:.2f} ms")
         click.echo(f"Current P95 latency: {p95:.2f} ms")
         click.echo(f"Current P99 latency: {p99:.2f} ms")
 
         if show_certainty and certainty_values:
-            p50c = np.percentile(certainty_values, 50)
-            p90c = np.percentile(certainty_values, 90)
-            p95c = np.percentile(certainty_values, 95)
-            p99c = np.percentile(certainty_values, 99)
+            ctail = certainty_values[-self.ROLLING_WINDOW:]
+            p50c = np.percentile(ctail, 50)
+            p90c = np.percentile(ctail, 90)
+            p95c = np.percentile(ctail, 95)
+            p99c = np.percentile(ctail, 99)
             click.echo(f"Current P50 certainty: {p50c:.2f}")
             click.echo(f"Current P90 certainty: {p90c:.2f}")
             click.echo(f"Current P95 certainty: {p95c:.2f}")
@@ -253,7 +280,7 @@ class BenchmarkQPSManager(BenchmarkManager):
     ) -> Tuple[List[int], bool]:
         """
         Run a benchmark phase at a specific QPS with bounded or adaptive concurrency.
-        Auto mode uses scale-up-only: it increases workers based on observed latency, never decreases mid-phase.
+        We shape *send rate* via a metronome producer. Each worker measures only client RTT.
         """
         loop = asyncio.get_event_loop()
         start_time = loop.time()
@@ -265,38 +292,36 @@ class BenchmarkQPSManager(BenchmarkManager):
         latency_exceeded = False
         goto_finally = False
 
-        # Adaptive bits
+        # Rolling window for the cheap percentile reporting
+        recent_latencies = deque(maxlen=self.ROLLING_WINDOW)
+
+        # EWMA for dynamic sizing (scale-up-only)
         SAFETY = 1.3
         EWMA_ALPHA = 0.3
         ewma_latency_ms: Optional[float] = None
-        recent_latencies = deque(maxlen=2000)
-        # QPS tracking (smooth & warm-started)
+
+        # QPS tracking (smooth)
         completed_total = 0
-        ewma_qps = float(qps)
+        ewma_qps = float(qps) if qps > 0 else 0.0
         last_completed_total = 0
         last_report_time = start_time
         QPS_EWMA_ALPHA = 0.3
 
-        # Worker pool (we only scale up)
-        workers: List[asyncio.Task] = []
-
-        def active_count() -> int:
-            return sum(1 for t in workers if not t.done())
-
-        def current_target_workers() -> int:
-            if concurrency is not None:
-                return max(1, concurrency)
+        # Concurrency targets
+        def auto_concurrency() -> int:
             if ewma_latency_ms is None:
-                # start small but viable
-                return max(1, min(qps, 8))
+                return max(1, min(qps or 1, 8))
             avg_sec = max(ewma_latency_ms / 1000.0, 0.001)
-            target = int(qps * avg_sec * SAFETY) or 1
-            cap = max(qps * 4, 32)
+            target = int((qps or 1) * avg_sec * SAFETY) or 1
+            cap = max((qps or 1) * 4, 32)
             return max(1, min(target, cap))
 
-        # Bounded queue for backpressure; sized to initial target (will be conservative)
-        queue_maxsize = max(1, current_target_workers() * 2)
-        queue: asyncio.Queue = asyncio.Queue(maxsize=queue_maxsize)
+        # Semaphore bounds in-flight tasks; this keeps client pool pressure sane
+        current_target = concurrency if concurrency is not None else auto_concurrency()
+        sem = asyncio.Semaphore(current_target)
+
+        # Queue carries (query_term, enq_t)
+        queue: asyncio.Queue = asyncio.Queue(maxsize=max(1, current_target * 2))
 
         click.echo(
             f"Starting {phase_name} phase at {qps} QPS for {duration} seconds "
@@ -307,16 +332,20 @@ class BenchmarkQPSManager(BenchmarkManager):
             nonlocal latency_exceeded, goto_finally, ewma_latency_ms, completed_total
             while not goto_finally:
                 try:
-                    item = await queue.get()
+                    query_term, enq_t = await queue.get()
                 except asyncio.CancelledError:
                     break
-                query_term = item
+
+                queued_ms = (loop.time() - enq_t) * 1000.0  # *diagnostic*, not included in RTT
                 took = None
                 certainties = None
+
                 try:
-                    took, certainties = await self._run_query_and_collect_latency(
-                        collection_obj, query_term, limit, [], query_type
-                    )
+                    # bound in-flight requests to avoid giant client-side backlogs
+                    async with sem:
+                        took, certainties = await self._run_query_and_collect_latency(
+                            collection_obj, query_term, limit, [], query_type
+                        )
                 except asyncio.CancelledError:
                     pass
                 finally:
@@ -324,8 +353,8 @@ class BenchmarkQPSManager(BenchmarkManager):
                         response_times.append(took)
                         recent_latencies.append(took)
                         ewma_latency_ms = (
-                            took if ewma_latency_ms is None
-                            else EWMA_ALPHA * took + (1 - EWMA_ALPHA) * ewma_latency_ms
+                            float(took) if ewma_latency_ms is None
+                            else EWMA_ALPHA * float(took) + (1 - EWMA_ALPHA) * ewma_latency_ms
                         )
                         completed_total += 1
                         if phase_name == "Main Test" and took > latency_threshold:
@@ -336,37 +365,39 @@ class BenchmarkQPSManager(BenchmarkManager):
                     queue.task_done()
                     if latency_exceeded:
                         goto_finally = True
-                        break
 
-        async def ensure_workers_at_least(target: int):
-            # Only scale UP; never down during the phase
-            cur = active_count()
-            add = max(0, target - cur)
-            for _ in range(add):
-                workers.append(asyncio.create_task(worker()))
+        # Spin up an initial worker set equal to the semaphore size
+        workers = [asyncio.create_task(worker()) for _ in range(current_target)]
 
         async def controller():
-            # Kick off initial pool
-            await ensure_workers_at_least(current_target_workers())
+            nonlocal current_target, sem
+            # Only scale UP during a phase (keep signals simple)
             while loop.time() < end_time and not goto_finally:
                 await asyncio.sleep(1.0)
                 if goto_finally:
                     break
-                await ensure_workers_at_least(current_target_workers())
+                if concurrency is None:
+                    target = auto_concurrency()
+                    if target > current_target:
+                        # increase semaphore capacity
+                        sem = asyncio.Semaphore(target)
+                        # add workers to match
+                        add = target - current_target
+                        for _ in range(add):
+                            workers.append(asyncio.create_task(worker()))
+                        current_target = target
 
         async def producer():
-            """Metronome: one job per tick. Backpressure if queue fills."""
-            nonlocal goto_finally
+            """Metronome: emits one job per tick at the target QPS."""
             next_t = loop.time()
             while loop.time() < end_time and not goto_finally:
                 await asyncio.sleep(max(0.0, next_t - loop.time()))
                 if goto_finally:
                     break
-                query_term = random.choice(query_terms)
-                await queue.put(query_term)  # blocks if workers can't keep up
+                await queue.put((random.choice(query_terms), loop.time()))
                 next_t += interval
+                # drift correction (skip ticks if badly behind)
                 now = loop.time()
-                # Drift correction: skip missed ticks if we fell behind
                 if now - next_t > interval:
                     missed = int((now - next_t) / interval)
                     next_t += missed * interval
@@ -386,7 +417,6 @@ class BenchmarkQPSManager(BenchmarkManager):
                     ewma_qps = QPS_EWMA_ALPHA * inst_rate + (1 - QPS_EWMA_ALPHA) * ewma_qps
                     last_completed_total = completed_total
                     last_report_time = now
-
                     click.echo(f"Current QPS: {ewma_qps:.2f}\n")
 
         prod_task = asyncio.create_task(producer())
@@ -394,9 +424,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         report_task = asyncio.create_task(reporter())
 
         try:
-            # Wait producer+controller to end (time-bound)
             await asyncio.wait([prod_task, ctrl_task], return_when=asyncio.ALL_COMPLETED)
-            # Drain remaining work
             await queue.join()
         finally:
             goto_finally = True
@@ -453,7 +481,7 @@ class BenchmarkQPSManager(BenchmarkManager):
             await self._run_phase(
                 collection_obj, query_terms, limit, warmup_qps, warmup_duration, "Warmup",
                 show_certainty, csv_writer, query_type, latency_threshold,
-                concurrency=concurrency,  # auto or fixed during warmup too
+                concurrency=concurrency,
             )
 
             _, latency_exceeded = await self._run_phase(
