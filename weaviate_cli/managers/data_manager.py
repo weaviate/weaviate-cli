@@ -1,34 +1,33 @@
-import click
+import importlib.resources as resources
 import json
-import numpy as np
+import math
 import random
-import os
-from importlib import resources
-from weaviate_cli.utils import get_random_string, pp_objects
-from weaviate import WeaviateClient
-from weaviate.classes.query import MetadataQuery
-from weaviate.collections.classes.tenants import TenantActivityStatus
-from typing import Dict, List, Optional, Union, Any, Tuple, Callable
-import weaviate.classes.config as wvc
-from weaviate.classes.query import Filter
-from weaviate.collections import Collection
+import time
+from collections import deque
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Union, Any, Tuple
+
+import click
+import numpy as np
+import weaviate.classes.config as wvc
+from faker import Faker
+from weaviate import WeaviateClient
+from weaviate.classes.query import Filter
+from weaviate.classes.query import MetadataQuery
+from weaviate.collections import Collection
+from weaviate.collections.classes.tenants import TenantActivityStatus
+
 from weaviate_cli.defaults import (
     MAX_OBJECTS_PER_BATCH,
     QUERY_MAXIMUM_RESULTS,
     MAX_WORKERS,
-    CreateCollectionDefaults,
     CreateDataDefaults,
     CreateTenantsDefaults,
     QueryDataDefaults,
     UpdateDataDefaults,
     DeleteDataDefaults,
 )
-import importlib.resources as resources
-from pathlib import Path
-import math
-from faker import Faker
-import time
+from weaviate_cli.utils import pp_objects
 
 PROPERTY_NAME_MAPPING = {
     "releaseDate": "release_date",
@@ -37,10 +36,35 @@ PROPERTY_NAME_MAPPING = {
     "spokenLanguages": "spoken_languages",
 }
 
-# Constants for data generation optimization
-# Use more than CPU count to account for I/O-bound tasks
 
-# Define movie-related data outside the class to be accessible by worker processes
+class _ErrorTracker:
+    """
+    Tracks total failures and a FIFO of up to N unique error messages.
+    Uniqueness is by message text; adjust `key = msg` if you want a stricter key.
+    """
+
+    def __init__(self, max_examples: int = 10) -> None:
+        self.total: int = 0
+        self._seen: set = set()
+        self.examples: deque = deque(maxlen=max_examples)
+
+    def add_failed_objects(self, failed_objects) -> None:
+        if not failed_objects:
+            return
+        for fo in failed_objects:
+            self.total += 1
+            msg = getattr(fo, "message", "") or ""
+            key = msg  # could be (msg, getattr(fo, "status_code", None))
+            if key not in self._seen:
+                self._seen.add(key)
+                self.examples.append((
+                    getattr(fo, "original_uuid", None),
+                    msg
+                ))
+
+
+# Constants for data generation optimization
+
 MOVIE_GENRES = [
     "Action",
     "Adventure",
@@ -146,7 +170,6 @@ COUNTRIES = [
 STATUSES = ["Released", "In Production", "Post Production", "Planned", "Cancelled"]
 
 
-# Standalone function for parallel processing
 def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -> Dict:
     """Generate a single movie object - standalone function for parallel processing"""
     # Set seed if provided for deterministic generation
@@ -158,9 +181,7 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
         fake = Faker()
 
     # Generate a realistic release date
-    date = datetime.now() - timedelta(
-        days=random.randint(0, 20 * 365)
-    )  # Random date in last 20 years
+    date = datetime.now() - timedelta(days=random.randint(0, 20 * 365))
     release_date = date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Select random language codes for spoken languages
@@ -207,8 +228,6 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
     }
 
 
-# Standalone small-chunk generator for streaming + multiprocessing
-# Generates a list[dict] using generate_movie_object; args: (chunk_size, base_seed, start_index, is_update)
 def _streaming_generate_chunk(args) -> List[Dict]:
     chunk_size, base_seed, start_index, is_update = args
     results: List[Dict] = []
@@ -239,7 +258,7 @@ class DataManager:
             multi_vector: bool,
             skip_seed: bool,
             verbose: bool,
-    ) -> Tuple[int, List]:
+    ) -> Tuple[int, List, _ErrorTracker]:
         """Memory-safe producer→queue ingestion with two clear modes:
         - dynamic_batch=True: Fast streaming generation via multiprocessing feeding a single dynamic batcher.
         - dynamic_batch=False: Modest thread producers + single fixed_size batcher (which handles HTTP concurrency).
@@ -248,6 +267,7 @@ class DataManager:
         import threading
 
         failed_objects: List = []
+        error_tracker = _ErrorTracker(max_examples=10)  # NEW
 
         # Shared helper: build vector payload according to vectorizer configuration
         def build_vector() -> (
@@ -271,14 +291,12 @@ class DataManager:
                 for name in named_vectors
             }
 
-        # Use deterministic base seed if requested
         base_seed: Optional[int] = 42 if skip_seed else None
 
         # --- Dynamic mode: multiprocessing producer → single dynamic batch consumer ---
         if dynamic_batch:
             import multiprocessing as mp
 
-            # Tunables for streaming generation
             gen_chunk_size = max(2000, batch_size * 10)
             max_prefetch_chunks = 4
             producer_processes = min(
@@ -289,11 +307,9 @@ class DataManager:
                     f"Dynamic mode: streaming with {producer_processes} generator processes, chunk_size={gen_chunk_size}, prefetch={max_prefetch_chunks}"
                 )
 
-            # Bounded queue of property-chunks to keep memory in check
             q: Queue[Optional[List[Dict]]] = Queue(maxsize=max_prefetch_chunks)
             consumed = 0
 
-            # Prepare generation tasks
             num_chunks = math.ceil(num_objects / gen_chunk_size)
             task_args: List[Tuple[int, Optional[int], int, bool]] = []
             for chunk_idx in range(num_chunks):
@@ -304,11 +320,8 @@ class DataManager:
 
             def feeder() -> None:
                 with mp.Pool(processes=producer_processes) as pool:
-                    for chunk in pool.imap_unordered(
-                            _streaming_generate_chunk, task_args
-                    ):
-                        q.put(chunk)  # Blocks when buffer full -> back-pressure
-                # Signal completion
+                    for chunk in pool.imap_unordered(_streaming_generate_chunk, task_args):
+                        q.put(chunk)
                 q.put(None)
 
             def consumer() -> None:
@@ -338,7 +351,11 @@ class DataManager:
                             )
                             last_log = time.time()
 
-            # Run feeder and consumer
+                # After context manager, best-effort failed_objects
+                if getattr(collection.batch, "failed_objects", None):
+                    failed_objects.extend(collection.batch.failed_objects)
+                    error_tracker.add_failed_objects(collection.batch.failed_objects)
+
             feeder_t = threading.Thread(target=feeder, daemon=True)
             consumer_t = threading.Thread(target=consumer, daemon=True)
             feeder_t.start()
@@ -346,26 +363,19 @@ class DataManager:
             feeder_t.join()
             consumer_t.join()
 
-            # Best-effort failure reporting (exposed on collection.batch)
-            if getattr(collection.batch, "failed_objects", None):
-                failed_objects.extend(collection.batch.failed_objects)
+            return consumed, failed_objects, error_tracker
 
-            return consumed, failed_objects
-
-        # --- Fixed-size mode: thread producers → single fixed_size batch consumer ---
-        # The batcher manages HTTP concurrency via concurrent_requests; a single consumer is optimal here
+        # --- Fixed-size mode ---
         q: Queue[Optional[Dict]] = Queue(maxsize=max(1, batch_size * 20))
         produced = 0
         consumed = 0
 
-        # Modest producer parallelism to avoid GIL contention during property generation
         producer_threads = min(4, max(1, num_objects // max(1, batch_size * 10)))
         if verbose:
             print(
                 f"Fixed-size mode: {producer_threads} producers, 1 consumer; batch_size={batch_size}, concurrent_requests={concurrent_requests}"
             )
 
-        # Partition the work across producers
         ranges: List[Tuple[int, int]] = []
         base = num_objects // producer_threads
         remainder = num_objects % producer_threads
@@ -396,7 +406,7 @@ class DataManager:
                         item = q.get(timeout=0.25)
                     except Empty:
                         if all(not t.is_alive() for t in prod_threads) and q.empty():
-                            return
+                            break
                         continue
                     vec = build_vector()
                     if vec is None:
@@ -412,7 +422,10 @@ class DataManager:
                         )
                         last_log = time.time()
 
-        # Start producers and consumer
+            if getattr(collection.batch, "failed_objects", None):
+                failed_objects.extend(collection.batch.failed_objects)
+                error_tracker.add_failed_objects(collection.batch.failed_objects)  # NEW
+
         prod_threads = [
             threading.Thread(target=producer, args=(lo, hi, idx * 1000), daemon=True)
             for idx, (lo, hi) in enumerate(ranges)
@@ -425,10 +438,7 @@ class DataManager:
             t.join()
         cons_thread.join()
 
-        if getattr(collection.batch, "failed_objects", None):
-            failed_objects.extend(collection.batch.failed_objects)
-
-        return consumed, failed_objects
+        return consumed, failed_objects, error_tracker
 
     def __import_json(
             self,
@@ -537,7 +547,7 @@ class DataManager:
             cl_collection = collection.with_consistency_level(cl)
 
             # Single consumer that feeds the batcher; batcher does its own HTTP parallelism
-            counter, failed_objects = self.__producer_consumer_ingest(
+            counter, failed_objects, error_tracker = self.__producer_consumer_ingest(
                 collection=cl_collection,
                 num_objects=num_objects,
                 vectorizer=vectorizer,
@@ -552,11 +562,13 @@ class DataManager:
                 verbose=verbose,
             )
 
-            if failed_objects:
-                print("Showing 10 most recent failed objects:")
-                for i, failed_obj in enumerate(failed_objects):
-                    if i < 10:
-                        print(f"Failed to add object with UUID {failed_obj.original_uuid}: {failed_obj.message}")
+            # New compact failure summary (replaces old block)
+            if error_tracker.total > 0:
+                print(f"Encountered {error_tracker.total} total errors.")
+                print("Showing up to 10 unique error examples:")
+                for idx, (orig_uuid, msg) in enumerate(error_tracker.examples, start=1):
+                    uuid_str = f"{orig_uuid}" if orig_uuid else "N/A"
+                    print(f"{idx:2d}. UUID {uuid_str}: {msg}")
 
             total_elapsed = time.time() - start_time
             print(
@@ -737,19 +749,16 @@ class DataManager:
         """Update objects in the collection, either with random data or incremental changes."""
 
         if not skip_seed:
-            # Set a seed for reproducible random sampling
             random.seed(42)
 
         start_time = time.time()
         cl_collection = collection.with_consistency_level(cl)
         total_updated = 0
 
-        # Get total collection size
         collection_size = len(collection)
         if verbose:
             print(f"Collection '{collection.name}' contains {collection_size} objects")
 
-        # Determine if we need random offsets (partial update) or sequential (full update)
         use_random_offsets = num_objects < collection_size
 
         if use_random_offsets and verbose:
@@ -757,33 +766,24 @@ class DataManager:
                 f"Updating a random subset of {num_objects} objects from a total of {collection_size}"
             )
 
-        # Generate a single random starting offset for the entire update operation if needed
         random_offset = None
         if use_random_offsets:
-            # Set a consistent seed for reproducibility
-            # Calculate the maximum safe starting offset
-            # the client has problem with large offsets, so we limit it to 100000
             max_start_offset = (
                 collection_size - num_objects
                 if (collection_size - num_objects) < QUERY_MAXIMUM_RESULTS
                 else QUERY_MAXIMUM_RESULTS
             )
             if max_start_offset < 0:
-                # If we're requesting more objects than exist, adjust
                 num_objects = collection_size
                 random_offset = 0
             else:
-                # Generate a random starting point
                 random_offset = random.randint(0, max_start_offset)
             if verbose:
                 print(f"Using random offset {random_offset} for update operation")
 
-        # Process in batches to avoid GRPC message size limits
         iterations = math.ceil(num_objects / MAX_OBJECTS_PER_BATCH)
 
-        # Determine vector dimensions for random vector generation
         vector_dimensions = 1536
-        # Retrieve the vector size from the first object in the collection
         object_with_vector = collection.query.fetch_objects(
             limit=1, include_vector=True
         )
@@ -795,32 +795,26 @@ class DataManager:
             )
 
         for i in range(iterations):
-            # Determine how many objects to fetch in this batch
             batch_size = min(MAX_OBJECTS_PER_BATCH, num_objects - total_updated)
             if batch_size <= 0:
                 break
 
-            # Calculate the offset for this batch
             if use_random_offsets:
-                # For random updates, use the random offset plus any additional offset for subsequent batches
                 offset = random_offset + (i * MAX_OBJECTS_PER_BATCH)
                 if verbose:
                     print(
                         f"Fetching batch {i + 1}/{iterations} ({batch_size} objects, offset: {offset})"
                     )
             else:
-                # For sequential updates (full collection), just use sequential offsets
                 offset = i * batch_size
                 if verbose:
                     print(
                         f"Fetching batch {i + 1}/{iterations} ({batch_size} objects, offset: {offset})"
                     )
 
-            # Fetch current batch of objects - one simple API call
             res = collection.query.fetch_objects(limit=batch_size, offset=offset)
             data_objects = res.objects
 
-            # Check if we got any objects
             if not data_objects:
                 if total_updated == 0:
                     print(
@@ -835,7 +829,6 @@ class DataManager:
 
             batch_count = len(data_objects)
 
-            # Process this batch based on strategy (random or incremental)
             if randomize:
                 if i == 0 and verbose:
                     print(f"Updating objects with random data...")
@@ -845,14 +838,9 @@ class DataManager:
                     for _ in range(batch_count)
                 ]
 
-                # Process each update in current batch
-                for j, (obj, updated_props) in enumerate(
-                        zip(data_objects, random_objects)
-                ):
-                    # Generate a random vector (not named)
+                for j, (obj, updated_props) in enumerate(zip(data_objects, random_objects)):
                     random_vector = np.random.rand(vector_dimensions).tolist()
 
-                    # Replace the object
                     cl_collection.data.replace(
                         uuid=obj.uuid,
                         properties=updated_props,
@@ -860,7 +848,6 @@ class DataManager:
                     )
                     total_updated += 1
 
-                    # Report progress at intervals
                     if verbose and (j + 1) % max(1, batch_count // 5) == 0:
                         batch_progress = (j + 1) / batch_count * 100
                         total_progress = total_updated / num_objects * 100
@@ -870,12 +857,10 @@ class DataManager:
                             f"Batch progress: {batch_progress:.1f}%, Overall: {total_progress:.1f}% ({total_updated}/{num_objects}), speed: {rate:.1f} objects/second"
                         )
             else:
-                # For non-random updates
                 if i == 0 and verbose:
                     print(f"Updating objects with incremental changes...")
 
                 for j, obj in enumerate(data_objects):
-                    # Update existing object properties
                     for property, value in obj.properties.items():
                         if isinstance(value, str):
                             obj.properties[property] = "updated-" + value
@@ -886,14 +871,12 @@ class DataManager:
                         elif isinstance(value, datetime):
                             obj.properties[property] = value + timedelta(days=1)
 
-                    # Update the object
                     cl_collection.data.update(
                         uuid=obj.uuid,
                         properties=obj.properties,
                     )
                     total_updated += 1
 
-                    # Report progress at intervals
                     if verbose and (j + 1) % max(1, batch_count // 5) == 0:
                         batch_progress = (j + 1) / batch_count * 100
                         total_progress = total_updated / num_objects * 100
@@ -903,11 +886,9 @@ class DataManager:
                             f"Batch progress: {batch_progress:.1f}%, Overall: {total_progress:.1f}% ({total_updated}/{num_objects}), speed: {rate:.1f} objects/second"
                         )
 
-            # If we've processed fewer objects than the batch size, there might not be any more objects
             if not use_random_offsets and batch_count < batch_size:
                 break
 
-        # Report completion
         if total_updated < num_objects:
             print(
                 f"Warning: Only found {total_updated} objects to update, less than the requested {num_objects}"
@@ -944,7 +925,6 @@ class DataManager:
         try:
             tenants = [key for key in col.tenants.get().keys()]
         except Exception as e:
-            # Check if the error is due to multi-tenancy being disabled
             if "multi-tenancy is not enabled" in str(e):
                 click.echo(
                     f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
@@ -961,12 +941,7 @@ class DataManager:
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__update_data(
-                    col,
-                    limit,
-                    cl_map[consistency_level],
-                    randomize,
-                    skip_seed,
-                    verbose,
+                    col, limit, cl_map[consistency_level], randomize, skip_seed, verbose
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
@@ -1002,8 +977,6 @@ class DataManager:
             )
             return 1
 
-        # Calculate the number of full batches and handle any remaining objects
-        # Use math.ceil to ensure we process all objects, even if num_objects < MAX_OBJECTS_PER_BATCH
         start_time = time.time()
         iterations = math.ceil(num_objects / MAX_OBJECTS_PER_BATCH)
         deleted_objects = 0
@@ -1014,7 +987,6 @@ class DataManager:
             )
 
         for i in range(iterations):
-            # Determine how many objects to fetch in this batch
             batch_size = min(MAX_OBJECTS_PER_BATCH, num_objects - deleted_objects)
             if batch_size <= 0:
                 break
@@ -1038,7 +1010,6 @@ class DataManager:
 
             deleted_objects += len(ids)
 
-            # Progress reporting if verbose
             if verbose:
                 progress = min(100, (deleted_objects / num_objects) * 100)
                 elapsed = time.time() - start_time
@@ -1048,7 +1019,6 @@ class DataManager:
                     + f"batch of {len(ids)} deleted in {batch_elapsed:.2f}s (rate: {rate:.1f} objects/second)"
                 )
 
-            # If we've deleted fewer objects than expected, there might not be any more objects
             if len(ids) < batch_size:
                 break
 
@@ -1077,7 +1047,6 @@ class DataManager:
             print(
                 f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
             )
-
             return 1
 
         col: Collection = self.client.collections.get(collection)
@@ -1093,19 +1062,16 @@ class DataManager:
             "one": wvc.ConsistencyLevel.ONE,
         }
 
-        if tenants_list is not None:
-            tenants = tenants_list
-        else:
-            tenants = existing_tenants
+        tenants = tenants_list if tenants_list is not None else existing_tenants
 
         for tenant in tenants:
             if tenant == "None":
-                ret = self.__update_data(
+                ret = self.__delete_data(  # NOTE: call the correct delete impl
                     col, limit, cl_map[consistency_level], uuid, verbose
                 )
             else:
                 click.echo(f"Processing tenant '{tenant}'")
-                ret = self.__update_data(
+                ret = self.__delete_data(
                     col.with_tenant(tenant),
                     limit,
                     cl_map[consistency_level],
@@ -1131,12 +1097,10 @@ class DataManager:
         start_time = datetime.now()
         response = None
         if search_type == "fetch":
-            # Fetch logic
             response = collection.with_consistency_level(cl).query.fetch_objects(
                 limit=num_objects
             )
         elif search_type == "vector":
-            # Vector logic
             response = collection.with_consistency_level(cl).query.near_text(
                 query=query,
                 return_metadata=MetadataQuery(distance=True, certainty=True),
@@ -1144,7 +1108,6 @@ class DataManager:
                 target_vector=target_vector,
             )
         elif search_type == "keyword":
-            # Keyword logic
             response = collection.with_consistency_level(cl).query.bm25(
                 query=query,
                 return_objects=True,
@@ -1152,7 +1115,6 @@ class DataManager:
                 limit=num_objects,
             )
         elif search_type == "hybrid":
-            # Hybrid logic
             response = collection.with_consistency_level(cl).query.hybrid(
                 query=query,
                 return_metadata=MetadataQuery(score=True),
@@ -1160,12 +1122,10 @@ class DataManager:
                 target_vector=target_vector,
             )
         elif search_type == "uuid":
-            # UUID logic
             num_objects = 1
             response = collection.with_consistency_level(cl).query.fetch_object_by_id(
                 uuid=query
             )
-
         else:
             click.echo(
                 f"Invalid search type: {search_type}. Please choose from 'fetch', 'vector', 'keyword', or 'hybrid'."
@@ -1216,8 +1176,7 @@ class DataManager:
             else:
                 existing_tenants = [
                     key
-                    for key, tenant in col.tenants.get().keys()
-                    if tenant.activity_status == TenantActivityStatus.ACTIVE
+                    for key in col.tenants.get().keys()
                 ]
         else:
             if tenants is not None:
