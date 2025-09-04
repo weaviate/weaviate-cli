@@ -226,19 +226,19 @@ class DataManager:
         Faker.seed(42)
 
     def __producer_consumer_ingest(
-        self,
-        collection: Collection,
-        num_objects: int,
-        vectorizer: str,
-        vector_dimensions: int,
-        named_vectors: Optional[List[str]],
-        uuid: Optional[str],
-        dynamic_batch: bool,
-        batch_size: int,
-        concurrent_requests: int,
-        multi_vector: bool,
-        skip_seed: bool,
-        verbose: bool,
+            self,
+            collection: Collection,
+            num_objects: int,
+            vectorizer: str,
+            vector_dimensions: int,
+            named_vectors: Optional[List[str]],
+            uuid: Optional[str],
+            dynamic_batch: bool,
+            batch_size: int,
+            concurrent_requests: int,
+            multi_vector: bool,
+            skip_seed: bool,
+            verbose: bool,
     ) -> Tuple[int, List]:
         """Memory-safe producer→queue ingestion with two clear modes:
         - dynamic_batch=True: Fast streaming generation via multiprocessing feeding a single dynamic batcher.
@@ -251,9 +251,9 @@ class DataManager:
 
         # Shared helper: build vector payload according to vectorizer configuration
         def build_vector() -> (
-            Optional[
-                Union[List[float], Dict[str, List[float]], Dict[str, List[List[float]]]]
-            ]
+                Optional[
+                    Union[List[float], Dict[str, List[float]], Dict[str, List[List[float]]]]
+                ]
         ):
             if vectorizer != "none":
                 return None
@@ -305,7 +305,7 @@ class DataManager:
             def feeder() -> None:
                 with mp.Pool(processes=producer_processes) as pool:
                     for chunk in pool.imap_unordered(
-                        _streaming_generate_chunk, task_args
+                            _streaming_generate_chunk, task_args
                     ):
                         q.put(chunk)  # Blocks when buffer full -> back-pressure
                 # Signal completion
@@ -389,7 +389,7 @@ class DataManager:
             start_time = time.time()
             last_log = start_time
             with collection.batch.fixed_size(
-                batch_size=batch_size, concurrent_requests=max(1, concurrent_requests)
+                    batch_size=batch_size, concurrent_requests=max(1, concurrent_requests)
             ) as batch:
                 while True:
                     try:
@@ -431,11 +431,11 @@ class DataManager:
         return consumed, failed_objects
 
     def __import_json(
-        self,
-        collection: Collection,
-        file_name: str,
-        cl: wvc.ConsistencyLevel,
-        num_objects: Optional[int] = None,
+            self,
+            collection: Collection,
+            file_name: str,
+            cl: wvc.ConsistencyLevel,
+            num_objects: Optional[int] = None,
     ) -> int:
         counter = 0
         properties: List[wvc.Property] = collection.config.get().properties
@@ -443,8 +443,8 @@ class DataManager:
         try:
             with (
                 resources.files("weaviate_cli.datasets")
-                .joinpath(file_name)
-                .open("r") as f
+                        .joinpath(file_name)
+                        .open("r") as f
             ):
                 data = json.load(f)
 
@@ -471,7 +471,7 @@ class DataManager:
 
                 expected: int = len(data[:num_objects]) if num_objects else len(data)
                 assert (
-                    counter == expected
+                        counter == expected
                 ), f"Expected {expected} objects, but added {counter} objects."
 
         except json.JSONDecodeError as e:
@@ -496,25 +496,25 @@ class DataManager:
         return value
 
     def __generate_single_object(
-        self, is_update: bool = False, seed: Optional[int] = None
+            self, is_update: bool = False, seed: Optional[int] = None
     ) -> Dict:
         """Method to generate a single object for non-parallel use cases"""
         return generate_movie_object(is_update, seed)
 
     def __ingest_data(
-        self,
-        collection: Collection,
-        num_objects: int,
-        cl: wvc.ConsistencyLevel,
-        randomize: bool,
-        skip_seed: bool,
-        vector_dimensions: Optional[int] = 1536,
-        uuid: Optional[str] = None,
-        verbose: bool = False,
-        multi_vector: bool = False,
-        dynamic_batch: bool = False,
-        batch_size: int = 1000,
-        concurrent_requests: int = MAX_WORKERS,
+            self,
+            collection: Collection,
+            num_objects: int,
+            cl: wvc.ConsistencyLevel,
+            randomize: bool,
+            skip_seed: bool,
+            vector_dimensions: Optional[int] = 1536,
+            uuid: Optional[str] = None,
+            verbose: bool = False,
+            multi_vector: bool = False,
+            dynamic_batch: bool = False,
+            batch_size: int = 1000,
+            concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
         if randomize:
             click.echo(f"Generating and ingesting {num_objects} objects")
@@ -553,16 +553,16 @@ class DataManager:
             )
 
             if failed_objects:
-                for failed_object in failed_objects:
-                    print(
-                        f"Failed to add object with UUID {failed_object.original_uuid}: {failed_object.message}"
-                    )
+                print("Showing 10 most recent failed objects:")
+                for i, failed_obj in enumerate(failed_objects):
+                    if i < 10:
+                        print(f"Failed to add object with UUID {failed_obj.original_uuid}: {failed_obj.message}")
 
             total_elapsed = time.time() - start_time
             print(
                 f"Inserted {counter} objects into class '{collection.name}'"
                 + (
-                    f" in {total_elapsed:.2f} seconds ({counter/total_elapsed:.1f} objects/second)"
+                    f" in {total_elapsed:.2f} seconds ({counter / total_elapsed:.1f} objects/second)"
                     if verbose
                     else ""
                 )
@@ -579,27 +579,26 @@ class DataManager:
             return collection
 
     def create_data(
-        self,
-        collection: Optional[str] = CreateDataDefaults.collection,
-        limit: int = CreateDataDefaults.limit,
-        consistency_level: str = CreateDataDefaults.consistency_level,
-        randomize: bool = CreateDataDefaults.randomize,
-        skip_seed: bool = CreateDataDefaults.skip_seed,
-        tenant_suffix: str = CreateTenantsDefaults.tenant_suffix,
-        auto_tenants: int = CreateDataDefaults.auto_tenants,
-        tenants_list: Optional[List[str]] = None,
-        vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
-        uuid: Optional[str] = None,
-        wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
-        verbose: bool = CreateDataDefaults.verbose,
-        multi_vector: bool = CreateDataDefaults.multi_vector,
-        dynamic_batch: bool = CreateDataDefaults.dynamic_batch,
-        batch_size: int = CreateDataDefaults.batch_size,
-        concurrent_requests: int = MAX_WORKERS,
+            self,
+            collection: Optional[str] = CreateDataDefaults.collection,
+            limit: int = CreateDataDefaults.limit,
+            consistency_level: str = CreateDataDefaults.consistency_level,
+            randomize: bool = CreateDataDefaults.randomize,
+            skip_seed: bool = CreateDataDefaults.skip_seed,
+            tenant_suffix: str = CreateTenantsDefaults.tenant_suffix,
+            auto_tenants: int = CreateDataDefaults.auto_tenants,
+            tenants_list: Optional[List[str]] = None,
+            vector_dimensions: Optional[int] = CreateDataDefaults.vector_dimensions,
+            uuid: Optional[str] = None,
+            wait_for_indexing: bool = CreateDataDefaults.wait_for_indexing,
+            verbose: bool = CreateDataDefaults.verbose,
+            multi_vector: bool = CreateDataDefaults.multi_vector,
+            dynamic_batch: bool = CreateDataDefaults.dynamic_batch,
+            batch_size: int = CreateDataDefaults.batch_size,
+            concurrent_requests: int = MAX_WORKERS,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
-
             raise Exception(
                 f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
             )
@@ -614,16 +613,16 @@ class DataManager:
                 if name.startswith(tenant_suffix)
             ]
             if (
-                auto_tenants == CreateDataDefaults.auto_tenants
-                and len(existing_tenants) == 0
+                    auto_tenants == CreateDataDefaults.auto_tenants
+                    and len(existing_tenants) == 0
             ):
                 raise Exception(
                     f"No tenants present in class '{col.name}' with suffix '{tenant_suffix}'. Please create tenants using <create tenants> command"
                 )
         else:
             if (
-                tenants_list is not None
-                or auto_tenants != CreateDataDefaults.auto_tenants
+                    tenants_list is not None
+                    or auto_tenants != CreateDataDefaults.auto_tenants
             ):
                 raise Exception(
                     f"Collection '{col.name}' does not have multi-tenancy enabled. Adding data to tenants is not possible."
@@ -638,7 +637,6 @@ class DataManager:
             col.config.get().multi_tenancy_config.auto_tenant_creation
         )
         if auto_tenants > 0 and auto_tenants_enabled is False:
-
             raise Exception(
                 f"Auto tenant creation is not enabled for class '{col.name}'. Please enable it using <update class> command"
             )
@@ -691,10 +689,10 @@ class DataManager:
                         f"Tenant '{tenant}' does not exist. Please create it using <create tenants> command"
                     )
                 if (
-                    not auto_tenants_activated_enabled
-                    and col.tenants.exists(tenant)
-                    and col.tenants.get_by_name(tenant).activity_status
-                    != TenantActivityStatus.ACTIVE
+                        not auto_tenants_activated_enabled
+                        and col.tenants.exists(tenant)
+                        and col.tenants.get_by_name(tenant).activity_status
+                        != TenantActivityStatus.ACTIVE
                 ):
                     raise Exception(
                         f"Tenant '{tenant}' is not active. Please activate it using <update tenants> command"
@@ -728,13 +726,13 @@ class DataManager:
         return collection
 
     def __update_data(
-        self,
-        collection: Collection,
-        num_objects: int,
-        cl: wvc.ConsistencyLevel,
-        randomize: bool,
-        skip_seed: bool,
-        verbose: bool = False,
+            self,
+            collection: Collection,
+            num_objects: int,
+            cl: wvc.ConsistencyLevel,
+            randomize: bool,
+            skip_seed: bool,
+            verbose: bool = False,
     ) -> int:
         """Update objects in the collection, either with random data or incremental changes."""
 
@@ -808,14 +806,14 @@ class DataManager:
                 offset = random_offset + (i * MAX_OBJECTS_PER_BATCH)
                 if verbose:
                     print(
-                        f"Fetching batch {i+1}/{iterations} ({batch_size} objects, offset: {offset})"
+                        f"Fetching batch {i + 1}/{iterations} ({batch_size} objects, offset: {offset})"
                     )
             else:
                 # For sequential updates (full collection), just use sequential offsets
                 offset = i * batch_size
                 if verbose:
                     print(
-                        f"Fetching batch {i+1}/{iterations} ({batch_size} objects, offset: {offset})"
+                        f"Fetching batch {i + 1}/{iterations} ({batch_size} objects, offset: {offset})"
                     )
 
             # Fetch current batch of objects - one simple API call
@@ -849,7 +847,7 @@ class DataManager:
 
                 # Process each update in current batch
                 for j, (obj, updated_props) in enumerate(
-                    zip(data_objects, random_objects)
+                        zip(data_objects, random_objects)
                 ):
                     # Generate a random vector (not named)
                     random_vector = np.random.rand(vector_dimensions).tolist()
@@ -919,7 +917,7 @@ class DataManager:
         print(
             f"Updated {total_updated} objects in class '{collection.name}'"
             + (
-                f" in {total_elapsed:.2f} seconds ({total_updated/total_elapsed:.1f} objects/second)"
+                f" in {total_elapsed:.2f} seconds ({total_updated / total_elapsed:.1f} objects/second)"
                 if verbose
                 else ""
             )
@@ -928,17 +926,16 @@ class DataManager:
         return total_updated
 
     def update_data(
-        self,
-        collection: str = UpdateDataDefaults.collection,
-        limit: int = UpdateDataDefaults.limit,
-        consistency_level: str = UpdateDataDefaults.consistency_level,
-        randomize: bool = UpdateDataDefaults.randomize,
-        skip_seed: bool = UpdateDataDefaults.skip_seed,
-        verbose: bool = UpdateDataDefaults.verbose,
+            self,
+            collection: str = UpdateDataDefaults.collection,
+            limit: int = UpdateDataDefaults.limit,
+            consistency_level: str = UpdateDataDefaults.consistency_level,
+            randomize: bool = UpdateDataDefaults.randomize,
+            skip_seed: bool = UpdateDataDefaults.skip_seed,
+            verbose: bool = UpdateDataDefaults.verbose,
     ) -> None:
 
         if not self.client.collections.exists(collection):
-
             raise Exception(
                 f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
             )
@@ -982,18 +979,17 @@ class DataManager:
                     verbose,
                 )
             if ret == -1:
-
                 raise Exception(
                     f"Failed to update objects in class '{col.name}' for tenant '{tenant}'"
                 )
 
     def __delete_data(
-        self,
-        collection: Collection,
-        num_objects: int,
-        cl: wvc.ConsistencyLevel,
-        uuid: Optional[str] = None,
-        verbose: bool = False,
+            self,
+            collection: Collection,
+            num_objects: int,
+            cl: wvc.ConsistencyLevel,
+            uuid: Optional[str] = None,
+            verbose: bool = False,
     ) -> int:
 
         if uuid:
@@ -1024,7 +1020,7 @@ class DataManager:
                 break
 
             if verbose:
-                print(f"Fetching batch {i+1}/{iterations} ({batch_size} objects)")
+                print(f"Fetching batch {i + 1}/{iterations} ({batch_size} objects)")
 
             res = collection.query.fetch_objects(limit=batch_size)
             if len(res.objects) == 0:
@@ -1060,7 +1056,7 @@ class DataManager:
         print(
             f"Deleted {deleted_objects} objects from class '{collection.name}'"
             + (
-                f" in {total_elapsed:.2f} seconds ({deleted_objects/total_elapsed:.1f} objects/second)"
+                f" in {total_elapsed:.2f} seconds ({deleted_objects / total_elapsed:.1f} objects/second)"
                 if verbose
                 else ""
             )
@@ -1068,13 +1064,13 @@ class DataManager:
         return deleted_objects
 
     def delete_data(
-        self,
-        collection: str = DeleteDataDefaults.collection,
-        limit: int = DeleteDataDefaults.limit,
-        consistency_level: str = DeleteDataDefaults.consistency_level,
-        tenants_list: Optional[List[str]] = None,
-        uuid: Optional[str] = DeleteDataDefaults.uuid,
-        verbose: bool = DeleteDataDefaults.verbose,
+            self,
+            collection: str = DeleteDataDefaults.collection,
+            limit: int = DeleteDataDefaults.limit,
+            consistency_level: str = DeleteDataDefaults.consistency_level,
+            tenants_list: Optional[List[str]] = None,
+            uuid: Optional[str] = DeleteDataDefaults.uuid,
+            verbose: bool = DeleteDataDefaults.verbose,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -1117,20 +1113,19 @@ class DataManager:
                     verbose,
                 )
             if ret == -1:
-
                 raise Exception(
                     f"Failed to delete objects in class '{col.name}' for tenant '{tenant}'"
                 )
 
     def __query_data(
-        self,
-        collection: Collection,
-        num_objects: int,
-        cl: wvc.ConsistencyLevel,
-        search_type: str,
-        query: str,
-        properties: str,
-        target_vector: Optional[str] = None,
+            self,
+            collection: Collection,
+            num_objects: int,
+            cl: wvc.ConsistencyLevel,
+            search_type: str,
+            query: str,
+            properties: str,
+            target_vector: Optional[str] = None,
     ) -> None:
 
         start_time = datetime.now()
@@ -1192,19 +1187,18 @@ class DataManager:
         return num_objects
 
     def query_data(
-        self,
-        collection: str = QueryDataDefaults.collection,
-        search_type: str = QueryDataDefaults.search_type,
-        query: str = QueryDataDefaults.query,
-        consistency_level: str = QueryDataDefaults.consistency_level,
-        limit: int = QueryDataDefaults.limit,
-        properties: str = QueryDataDefaults.properties,
-        tenants: Optional[str] = QueryDataDefaults.tenants,
-        target_vector: Optional[str] = QueryDataDefaults.target_vector,
+            self,
+            collection: str = QueryDataDefaults.collection,
+            search_type: str = QueryDataDefaults.search_type,
+            query: str = QueryDataDefaults.query,
+            consistency_level: str = QueryDataDefaults.consistency_level,
+            limit: int = QueryDataDefaults.limit,
+            properties: str = QueryDataDefaults.properties,
+            tenants: Optional[str] = QueryDataDefaults.tenants,
+            target_vector: Optional[str] = QueryDataDefaults.target_vector,
     ) -> None:
 
         if not self.client.collections.exists(collection):
-
             raise Exception(
                 f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
             )
@@ -1261,7 +1255,6 @@ class DataManager:
                     target_vector,
                 )
             if ret == -1:
-
                 raise Exception(
                     f"Failed to query objects in class '{col.name}' for tenant '{tenant}'"
                 )
