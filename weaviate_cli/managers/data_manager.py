@@ -239,6 +239,7 @@ class DataManager:
         num_objects: Optional[int] = None,
     ) -> int:
         counter = 0
+
         properties: List[wvc.Property] = collection.config.get().properties
 
         try:
@@ -449,6 +450,7 @@ class DataManager:
 
             # Determine vector dimensions based on vectorizer
             config = collection.config.get()
+
             if not config.vectorizer and config.vector_config:
                 # Named vectors
                 named_vectors = list(config.vector_config.keys())
@@ -609,10 +611,13 @@ class DataManager:
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
+                )
+            else:
+                collection = alias
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
@@ -952,10 +957,13 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
+                )
+            else:
+                collection = alias
 
         col: Collection = self.client.collections.get(collection)
         try:
@@ -1092,9 +1100,13 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-            print(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
+                )
+            else:
+                collection = alias
 
             return 1
 
@@ -1217,10 +1229,13 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
+                )
+            else:
+                collection = alias
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled

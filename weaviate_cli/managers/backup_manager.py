@@ -13,7 +13,7 @@ from weaviate_cli.defaults import (
 
 class BackupManager:
     def __init__(self, client: WeaviateClient) -> None:
-        self.client = client
+        self.client: WeaviateClient = client
 
     def create_backup(
         self,
@@ -68,6 +68,7 @@ class BackupManager:
         include: Optional[str] = RestoreBackupDefaults.include,
         exclude: Optional[str] = RestoreBackupDefaults.exclude,
         wait: bool = RestoreBackupDefaults.wait,
+        override_alias: bool = RestoreBackupDefaults.override_alias,
     ) -> None:
 
         result = self.client.backup.restore(
@@ -75,6 +76,7 @@ class BackupManager:
             backend=backend,
             include_collections=include.split(",") if include else None,
             exclude_collections=exclude.split(",") if exclude else None,
+            overwrite_alias=override_alias,
             wait_for_completion=wait,
         )
 
