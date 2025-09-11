@@ -200,6 +200,7 @@ class RestoreBackupDefaults:
     wait: bool = False
     include: Optional[str] = None
     exclude: Optional[str] = None
+    override_alias: bool = False
 
 
 @dataclass
