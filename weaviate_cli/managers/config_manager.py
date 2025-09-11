@@ -6,6 +6,7 @@ import os
 import sys
 import socket
 import weaviate
+from weaviate.exceptions import WeaviateGRPCUnavailableError
 from pathlib import Path
 from typing import Dict, Optional, Union
 
@@ -126,11 +127,26 @@ class ConfigManager:
                 headers=self.config["headers"] if "headers" in self.config else None,
             )
         elif self.config["host"].endswith("weaviate.cloud"):
-            return weaviate.connect_to_weaviate_cloud(
-                cluster_url=self.config["host"],
-                auth_credentials=auth_config,
-                headers=self.config["headers"] if "headers" in self.config else None,
-            )
+            try:
+                return weaviate.connect_to_weaviate_cloud(
+                    cluster_url=self.config["host"],
+                    auth_credentials=auth_config,
+                    headers=(
+                        self.config["headers"] if "headers" in self.config else None
+                    ),
+                )
+            except WeaviateGRPCUnavailableError as e:
+                click.echo(
+                    f"GRPC connection seems to be unavailable, re-connecting skipping checks: {e}"
+                )
+                return weaviate.connect_to_weaviate_cloud(
+                    cluster_url=self.config["host"],
+                    auth_credentials=auth_config,
+                    headers=(
+                        self.config["headers"] if "headers" in self.config else None
+                    ),
+                    skip_init_checks=True,
+                )
         else:
             # Check if host is a URL or IP/hostname
             if self.__is_url(self.config["host"]):
