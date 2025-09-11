@@ -23,6 +23,7 @@ weaviate-cli get backup --backend s3 --backup_id my-backup --restore --json
 ```bash
 weaviate-cli restore backup --backend s3 --backup_id my-backup --wait --json
 weaviate-cli restore backup --backend s3 --backup_id my-backup --include "Movies" --wait --json
+weaviate-cli restore backup --backend s3 --backup_id my-backup --override-alias --wait --json
 ```
 
 ## Cancel Backup
@@ -44,6 +45,7 @@ weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 - `--backend`, `--backup_id` -- Same as create
 - `--include`, `--exclude` -- Filter which collections to restore
 - `--wait` -- Wait for completion
+- `--override-alias` -- Override alias conflicts during restore. Use when the backup contains a collection with an alias that differs from the current cluster state (e.g., the backup had alias `Movies` pointing to `Movies_v1`, but the cluster now has `Movies` pointing to `Movies_v2`). Without this flag, the restore will fail due to the alias conflict.
 
 ## Prerequisites
 

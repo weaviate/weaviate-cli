@@ -569,19 +569,11 @@ class DataManager:
         file_name: str,
         cl: wvc.ConsistencyLevel,
         num_objects: Optional[int] = None,
-        alias: Optional[str] = None,
         json_output: bool = False,
     ) -> int:
         counter = 0
-        if alias is None:
-            properties: List[wvc.Property] = collection.config.get().properties
-        else:
-            collection_from_alias = self.client.alias.get(alias_name=alias).collection
-            properties: List[wvc.Property] = (
-                self.client.collections.get(collection_from_alias)
-                .config.get()
-                .properties
-            )
+
+        properties: List[wvc.Property] = collection.config.get().properties
 
         try:
             with (
@@ -659,7 +651,6 @@ class DataManager:
         dynamic_batch: bool = False,
         batch_size: int = 1000,
         concurrent_requests: int = MAX_WORKERS,
-        alias: Optional[str] = None,
         json_output: bool = False,
     ) -> Collection:
         if randomize:
@@ -668,13 +659,7 @@ class DataManager:
             start_time = time.time()
 
             # Determine vector dimensions based on vectorizer
-            if alias is None:
-                config = collection.config.get()
-            else:
-                collection_from_alias = self.client.alias.get(
-                    alias_name=alias
-                ).collection
-                config = self.client.collections.get(collection_from_alias).config.get()
+            config = collection.config.get()
 
             if not config.vectorizer and config.vector_config:
                 named_vectors = list(config.vector_config.keys())
@@ -729,7 +714,7 @@ class DataManager:
             if not json_output:
                 click.echo(f"Importing {num_objects} objects from Movies dataset")
             num_objects_inserted = self.__import_json(
-                collection, "movies.json", cl, num_objects, alias, json_output=json_output
+                collection, "movies.json", cl, num_objects, json_output=json_output
             )
             if not json_output:
                 print(
@@ -837,16 +822,12 @@ class DataManager:
         json_output: bool = False,
     ) -> Collection:
 
-        alias = None
         if not self.client.collections.exists(collection):
             alias_list = self.client.alias.list_all()
             if collection not in alias_list.keys():
                 raise Exception(
                     f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
                 )
-            else:
-                alias = collection
-                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         mt_config = col.config.get().multi_tenancy_config
@@ -883,9 +864,7 @@ class DataManager:
             if tenant == "None":
                 initial_length = len(col)
                 collection = self.__ingest_data(
-                    collection=(
-                        col if alias is None else self.client.collections.get(alias)
-                    ),
+                    collection=col,
                     num_objects=limit,
                     cl=cl_map[consistency_level],
                     randomize=randomize,
@@ -897,7 +876,6 @@ class DataManager:
                     dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
                     concurrent_requests=concurrent_requests,
-                    alias=alias,
                     json_output=json_output,
                 )
                 after_length = len(col)
@@ -922,11 +900,7 @@ class DataManager:
                 if not json_output:
                     click.echo(f"Processing objects for tenant '{tenant}'")
                 collection = self.__ingest_data(
-                    collection=(
-                        col.with_tenant(tenant)
-                        if alias is None
-                        else self.client.collections.get(alias).with_tenant(tenant)
-                    ),
+                    collection=col.with_tenant(tenant),
                     num_objects=limit,
                     cl=cl_map[consistency_level],
                     randomize=randomize,
@@ -938,7 +912,6 @@ class DataManager:
                     dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
                     concurrent_requests=concurrent_requests,
-                    alias=alias,
                     json_output=json_output,
                 )
                 after_length = len(col.with_tenant(tenant))
@@ -1153,16 +1126,12 @@ class DataManager:
         json_output: bool = False,
     ) -> None:
 
-        alias = None
         if not self.client.collections.exists(collection):
             alias_list = self.client.alias.list_all()
             if collection not in alias_list.keys():
                 raise Exception(
                     f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
                 )
-            else:
-                alias = collection
-                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         try:
@@ -1184,8 +1153,6 @@ class DataManager:
         if not json_output:
             click.echo(f"Preparing to update {limit} objects into class '{col.name}'")
         total_updated = 0
-        # Override collection if alias is provided
-        col = col if alias is None else self.client.collections.get(alias)
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__update_data(
@@ -1315,16 +1282,12 @@ class DataManager:
         json_output: bool = False,
     ) -> None:
 
-        alias = None
         if not self.client.collections.exists(collection):
             alias_list = self.client.alias.list_all()
             if collection not in alias_list.keys():
                 raise Exception(
                     f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
                 )
-            else:
-                alias = collection
-                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
@@ -1342,8 +1305,6 @@ class DataManager:
         tenants = tenants_list if tenants_list is not None else existing_tenants
 
         total_deleted = 0
-        # Override collection if alias is provided
-        col = col if alias is None else self.client.collections.get(alias)
 
         for tenant in tenants:
             if tenant == "None":
@@ -1455,16 +1416,12 @@ class DataManager:
         json_output: bool = False,
     ) -> None:
 
-        alias = None
         if not self.client.collections.exists(collection):
             alias_list = self.client.alias.list_all()
             if collection not in alias_list.keys():
                 raise Exception(
                     f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
                 )
-            else:
-                alias = collection
-                collection = str(alias_list[collection].collection)
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
@@ -1508,8 +1465,6 @@ class DataManager:
             "all": wvc.ConsistencyLevel.ALL,
             "one": wvc.ConsistencyLevel.ONE,
         }
-        # Override collection if alias is provided
-        col = col if alias is None else self.client.collections.get(alias)
 
         for tenant in existing_tenants:
             if tenant == "None":

@@ -183,6 +183,8 @@ Key query options: `--properties "title,keywords"`, `--tenants "T1"`, `--target_
 
 **Note**: `--consistency_level` values must be **lowercase**: `one`, `quorum`, `all` (not `ONE`, `QUORUM`, `ALL`).
 
+**Alias support**: The `--collection` flag accepts collection aliases in all data commands. If the name isn't a direct collection, the CLI checks the alias list automatically.
+
 See [references/data.md](references/data.md) and [references/search.md](references/search.md).
 
 ### Tenants
@@ -213,7 +215,7 @@ weaviate-cli restore backup --backend s3 --backup_id my-backup --wait --json
 weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 ```
 
-Backends: `s3`, `gcs`, `filesystem`. Options: `--include`, `--exclude`, `--wait`, `--cpu_for_backup N`
+Backends: `s3`, `gcs`, `filesystem`. Options: `--include`, `--exclude`, `--wait`, `--cpu_for_backup N`, `--override-alias`
 
 See [references/backups.md](references/backups.md).
 
