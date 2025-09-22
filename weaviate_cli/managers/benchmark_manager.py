@@ -13,9 +13,11 @@ from weaviate.collections import CollectionAsync
 from weaviate.collections.classes.filters import _FilterOr
 import weaviate.classes as wvc
 
+PER_REQUEST_TIMEOUT_S = 120.0
+
 
 def _now_ns() -> int:
-    return time.perf_counter_ns()  # monotonic, high-res
+    return time.perf_counter_ns()
 
 
 def _ns_to_ms(ns: int) -> float:
@@ -23,9 +25,7 @@ def _ns_to_ms(ns: int) -> float:
 
 
 class BenchmarkManager(ABC):
-    # sample ~1% of per-request logs to avoid event-loop stalls
     LOG_SAMPLE_RATE = 0.01
-    # how many most recent samples to use for rolling percentile reporting
     ROLLING_WINDOW = 5000
 
     def __init__(self, async_client) -> None:
@@ -75,43 +75,41 @@ class BenchmarkManager(ABC):
             filters: Optional[List],
             query_type: str,
     ) -> Tuple[Optional[int], Optional[List[float]]]:
-        """
-        Measures *client-side* RTT only:
-        t0 = just before awaiting the Weaviate call
-        t1 = immediately after await returns
-        Returns RTT in ms and list of certainties (if present).
-        """
         t0 = _now_ns()
         try:
-            if query_type == "hybrid":
-                response = await collection_obj.query.hybrid(
-                    query=query_term,
-                    filters=None if not filters else _FilterOr(filters),
-                    return_metadata=wvc.query.MetadataQuery(certainty=True),
-                    limit=limit,
-                )
-            elif query_type == "bm25":
-                response = await collection_obj.query.bm25(
-                    query=query_term,
-                    filters=None if not filters else _FilterOr(filters),
-                    return_metadata=wvc.query.MetadataQuery(certainty=True),
-                    limit=limit,
-                )
-            elif query_type == "near_text":
-                response = await collection_obj.query.near_text(
-                    query=query_term,
-                    filters=None if not filters else _FilterOr(filters),
-                    return_metadata=wvc.query.MetadataQuery(certainty=True),
-                    limit=limit,
-                )
-            else:
-                raise ValueError(f"Unsupported query type: {query_type}")
+            async def _do():
+                if query_type == "hybrid":
+                    return await collection_obj.query.hybrid(
+                        query=query_term,
+                        filters=None if not filters else _FilterOr(filters),
+                        return_metadata=wvc.query.MetadataQuery(certainty=True),
+                        limit=limit,
+                    )
+                elif query_type == "bm25":
+                    return await collection_obj.query.bm25(
+                        query=query_term,
+                        filters=None if not filters else _FilterOr(filters),
+                        return_metadata=wvc.query.MetadataQuery(certainty=True),
+                        limit=limit,
+                    )
+                elif query_type == "near_text":
+                    return await collection_obj.query.near_text(
+                        query=query_term,
+                        filters=None if not filters else _FilterOr(filters),
+                        return_metadata=wvc.query.MetadataQuery(certainty=True),
+                        limit=limit,
+                    )
+                else:
+                    raise ValueError(f"Unsupported query type: {query_type}")
 
+            response = await asyncio.wait_for(_do(), timeout=PER_REQUEST_TIMEOUT_S)
             took_ms = int(_ns_to_ms(_now_ns() - t0))
             certainties = [o.metadata.certainty for o in response.objects if hasattr(o.metadata, "certainty")]
-
             return took_ms, certainties
 
+        except asyncio.TimeoutError:
+            click.echo(f"Query '{query_term[:30]}...' timed out after {PER_REQUEST_TIMEOUT_S}s")
+            return None, None
         except asyncio.CancelledError:
             return None, None
         except Exception as exc:
@@ -128,8 +126,6 @@ class BenchmarkManager(ABC):
     ) -> None:
         if not response_times:
             return
-
-        # compute on a rolling tail to keep it cheap
         tail = response_times[-self.ROLLING_WINDOW:]
         p50 = np.percentile(tail, 50)
         p90 = np.percentile(tail, 90)
@@ -139,7 +135,6 @@ class BenchmarkManager(ABC):
         click.echo(f"Current P90 latency: {p90:.2f} ms")
         click.echo(f"Current P95 latency: {p95:.2f} ms")
         click.echo(f"Current P99 latency: {p99:.2f} ms")
-
         if show_certainty and certainty_values:
             ctail = certainty_values[-self.ROLLING_WINDOW:]
             p50c = np.percentile(ctail, 50)
@@ -150,7 +145,6 @@ class BenchmarkManager(ABC):
             click.echo(f"Current P90 certainty: {p90c:.2f}")
             click.echo(f"Current P95 certainty: {p95c:.2f}")
             click.echo(f"Current P99 certainty: {p99c:.2f}")
-
         if csv_writer:
             row = [time.time(), phase_name, f"{p50:.2f}", f"{p90:.2f}", f"{p95:.2f}", f"{p99:.2f}"]
             if show_certainty and certainty_values:
@@ -169,7 +163,6 @@ class BenchmarkManager(ABC):
     ) -> None:
         if phase_name != "Main Test":
             return
-
         if not response_times:
             click.echo("No successful queries were completed in Main Test.")
             return
@@ -188,7 +181,6 @@ class BenchmarkManager(ABC):
         click.echo(f"P99 latency: {p99:.2f} ms")
         max_latency = max(response_times)
         click.echo(f"Max observed latency: {max_latency:.2f} ms\n")
-
         if show_certainty and certainty_values:
             p50c = np.percentile(certainty_values, 50)
             p90c = np.percentile(certainty_values, 90)
@@ -198,7 +190,6 @@ class BenchmarkManager(ABC):
             click.echo(f"P90 certainty: {p90c:.2f}")
             click.echo(f"P95 certainty: {p95c:.2f}")
             click.echo(f"P99 certainty: {p99c:.2f}")
-
         if csv_writer:
             row = [time.time(), phase_name, f"{p50:.2f}", f"{p90:.2f}", f"{p95:.2f}", f"{p99:.2f}"]
             if show_certainty and certainty_values:
@@ -221,22 +212,17 @@ class BenchmarkQPSManager(BenchmarkManager):
             warmup_duration: int = 5,
             test_duration: int = 10,
             latency_threshold: int = 10000,
-            concurrency: Optional[int] = None,  # if None => auto (scale-up-only)
+            concurrency: Optional[int] = None,
     ) -> None:
         if not query_terms:
             query_terms = self._get_default_query_terms()
-
         csv_writer, csv_file = self._setup_csv_output(output, certainty)
-
         try:
             await self.async_client.connect()
             if not await self.async_client.collections.exists(collection):
                 raise Exception(f"Collection '{collection}' does not exist")
-
-            collection_obj = self.async_client.collections.get(
-                collection
-            ).with_consistency_level(wvc.ConsistencyLevel.ONE)
-
+            collection_obj = self.async_client.collections.get(collection).with_consistency_level(
+                wvc.ConsistencyLevel.ONE)
             max_qps = await self._find_max_qps(
                 collection_obj=collection_obj,
                 query_terms=query_terms,
@@ -251,10 +237,8 @@ class BenchmarkQPSManager(BenchmarkManager):
                 latency_threshold=latency_threshold,
                 concurrency=concurrency,
             )
-
             if not qps:
                 click.echo(f"\nThe maximum sustainable QPS is approximately {max_qps}.")
-
         finally:
             if csv_file:
                 csv_file.close()
@@ -272,12 +256,8 @@ class BenchmarkQPSManager(BenchmarkManager):
             csv_writer: Optional[csv.writer],
             query_type: str,
             latency_threshold: int,
-            concurrency: Optional[int] = None,  # None => auto (scale-up-only)
+            concurrency: Optional[int] = None,
     ) -> Tuple[List[int], bool]:
-        """
-        Run a benchmark phase at a specific QPS with bounded or adaptive concurrency.
-        We shape *send rate* via a metronome producer. Each worker measures only client RTT.
-        """
         loop = asyncio.get_event_loop()
         start_time = loop.time()
         end_time = start_time + duration
@@ -288,22 +268,17 @@ class BenchmarkQPSManager(BenchmarkManager):
         latency_exceeded = False
         goto_finally = False
 
-        # Rolling window for the cheap percentile reporting
         recent_latencies = deque(maxlen=self.ROLLING_WINDOW)
-
-        # EWMA for dynamic sizing (scale-up-only)
         SAFETY = 1.3
         EWMA_ALPHA = 0.3
         ewma_latency_ms: Optional[float] = None
 
-        # QPS tracking (smooth)
         completed_total = 0
         ewma_qps = float(qps) if qps > 0 else 0.0
         last_completed_total = 0
         last_report_time = start_time
         QPS_EWMA_ALPHA = 0.3
 
-        # Concurrency targets
         def auto_concurrency() -> int:
             if ewma_latency_ms is None:
                 return max(1, min(qps or 1, 8))
@@ -312,12 +287,9 @@ class BenchmarkQPSManager(BenchmarkManager):
             cap = max((qps or 1) * 4, 32)
             return max(1, min(target, cap))
 
-        # Semaphore bounds in-flight tasks; this keeps client pool pressure sane
-        current_target = concurrency if concurrency is not None else auto_concurrency()
-        sem = asyncio.Semaphore(current_target)
-
-        # Queue carries (query_term, enq_t)
-        queue: asyncio.Queue = asyncio.Queue(maxsize=max(1, current_target * 2))
+        initial_conc = concurrency if concurrency is not None else auto_concurrency()
+        sem = asyncio.Semaphore(initial_conc)
+        queue: asyncio.Queue = asyncio.Queue(maxsize=max(1, initial_conc * 2))
 
         click.echo(
             f"Starting {phase_name} phase at {qps} QPS for {duration} seconds "
@@ -331,27 +303,19 @@ class BenchmarkQPSManager(BenchmarkManager):
                     query_term, enq_t = await queue.get()
                 except asyncio.CancelledError:
                     break
-
-                queued_ms = (loop.time() - enq_t) * 1000.0  # *diagnostic*, not included in RTT
-                took = None
-                certainties = None
-
                 try:
-                    # bound in-flight requests to avoid giant client-side backlogs
                     async with sem:
                         took, certainties = await self._run_query_and_collect_latency(
                             collection_obj, query_term, limit, [], query_type
                         )
                 except asyncio.CancelledError:
-                    pass
+                    took, certainties = None, None
                 finally:
                     if took is not None:
                         response_times.append(took)
                         recent_latencies.append(took)
-                        ewma_latency_ms = (
-                            float(took) if ewma_latency_ms is None
-                            else EWMA_ALPHA * float(took) + (1 - EWMA_ALPHA) * ewma_latency_ms
-                        )
+                        ewma_latency_ms = float(took) if ewma_latency_ms is None else EWMA_ALPHA * float(took) + (
+                                1 - EWMA_ALPHA) * ewma_latency_ms
                         completed_total += 1
                         if phase_name == "Main Test" and took > latency_threshold:
                             latency_exceeded = True
@@ -362,29 +326,9 @@ class BenchmarkQPSManager(BenchmarkManager):
                     if latency_exceeded:
                         goto_finally = True
 
-        # Spin up an initial worker set equal to the semaphore size
-        workers = [asyncio.create_task(worker()) for _ in range(current_target)]
-
-        async def controller():
-            nonlocal current_target, sem
-            # Only scale UP during a phase (keep signals simple)
-            while loop.time() < end_time and not goto_finally:
-                await asyncio.sleep(1.0)
-                if goto_finally:
-                    break
-                if concurrency is None:
-                    target = auto_concurrency()
-                    if target > current_target:
-                        # increase semaphore capacity
-                        sem = asyncio.Semaphore(target)
-                        # add workers to match
-                        add = target - current_target
-                        for _ in range(add):
-                            workers.append(asyncio.create_task(worker()))
-                        current_target = target
+        workers = [asyncio.create_task(worker()) for _ in range(initial_conc)]
 
         async def producer():
-            """Metronome: emits one job per tick at the target QPS."""
             next_t = loop.time()
             while loop.time() < end_time and not goto_finally:
                 await asyncio.sleep(max(0.0, next_t - loop.time()))
@@ -392,7 +336,6 @@ class BenchmarkQPSManager(BenchmarkManager):
                     break
                 await queue.put((random.choice(query_terms), loop.time()))
                 next_t += interval
-                # drift correction (skip ticks if badly behind)
                 now = loop.time()
                 if now - next_t > interval:
                     missed = int((now - next_t) / interval)
@@ -416,14 +359,21 @@ class BenchmarkQPSManager(BenchmarkManager):
                     click.echo(f"Current QPS: {ewma_qps:.2f}\n")
 
         prod_task = asyncio.create_task(producer())
-        ctrl_task = asyncio.create_task(controller())
         report_task = asyncio.create_task(reporter())
 
         try:
-            await asyncio.wait([prod_task, ctrl_task], return_when=asyncio.ALL_COMPLETED)
-            await queue.join()
+            await asyncio.wait([prod_task], return_when=asyncio.ALL_COMPLETED)
+            try:
+                await asyncio.wait_for(queue.join(), timeout=15.0)
+            except asyncio.TimeoutError:
+                pass
         finally:
             goto_finally = True
+            for _ in range(len(workers)):
+                try:
+                    queue.put_nowait((random.choice(query_terms), loop.time()))
+                except asyncio.QueueFull:
+                    break
             report_task.cancel()
             for t in workers:
                 t.cancel()
@@ -455,7 +405,7 @@ class BenchmarkQPSManager(BenchmarkManager):
             warmup_duration: int,
             test_duration: int,
             latency_threshold: int,
-            concurrency: Optional[int] = None,  # None => auto
+            concurrency: Optional[int] = None,
     ) -> int:
         if fixed_qps:
             click.echo(f"\nRunning test at fixed QPS of {fixed_qps}")
