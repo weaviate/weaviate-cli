@@ -219,8 +219,9 @@ class TenantManager:
 
                 raise Exception(f"No tenants present in class {collection.name}.")
             else:
-                for tenant in deleting_tenants.values():
-                    collection.tenants.remove(tenant)
+                collection.tenants.remove(
+                    [tenant for tenant in deleting_tenants.values()]
+                )
 
         except Exception as e:
 
