@@ -78,8 +78,8 @@ The configuration file should be a JSON file with the following structure:
 ```json
 {
     "host": "your-weaviate-host",
-    "http_port": "your-http-port",
-    "grpc_port": "your-grpc-port",
+    "http_port": your-http-port, # note, this should be a number, NOT a string
+    "grpc_port": your-grpc-port, # note, this should be a number, NOT a string
     "grpc_host": "your-grpc-host",
     "auth": {
         "type": "api_key",
@@ -87,6 +87,23 @@ The configuration file should be a JSON file with the following structure:
     }
 }
 ```
+
+You can pass host without protocol and port or with protocol AND port.
+
+E.g. this is also correct.
+
+```
+{
+    "host": "https://your-weaviate-host:443",
+    "grpc_host": "https://your-grpc-host:443",
+    "auth": {
+        "type": "api_key",
+        "api_key": "your-api-key"
+    }
+}
+```
+
+>NOTE: when you pass port, make sure to omit the protocol, otherwise it'll try to deduct it from the host string.
 
 If you are using a remote Weaviate instance, you can use the `weaviate-cli` command to authenticate with your Weaviate instance.
 Here you can see an example on how the configuration file should look like if you are connecting to a WCD cluster:
