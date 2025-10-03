@@ -44,6 +44,12 @@ def print_version(ctx, param, value):
     help="If specified cli uses the config specified with this path.",
 )
 @click.option(
+    "--port",
+    required=False,
+    type=int,
+    help="If specified cli uses this port to connect to the weaviate instance (it has precedence over the port specified in the config file).",
+)
+@click.option(
     "--user",
     required=False,
     type=str,
@@ -58,10 +64,15 @@ def print_version(ctx, param, value):
     help="Prints the version of the CLI.",
 )
 @click.pass_context
-def main(ctx: click.Context, config_file: Optional[str], user: Optional[str]):
+def main(
+    ctx: click.Context,
+    config_file: Optional[str],
+    user: Optional[str],
+    port: Optional[int],
+):
     """Weaviate CLI tool"""
     try:
-        ctx.obj = {"config": ConfigManager(config_file, user)}
+        ctx.obj = {"config": ConfigManager(config_file, user, port)}
     except Exception as e:
         click.echo(f"Fatal Error: {e}")
         sys.exit(1)

@@ -23,7 +23,10 @@ class ConfigManager:
     default_grpc_port: int = 50051
 
     def __init__(
-        self, config_file: Optional[str] = None, user: Optional[str] = None
+        self,
+        config_file: Optional[str] = None,
+        user: Optional[str] = None,
+        override_http_port: Optional[int] = None,
     ) -> None:
         """Initialize config manager with optional config file path"""
         self.user = user
@@ -37,6 +40,8 @@ class ConfigManager:
                     self.config: Dict[str, Union[str, Dict[str, str]]] = json.load(
                         config_data
                     )
+                    if override_http_port:
+                        self.config["http_port"] = f"{override_http_port}"
                 except:
                     click.echo("Fatal Error: Config file is not valid JSON!")
                     sys.exit(1)
@@ -50,14 +55,16 @@ class ConfigManager:
             if self.config_path.exists():
                 with open(self.config_path, "r", encoding="utf-8") as config_file:
                     self.config = json.load(config_file)
+                    if override_http_port:
+                        self.config["http_port"] = f"{override_http_port}"
             else:
-                self.create_default_config()
+                self.create_default_config(override_http_port)
 
-    def create_default_config(self) -> None:
+    def create_default_config(self, override_http_port: Optional[int] = None) -> None:
         """Create a new configuration file"""
         self.config = {
             "host": f"{self.default_host}",
-            "http_port": f"{self.default_port}",
+            "http_port": f"{override_http_port if override_http_port else self.default_port}",
             "grpc_port": f"{self.default_grpc_port}",
         }
 
