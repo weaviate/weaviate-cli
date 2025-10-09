@@ -47,6 +47,12 @@ def benchmark():
     help="The type of search query to perform. Default is hybrid.",
 )
 @click.option(
+    "--consistency-level",
+    default=CreateBenchmarkDefaults.consistency_level,
+    type=click.Choice(["ONE", "QUORUM", "ALL"]),
+    help="The consistency level to use for the benchmark. Default is ONE.",
+)
+@click.option(
     "--limit",
     default=CreateBenchmarkDefaults.limit,
     help="Limit of results per query. Default is 10.",
@@ -76,6 +82,11 @@ def benchmark():
     multiple=True,
     help="Custom query terms to use for benchmarking (can specify multiple).",
 )
+@click.option(
+    "--concurrency",
+    type=int,
+    help="Concurrency level to run the test with. By default, it will be automatically determined based on the QPS and latency.",
+)
 @click.pass_context
 def benchmark_qps(
     ctx: click.Context,
@@ -84,12 +95,14 @@ def benchmark_qps(
     certainty: bool,
     output: str,
     query_type: str,
+    consistency_level: str,
     limit: int,
     qps: Optional[int],
     warmup_duration: int,
     test_duration: int,
     latency_threshold: int,
     query_terms: tuple,
+    concurrency: Optional[int],
 ) -> None:
     """Run QPS benchmark on the specified collection."""
     async_client = None
@@ -107,12 +120,14 @@ def benchmark_qps(
                 certainty=certainty,
                 output=output,
                 query_type=query_type,
+                consistency_level=consistency_level,
                 limit=limit,
                 qps=qps,
                 query_terms=query_terms_list,
                 warmup_duration=warmup_duration,
                 test_duration=test_duration,
                 latency_threshold=latency_threshold,
+                concurrency=concurrency,
             )
         )
     except Exception as e:

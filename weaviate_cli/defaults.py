@@ -114,9 +114,12 @@ class CreateBenchmarkDefaults:
     query_type: str = "hybrid"
     limit: int = 10
     qps: Optional[int] = None
+    query_terms: Optional[List[str]] = None
     warmup_duration: int = 5
     test_duration: int = 10
     latency_threshold: int = 10000
+    consistency_level: str = "QUORUM"
+    concurrency: Optional[int] = None
 
 
 @dataclass
