@@ -69,6 +69,7 @@ class BenchmarkManager(ABC):
 
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
+            import matplotlib.dates as mdates
         except Exception as imp_err:
             raise RuntimeError(
                 "matplotlib is required for --generate-graph. Install it and retry."
@@ -115,16 +116,19 @@ class BenchmarkManager(ABC):
                     c95.append(_to_f("p95_certainty"))
                     c99.append(_to_f("p99_certainty"))
 
-        # Build time axis as human-readable; fallback to simple index if needed
-        if timestamps and max(timestamps) > 0:
-            x_vals = [
-                _dt.datetime.fromtimestamp(ts).strftime("%H:%M:%S") if ts > 0 else ""
+        # Build time axis using datetime objects for readable ticks; fallback to index
+        use_dates = bool(timestamps) and max(timestamps) > 0
+        if use_dates:
+            x_vals_dt = [
+                (
+                    _dt.datetime.fromtimestamp(ts)
+                    if ts > 0
+                    else _dt.datetime.fromtimestamp(0)
+                )
                 for ts in timestamps
             ]
-            x_label = "time"
         else:
-            x_vals = list(range(len(p50)))
-            x_label = "sample"
+            x_vals_idx = list(range(len(p50)))
 
         # Determine figure layout
         subplot_rows = 3 if include_certainty else 2
@@ -136,17 +140,28 @@ class BenchmarkManager(ABC):
 
         # Latencies
         ax0 = axes[0]
-        ax0.plot(x_vals, p50, label="P50 latency (ms)", linewidth=1.8)
-        ax0.plot(x_vals, p90, label="P90 latency (ms)", linewidth=1.8)
-        ax0.plot(x_vals, p95, label="P95 latency (ms)", linewidth=1.8)
-        ax0.plot(x_vals, p99, label="P99 latency (ms)", linewidth=1.8)
+        if use_dates:
+            ax0.plot(x_vals_dt, p50, label="P50 latency (ms)", linewidth=1.8)
+            ax0.plot(x_vals_dt, p90, label="P90 latency (ms)", linewidth=1.8)
+            ax0.plot(x_vals_dt, p95, label="P95 latency (ms)", linewidth=1.8)
+            ax0.plot(x_vals_dt, p99, label="P99 latency (ms)", linewidth=1.8)
+        else:
+            ax0.plot(x_vals_idx, p50, label="P50 latency (ms)", linewidth=1.8)
+            ax0.plot(x_vals_idx, p90, label="P90 latency (ms)", linewidth=1.8)
+            ax0.plot(x_vals_idx, p95, label="P95 latency (ms)", linewidth=1.8)
+            ax0.plot(x_vals_idx, p99, label="P99 latency (ms)", linewidth=1.8)
         ax0.set_ylabel("Latency (ms)")
         ax0.grid(True, linestyle=":", alpha=0.5)
         ax0.legend(loc="upper right")
 
         # QPS
         ax1 = axes[1]
-        ax1.plot(x_vals, qps, color="#2a9d8f", label="Actual QPS", linewidth=1.8)
+        if use_dates:
+            ax1.plot(x_vals_dt, qps, color="#2a9d8f", label="Actual QPS", linewidth=1.8)
+        else:
+            ax1.plot(
+                x_vals_idx, qps, color="#2a9d8f", label="Actual QPS", linewidth=1.8
+            )
         ax1.set_ylabel("QPS")
         ax1.grid(True, linestyle=":", alpha=0.5)
         ax1.legend(loc="upper right")
@@ -154,15 +169,30 @@ class BenchmarkManager(ABC):
         # Certainty percentiles
         if include_certainty and subplot_rows >= 3:
             ax2 = axes[2]
-            ax2.plot(x_vals, c50, label="P50 certainty", linewidth=1.8)
-            ax2.plot(x_vals, c90, label="P90 certainty", linewidth=1.8)
-            ax2.plot(x_vals, c95, label="P95 certainty", linewidth=1.8)
-            ax2.plot(x_vals, c99, label="P99 certainty", linewidth=1.8)
+            if use_dates:
+                ax2.plot(x_vals_dt, c50, label="P50 certainty", linewidth=1.8)
+                ax2.plot(x_vals_dt, c90, label="P90 certainty", linewidth=1.8)
+                ax2.plot(x_vals_dt, c95, label="P95 certainty", linewidth=1.8)
+                ax2.plot(x_vals_dt, c99, label="P99 certainty", linewidth=1.8)
+            else:
+                ax2.plot(x_vals_idx, c50, label="P50 certainty", linewidth=1.8)
+                ax2.plot(x_vals_idx, c90, label="P90 certainty", linewidth=1.8)
+                ax2.plot(x_vals_idx, c95, label="P95 certainty", linewidth=1.8)
+                ax2.plot(x_vals_idx, c99, label="P99 certainty", linewidth=1.8)
             ax2.set_ylabel("Certainty")
             ax2.grid(True, linestyle=":", alpha=0.5)
             ax2.legend(loc="upper right")
 
-        axes[-1].set_xlabel(x_label)
+        if use_dates:
+            locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
+            formatter = mdates.ConciseDateFormatter(locator)
+            for ax in axes:
+                ax.xaxis.set_major_locator(locator)
+                ax.xaxis.set_major_formatter(formatter)
+            axes[-1].set_xlabel("time")
+            fig.autofmt_xdate()
+        else:
+            axes[-1].set_xlabel("sample")
         fig.suptitle("Weaviate QPS Benchmark")
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
