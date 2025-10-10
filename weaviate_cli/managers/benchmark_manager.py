@@ -66,34 +66,31 @@ class BenchmarkManager(ABC):
         timestamp_str = time.strftime("%Y%m%d_%H%M%S")
         filename = f"benchmark_results_{timestamp_str}.csv"
         try:
-            csv_file = open(filename, "w", newline="")
-        except Exception as e:
-            click.echo(f"Failed to open CSV file '{filename}': {e}")
-            return None, None
-        try:
-            csv_writer = csv.writer(csv_file)
-            header = [
-                "timestamp",
-                "phase_name",
-                "p50_latency",
-                "p90_latency",
-                "p95_latency",
-                "p99_latency",
-            ]
-            if certainty:
-                header += [
-                    "p50_certainty",
-                    "p90_certainty",
-                    "p95_certainty",
-                    "p99_certainty",
+            with open(filename, "w", newline="") as csv_file:
+                csv_writer = csv.writer(csv_file)
+                header = [
+                    "timestamp",
+                    "phase_name",
+                    "p50_latency",
+                    "p90_latency",
+                    "p95_latency",
+                    "p99_latency",
                 ]
-            header += ["total_queries", "actual_qps"]
-            csv_writer.writerow(header)
+                if certainty:
+                    header += [
+                        "p50_certainty",
+                        "p90_certainty",
+                        "p95_certainty",
+                        "p99_certainty",
+                    ]
+                header += ["total_queries", "actual_qps"]
+                csv_writer.writerow(header)
+            # Reopen the file in append mode for further writing
+            csv_file = open(filename, "a", newline="")
+            csv_writer = csv.writer(csv_file)
             return csv_writer, csv_file
         except Exception as e:
-            csv_file.close()
-            click.echo(f"Failed to write header to CSV file '{filename}': {e}")
-            return None, None
+            click.echo(f"Failed to open or write to CSV file '{filename}': {e}")
 
     async def _run_query_and_collect_latency(
         self,

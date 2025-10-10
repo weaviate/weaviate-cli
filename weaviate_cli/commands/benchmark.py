@@ -50,7 +50,7 @@ def benchmark():
     "--consistency-level",
     default=CreateBenchmarkDefaults.consistency_level,
     type=click.Choice(["ONE", "QUORUM", "ALL"]),
-    help="The consistency level to use for the benchmark. Default is ONE.",
+    help="The consistency level to use for the benchmark. Default is QUORUM.",
 )
 @click.option(
     "--limit",
