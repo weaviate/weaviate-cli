@@ -120,6 +120,7 @@ class CreateBenchmarkDefaults:
     latency_threshold: int = 10000
     consistency_level: str = "QUORUM"
     concurrency: Optional[int] = None
+    generate_graph: bool = False
 
 
 @dataclass

@@ -87,6 +87,11 @@ def benchmark():
     type=int,
     help="Concurrency level to run the test with. By default, it will be automatically determined based on the QPS and latency.",
 )
+@click.option(
+    "--generate-graph",
+    is_flag=True,
+    help="Generate a graph of the benchmark results (requires --output=csv).",
+)
 @click.pass_context
 def benchmark_qps(
     ctx: click.Context,
@@ -103,10 +108,15 @@ def benchmark_qps(
     latency_threshold: int,
     query_terms: tuple,
     concurrency: Optional[int],
+    generate_graph: bool,
 ) -> None:
     """Run QPS benchmark on the specified collection."""
     async_client = None
     try:
+        if generate_graph and output != "csv":
+            raise click.BadParameter(
+                "--generate-graph can only be used when --output=csv"
+            )
         async_client = get_async_client_from_context(ctx)
         manager = BenchmarkQPSManager(async_client)
 
@@ -128,6 +138,7 @@ def benchmark_qps(
                 test_duration=test_duration,
                 latency_threshold=latency_threshold,
                 concurrency=concurrency,
+                generate_graph=generate_graph,
             )
         )
     except Exception as e:

@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Any
 from pathlib import Path
 from collections import deque
+from pathlib import Path as _Path
 
 import numpy as np
 import click
@@ -58,11 +59,124 @@ class BenchmarkManager(ABC):
             "mystery thriller",
         ]
 
+    def _generate_graphs_from_csv(self, csv_path: str, include_certainty: bool) -> str:
+        """Generate PNG graphs from the benchmark CSV.
+
+        Returns the path to the saved PNG file.
+        """
+        try:
+            import matplotlib
+
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+        except Exception as imp_err:
+            raise RuntimeError(
+                "matplotlib is required for --generate-graph. Install it and retry."
+            ) from imp_err
+
+        # Read CSV minimally without pandas
+        import csv as _csv
+        import datetime as _dt
+
+        timestamps: list = []
+        p50: list = []
+        p90: list = []
+        p95: list = []
+        p99: list = []
+        qps: list = []
+        c50: list = []
+        c90: list = []
+        c95: list = []
+        c99: list = []
+
+        with open(csv_path, "r", newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    ts = float(row.get("timestamp", "0") or 0.0)
+                except ValueError:
+                    ts = 0.0
+                timestamps.append(ts)
+
+                def _to_f(name: str) -> float:
+                    try:
+                        return float(row.get(name, "") or 0.0)
+                    except ValueError:
+                        return 0.0
+
+                p50.append(_to_f("p50_latency"))
+                p90.append(_to_f("p90_latency"))
+                p95.append(_to_f("p95_latency"))
+                p99.append(_to_f("p99_latency"))
+                qps.append(_to_f("actual_qps"))
+                if include_certainty:
+                    c50.append(_to_f("p50_certainty"))
+                    c90.append(_to_f("p90_certainty"))
+                    c95.append(_to_f("p95_certainty"))
+                    c99.append(_to_f("p99_certainty"))
+
+        # Build time axis as human-readable; fallback to simple index if needed
+        if timestamps and max(timestamps) > 0:
+            x_vals = [
+                _dt.datetime.fromtimestamp(ts).strftime("%H:%M:%S") if ts > 0 else ""
+                for ts in timestamps
+            ]
+            x_label = "time"
+        else:
+            x_vals = list(range(len(p50)))
+            x_label = "sample"
+
+        # Determine figure layout
+        subplot_rows = 3 if include_certainty else 2
+        fig, axes = plt.subplots(
+            subplot_rows, 1, figsize=(12, 6 + 2 * (subplot_rows - 2)), sharex=True
+        )
+        if subplot_rows == 1:
+            axes = [axes]
+
+        # Latencies
+        ax0 = axes[0]
+        ax0.plot(x_vals, p50, label="P50 latency (ms)", linewidth=1.8)
+        ax0.plot(x_vals, p90, label="P90 latency (ms)", linewidth=1.8)
+        ax0.plot(x_vals, p95, label="P95 latency (ms)", linewidth=1.8)
+        ax0.plot(x_vals, p99, label="P99 latency (ms)", linewidth=1.8)
+        ax0.set_ylabel("Latency (ms)")
+        ax0.grid(True, linestyle=":", alpha=0.5)
+        ax0.legend(loc="upper right")
+
+        # QPS
+        ax1 = axes[1]
+        ax1.plot(x_vals, qps, color="#2a9d8f", label="Actual QPS", linewidth=1.8)
+        ax1.set_ylabel("QPS")
+        ax1.grid(True, linestyle=":", alpha=0.5)
+        ax1.legend(loc="upper right")
+
+        # Certainty percentiles
+        if include_certainty and subplot_rows >= 3:
+            ax2 = axes[2]
+            ax2.plot(x_vals, c50, label="P50 certainty", linewidth=1.8)
+            ax2.plot(x_vals, c90, label="P90 certainty", linewidth=1.8)
+            ax2.plot(x_vals, c95, label="P95 certainty", linewidth=1.8)
+            ax2.plot(x_vals, c99, label="P99 certainty", linewidth=1.8)
+            ax2.set_ylabel("Certainty")
+            ax2.grid(True, linestyle=":", alpha=0.5)
+            ax2.legend(loc="upper right")
+
+        axes[-1].set_xlabel(x_label)
+        fig.suptitle("Weaviate QPS Benchmark")
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        png_path = str(_Path(csv_path).with_suffix("")) + ".png"
+        fig.savefig(png_path, dpi=130)
+        plt.close(fig)
+        click.echo(f"Saved benchmark graph to {png_path}")
+        return png_path
+
     def _setup_csv_output(
         self, output: str, certainty: bool
-    ) -> Tuple[Optional[csv.writer], Optional["TextIOWrapper"]]:
+    ) -> Tuple[Optional[csv.writer], Optional["TextIOWrapper"], Optional[str]]:
         if output != "csv":
-            return None, None
+            return None, None, None
         timestamp_str = time.strftime("%Y%m%d_%H%M%S")
         filename = f"benchmark_results_{timestamp_str}.csv"
         try:
@@ -88,7 +202,7 @@ class BenchmarkManager(ABC):
             # Reopen the file in append mode for further writing
             csv_file = open(filename, "a", newline="")
             csv_writer = csv.writer(csv_file)
-            return csv_writer, csv_file
+            return csv_writer, csv_file, filename
         except Exception as e:
             click.echo(f"Failed to open or write to CSV file '{filename}': {e}")
 
@@ -155,6 +269,8 @@ class BenchmarkManager(ABC):
         show_certainty: bool,
         csv_writer: Optional[csv.writer],
         phase_name: str,
+        total_queries: Optional[int] = None,
+        actual_qps: Optional[float] = None,
     ) -> None:
         if not response_times:
             return
@@ -188,7 +304,10 @@ class BenchmarkManager(ABC):
             ]
             if show_certainty and certainty_values:
                 row.extend([f"{p50c:.2f}", f"{p90c:.2f}", f"{p95c:.2f}", f"{p99c:.2f}"])
-            row.extend(["", ""])
+            if total_queries is not None and actual_qps is not None:
+                row.extend([f"{total_queries}", f"{actual_qps:.2f}"])
+            else:
+                row.extend(["", ""])
             csv_writer.writerow(row)
 
     def _report_final_results(
@@ -260,6 +379,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         test_duration: int = CreateBenchmarkDefaults.test_duration,
         latency_threshold: int = CreateBenchmarkDefaults.latency_threshold,
         concurrency: Optional[int] = CreateBenchmarkDefaults.concurrency,
+        generate_graph: bool = CreateBenchmarkDefaults.generate_graph,
     ) -> None:
         consistency_map = {
             "ONE": wvc.ConsistencyLevel.ONE,
@@ -268,7 +388,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         }
         if not query_terms:
             query_terms = self._get_default_query_terms()
-        csv_writer, csv_file = self._setup_csv_output(output, certainty)
+        csv_writer, csv_file, csv_filename = self._setup_csv_output(output, certainty)
         try:
             await self.async_client.connect()
             if not await self.async_client.collections.exists(collection):
@@ -296,6 +416,13 @@ class BenchmarkQPSManager(BenchmarkManager):
             if csv_file:
                 csv_file.close()
             await self.async_client.close()
+            if generate_graph and output == "csv" and csv_filename:
+                try:
+                    self._generate_graphs_from_csv(
+                        csv_filename, include_certainty=certainty
+                    )
+                except Exception as e:
+                    click.echo(f"Failed to generate graph: {e}")
 
     async def _run_phase(
         self,
@@ -406,6 +533,8 @@ class BenchmarkQPSManager(BenchmarkManager):
                         show_certainty,
                         csv_writer,
                         phase_name,
+                        total_queries=completed_total,
+                        actual_qps=ewma_qps,
                     )
                     now = loop.time()
                     dt = max(1e-6, now - last_report_time)
