@@ -62,7 +62,7 @@ jobs:
     needs: [unit-tests, get-latest-weaviate-version]
     env:
       WEAVIATE_VERSION: ${{ needs.get-latest-weaviate-version.outputs.LATEST_WEAVIATE_VERSION }}
-      MODULES: "text2vec-transformers,text2vec-contextionary"
+      MODULES: "text2vec-transformers-model2vec,text2vec-contextionary"
     name: Run Integration Tests
     runs-on: ubuntu-latest
     strategy:
@@ -91,7 +91,7 @@ jobs:
     needs: [unit-tests, get-latest-weaviate-version]
     env:
       WEAVIATE_VERSION: ${{ needs.get-latest-weaviate-version.outputs.LATEST_WEAVIATE_VERSION }}
-      MODULES: "text2vec-transformers,text2vec-contextionary"
+      MODULES: "text2vec-transformers-model2vec,text2vec-contextionary"
     name: Run Integration Tests Auth
     runs-on: ubuntu-latest
     strategy:
