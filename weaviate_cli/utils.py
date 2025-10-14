@@ -22,6 +22,13 @@ def get_client_from_context(ctx: click.Context) -> weaviate.WeaviateClient:
     return ctx.obj["config"].get_client()
 
 
+def get_async_client_from_context(ctx: click.Context) -> weaviate.WeaviateAsyncClient:
+    """
+    Get asynchronous client from context.
+    """
+    return ctx.obj["config"].get_async_client()
+
+
 # Insert objects to the replicated collection
 def get_random_string(length):
     # choose from all lowercase letter
