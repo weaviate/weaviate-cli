@@ -426,6 +426,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         generate_graph: bool = CreateBenchmarkDefaults.generate_graph,
         fail_on_timeout: bool = CreateBenchmarkDefaults.fail_on_timeout,
         file_alias: Optional[str] = CreateBenchmarkDefaults.file_alias,
+        tenant: Optional[str] = CreateBenchmarkDefaults.tenant,
     ) -> None:
         consistency_map = {
             "ONE": wvc.ConsistencyLevel.ONE,
@@ -444,6 +445,26 @@ class BenchmarkQPSManager(BenchmarkManager):
             collection_obj = self.async_client.collections.get(
                 collection
             ).with_consistency_level(consistency_map[consistency_level])
+            cfg = await collection_obj.config.get()
+            mt_enabled = cfg.multi_tenancy_config.enabled
+            if mt_enabled:
+                if tenant:
+                    exists_ok = await collection_obj.tenants.exists(tenant)
+                    if not exists_ok:
+                        raise Exception(
+                            f"Tenant '{tenant}' does not exist in collection '{collection}'"
+                        )
+                else:
+                    tenant_dict = await collection_obj.tenants.get()
+                    if tenant_dict:
+                        tenant = random.choice(list(tenant_dict.keys()))
+                    else:
+                        raise Exception(
+                            f"No tenants found in collection '{collection}'"
+                        )
+                # apply tenant context for multitenant collections
+                click.echo(f"Using tenant '{tenant}' for benchmark")
+                collection_obj = collection_obj.with_tenant(tenant)
             max_qps = await self._find_max_qps(
                 collection_obj=collection_obj,
                 query_terms=query_terms,
