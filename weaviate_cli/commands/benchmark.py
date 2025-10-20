@@ -78,6 +78,12 @@ def benchmark():
     help="Latency threshold in milliseconds to stop the test. Default is 10000 milliseconds.",
 )
 @click.option(
+    "--fail-on-timeout",
+    is_flag=True,
+    default=CreateBenchmarkDefaults.fail_on_timeout,
+    help="Fail the test if a single request exceeds the per-request timeout (10s). Default is False.",
+)
+@click.option(
     "--query-terms",
     multiple=True,
     help="Custom query terms to use for benchmarking (can specify multiple).",
@@ -91,6 +97,11 @@ def benchmark():
     "--generate-graph",
     is_flag=True,
     help="Generate a graph of the benchmark results (requires --output=csv).",
+)
+@click.option(
+    "--file-alias",
+    default=CreateBenchmarkDefaults.file_alias,
+    help="Optional identifier to include in filenames and graph title (e.g., staging, nodeA).",
 )
 @click.pass_context
 def benchmark_qps(
@@ -106,9 +117,11 @@ def benchmark_qps(
     warmup_duration: int,
     test_duration: int,
     latency_threshold: int,
+    fail_on_timeout: bool,
     query_terms: tuple,
     concurrency: Optional[int],
     generate_graph: bool,
+    file_alias: Optional[str],
 ) -> None:
     """Run QPS benchmark on the specified collection."""
     async_client = None
@@ -134,11 +147,13 @@ def benchmark_qps(
                 limit=limit,
                 qps=qps,
                 query_terms=query_terms_list,
+                fail_on_timeout=fail_on_timeout,
                 warmup_duration=warmup_duration,
                 test_duration=test_duration,
                 latency_threshold=latency_threshold,
                 concurrency=concurrency,
                 generate_graph=generate_graph,
+                file_alias=file_alias,
             )
         )
     except Exception as e:

@@ -106,6 +106,7 @@ class CreateDataDefaults:
 
 @dataclass
 class CreateBenchmarkDefaults:
+    fail_on_timeout: bool = False
     max_duration: int = 300
     collection: str = "Movies"
     term: str = "Action movies"
@@ -121,6 +122,7 @@ class CreateBenchmarkDefaults:
     consistency_level: str = "QUORUM"
     concurrency: Optional[int] = None
     generate_graph: bool = False
+    file_alias: Optional[str] = None
 
 
 @dataclass

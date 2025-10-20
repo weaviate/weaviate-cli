@@ -59,10 +59,17 @@ class BenchmarkManager(ABC):
             "mystery thriller",
         ]
 
-    def _generate_graphs_from_csv(self, csv_path: str, include_certainty: bool) -> str:
+    def _generate_graphs_from_csv(
+        self, csv_path: str, include_certainty: bool, file_alias: Optional[str] = None
+    ) -> str:
         """Generate PNG graphs from the benchmark CSV.
 
-        Returns the path to the saved PNG file.
+        Parameters:
+            csv_path (str): Path to the benchmark CSV file.
+            include_certainty (bool): Whether to include certainty in the graph.
+            file_alias (Optional[str]): If provided, it's appended to the chart title to distinguish runs.
+        Returns:
+            str: The path to the saved PNG file.
         """
         try:
             import matplotlib
@@ -193,7 +200,10 @@ class BenchmarkManager(ABC):
             fig.autofmt_xdate()
         else:
             axes[-1].set_xlabel("sample")
-        fig.suptitle("Weaviate QPS Benchmark")
+        title = "Weaviate QPS Benchmark"
+        if file_alias:
+            title += f" - {file_alias}"
+        fig.suptitle(title)
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         png_path = str(_Path(csv_path).with_suffix("")) + ".png"
@@ -203,38 +213,37 @@ class BenchmarkManager(ABC):
         return png_path
 
     def _setup_csv_output(
-        self, output: str, certainty: bool
+        self, output: str, certainty: bool, file_alias: Optional[str]
     ) -> Tuple[Optional[csv.writer], Optional["TextIOWrapper"], Optional[str]]:
         if output != "csv":
             return None, None, None
         timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-        filename = f"benchmark_results_{timestamp_str}.csv"
+        alias_part = f"_{file_alias}" if file_alias else ""
+        filename = f"benchmark_results{alias_part}_{timestamp_str}.csv"
         try:
-            with open(filename, "w", newline="") as csv_file:
-                csv_writer = csv.writer(csv_file)
-                header = [
-                    "timestamp",
-                    "phase_name",
-                    "p50_latency",
-                    "p90_latency",
-                    "p95_latency",
-                    "p99_latency",
-                ]
-                if certainty:
-                    header += [
-                        "p50_certainty",
-                        "p90_certainty",
-                        "p95_certainty",
-                        "p99_certainty",
-                    ]
-                header += ["total_queries", "actual_qps"]
-                csv_writer.writerow(header)
-            # Reopen the file in append mode for further writing
-            csv_file = open(filename, "a", newline="")
+            csv_file = open(filename, "w", newline="")
             csv_writer = csv.writer(csv_file)
+            header = [
+                "timestamp",
+                "phase_name",
+                "p50_latency",
+                "p90_latency",
+                "p95_latency",
+                "p99_latency",
+            ]
+            if certainty:
+                header += [
+                    "p50_certainty",
+                    "p90_certainty",
+                    "p95_certainty",
+                    "p99_certainty",
+                ]
+            header += ["total_queries", "actual_qps"]
+            csv_writer.writerow(header)
             return csv_writer, csv_file, filename
         except Exception as e:
             click.echo(f"Failed to open or write to CSV file '{filename}': {e}")
+            return None, None, None
 
     async def _run_query_and_collect_latency(
         self,
@@ -243,6 +252,7 @@ class BenchmarkManager(ABC):
         limit: int,
         filters: Optional[List],
         query_type: str,
+        fail_on_timeout: bool = CreateBenchmarkDefaults.fail_on_timeout,
     ) -> Tuple[Optional[int], Optional[List[float]]]:
         t0 = _now_ns()
         try:
@@ -285,6 +295,10 @@ class BenchmarkManager(ABC):
             click.echo(
                 f"Query '{query_term[:30]}...' timed out after {PER_REQUEST_TIMEOUT_S}s"
             )
+            if fail_on_timeout:
+                raise asyncio.TimeoutError(
+                    f"Query '{query_term[:30]}...' timed out after {PER_REQUEST_TIMEOUT_S}s"
+                )
             return None, None
         except asyncio.CancelledError:
             return None, None
@@ -410,6 +424,8 @@ class BenchmarkQPSManager(BenchmarkManager):
         latency_threshold: int = CreateBenchmarkDefaults.latency_threshold,
         concurrency: Optional[int] = CreateBenchmarkDefaults.concurrency,
         generate_graph: bool = CreateBenchmarkDefaults.generate_graph,
+        fail_on_timeout: bool = CreateBenchmarkDefaults.fail_on_timeout,
+        file_alias: Optional[str] = CreateBenchmarkDefaults.file_alias,
     ) -> None:
         consistency_map = {
             "ONE": wvc.ConsistencyLevel.ONE,
@@ -418,7 +434,9 @@ class BenchmarkQPSManager(BenchmarkManager):
         }
         if not query_terms:
             query_terms = self._get_default_query_terms()
-        csv_writer, csv_file, csv_filename = self._setup_csv_output(output, certainty)
+        csv_writer, csv_file, csv_filename = self._setup_csv_output(
+            output, certainty, file_alias
+        )
         try:
             await self.async_client.connect()
             if not await self.async_client.collections.exists(collection):
@@ -439,6 +457,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                 test_duration=test_duration,
                 latency_threshold=latency_threshold,
                 concurrency=concurrency,
+                fail_on_timeout=fail_on_timeout,
             )
             if not qps:
                 click.echo(f"\nThe maximum sustainable QPS is approximately {max_qps}.")
@@ -449,7 +468,7 @@ class BenchmarkQPSManager(BenchmarkManager):
             if generate_graph and output == "csv" and csv_filename:
                 try:
                     self._generate_graphs_from_csv(
-                        csv_filename, include_certainty=certainty
+                        csv_filename, include_certainty=certainty, file_alias=file_alias
                     )
                 except Exception as e:
                     click.echo(f"Failed to generate graph: {e}")
@@ -467,6 +486,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         query_type: str,
         latency_threshold: int,
         concurrency: Optional[int] = None,
+        fail_on_timeout: bool = CreateBenchmarkDefaults.fail_on_timeout,
     ) -> Tuple[List[int], bool]:
         loop = asyncio.get_running_loop()
         start_time = loop.time()
@@ -477,6 +497,8 @@ class BenchmarkQPSManager(BenchmarkManager):
         certainty_values: List[float] = []
         latency_exceeded = False
         goto_finally = False
+        phase_error: Optional[BaseException] = None
+        phase_done = asyncio.Event()
 
         recent_latencies = deque(maxlen=ROLLING_WINDOW)
         ewma_latency_ms: Optional[float] = None
@@ -504,7 +526,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         )
 
         async def worker():
-            nonlocal latency_exceeded, goto_finally, ewma_latency_ms, completed_total
+            nonlocal latency_exceeded, goto_finally, ewma_latency_ms, completed_total, phase_error
             while not goto_finally:
                 try:
                     query_term, _ = await queue.get()
@@ -513,9 +535,20 @@ class BenchmarkQPSManager(BenchmarkManager):
                 try:
                     async with sem:
                         took, certainties = await self._run_query_and_collect_latency(
-                            collection_obj, query_term, limit, [], query_type
+                            collection_obj,
+                            query_term,
+                            limit,
+                            [],
+                            query_type,
+                            fail_on_timeout,
                         )
                 except asyncio.CancelledError:
+                    took, certainties = None, None
+                except asyncio.TimeoutError as te:
+                    # Fail fast on timeout when requested; signal shutdown and record error
+                    phase_error = te
+                    goto_finally = True
+                    phase_done.set()
                     took, certainties = None, None
                 finally:
                     if took is not None:
@@ -531,6 +564,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                         if phase_name == "Main Test" and took > latency_threshold:
                             latency_exceeded = True
                             goto_finally = True
+                            phase_done.set()
                         if show_certainty and certainties is not None:
                             certainty_values.extend(certainties)
                     queue.task_done()
@@ -580,12 +614,19 @@ class BenchmarkQPSManager(BenchmarkManager):
         prod_task = asyncio.create_task(producer())
         report_task = asyncio.create_task(reporter())
 
+        wait_task: Optional[asyncio.Task] = None
         try:
-            await asyncio.wait([prod_task], return_when=asyncio.ALL_COMPLETED)
-            try:
-                await asyncio.wait_for(queue.join(), timeout=15.0)
-            except asyncio.TimeoutError:
-                pass
+            # Wait for either the producer to finish naturally or an early termination signal
+            wait_task = asyncio.create_task(phase_done.wait())
+            await asyncio.wait(
+                [prod_task, wait_task], return_when=asyncio.FIRST_COMPLETED
+            )
+            # If we are failing fast due to timeout or exceeded latency, skip draining the queue
+            if not phase_done.is_set():
+                try:
+                    await asyncio.wait_for(queue.join(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    pass
         finally:
             goto_finally = True
             for _ in range(len(workers)):
@@ -594,10 +635,22 @@ class BenchmarkQPSManager(BenchmarkManager):
                 except asyncio.QueueFull:
                     break
             report_task.cancel()
+            # Cancel producer as well if still running
+            if not prod_task.done():
+                prod_task.cancel()
+            # Cancel wait task if still pending
+            if wait_task is not None and not wait_task.done():
+                wait_task.cancel()
             for t in workers:
                 t.cancel()
             try:
-                await asyncio.gather(report_task, *workers, return_exceptions=True)
+                await asyncio.gather(
+                    prod_task,
+                    report_task,
+                    *([wait_task] if wait_task is not None else []),
+                    *workers,
+                    return_exceptions=True,
+                )
             except Exception:
                 pass
 
@@ -613,6 +666,10 @@ class BenchmarkQPSManager(BenchmarkManager):
             )
         else:
             click.echo("No successful queries were completed during the test.")
+
+        # If a timeout error occurred and fail_on_timeout was enabled, propagate it
+        if phase_error is not None:
+            raise phase_error
 
         return response_times, latency_exceeded
 
@@ -630,6 +687,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         test_duration: int,
         latency_threshold: int,
         concurrency: Optional[int] = None,
+        fail_on_timeout: bool = CreateBenchmarkDefaults.fail_on_timeout,
     ) -> int:
         if fixed_qps:
             click.echo(f"\nRunning test at fixed QPS of {fixed_qps}")
@@ -645,6 +703,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                 query_type,
                 latency_threshold,
                 concurrency=concurrency,
+                fail_on_timeout=fail_on_timeout,
             )
             return fixed_qps
 
@@ -668,6 +727,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                 query_type,
                 latency_threshold,
                 concurrency=concurrency,
+                fail_on_timeout=fail_on_timeout,
             )
 
             _, latency_exceeded = await self._run_phase(
@@ -682,6 +742,7 @@ class BenchmarkQPSManager(BenchmarkManager):
                 query_type,
                 latency_threshold,
                 concurrency=concurrency,
+                fail_on_timeout=fail_on_timeout,
             )
 
             if latency_exceeded:
