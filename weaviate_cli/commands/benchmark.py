@@ -103,6 +103,11 @@ def benchmark():
     default=CreateBenchmarkDefaults.file_alias,
     help="Optional identifier to include in filenames and graph title (e.g., staging, nodeA).",
 )
+@click.option(
+    "--tenant",
+    default=CreateBenchmarkDefaults.tenant,
+    help="Tenant to use to run the benchmark against. Works only on multitenant collections. Default: None",
+)
 @click.pass_context
 def benchmark_qps(
     ctx: click.Context,
@@ -113,15 +118,16 @@ def benchmark_qps(
     query_type: str,
     consistency_level: str,
     limit: int,
-    qps: Optional[int],
     warmup_duration: int,
     test_duration: int,
     latency_threshold: int,
     fail_on_timeout: bool,
     query_terms: tuple,
-    concurrency: Optional[int],
     generate_graph: bool,
+    qps: Optional[int],
+    concurrency: Optional[int],
     file_alias: Optional[str],
+    tenant: Optional[str],
 ) -> None:
     """Run QPS benchmark on the specified collection."""
     async_client = None
@@ -154,6 +160,7 @@ def benchmark_qps(
                 concurrency=concurrency,
                 generate_graph=generate_graph,
                 file_alias=file_alias,
+                tenant=tenant,
             )
         )
     except Exception as e:

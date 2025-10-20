@@ -123,6 +123,7 @@ class CreateBenchmarkDefaults:
     concurrency: Optional[int] = None
     generate_graph: bool = False
     file_alias: Optional[str] = None
+    tenant: Optional[str] = None
 
 
 @dataclass
