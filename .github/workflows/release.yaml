@@ -23,7 +23,7 @@ jobs:
         - name: Build a binary wheel
           run: python -m build
         - name: Create Wheel Artifacts
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v5
           with:
             path: "dist/*.whl"
             name: weaviate-cli-wheel
@@ -36,7 +36,7 @@ jobs:
         contents: write
       steps:
         - name: Download build artifact to append to release
-          uses: actions/download-artifact@v5
+          uses: actions/download-artifact@v6
           with:
             name: weaviate-cli-wheel
             path: dist
