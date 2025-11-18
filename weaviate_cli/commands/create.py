@@ -77,6 +77,7 @@ def create() -> None:
             "hnsw_acorn",
             "hnsw_multivector",
             "flat_bq",
+            "spfresh",
         ]
     ),
     help="Vector index type (default: 'hnsw').",

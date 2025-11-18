@@ -239,6 +239,9 @@ class CollectionManager:
             "flat_bq_cache": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
             ),
+            "spfresh": wvc.Configure.VectorIndex.spfresh(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.rq(),
+            ),
         }
 
         # Vectorizer configurations
