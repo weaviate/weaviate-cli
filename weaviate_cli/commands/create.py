@@ -159,6 +159,48 @@ def create() -> None:
     ),
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
+@click.option(
+    "--spfresh_max_posting_size",
+    default=CreateCollectionDefaults.spfresh_max_posting_size,
+    type=int,
+    help="SPFresh max posting size (default: None).",
+)
+@click.option(
+    "--spfresh_min_posting_size",
+    default=CreateCollectionDefaults.spfresh_min_posting_size,
+    type=int,
+    help="SPFresh min posting size (default: None).",
+)
+@click.option(
+    "--spfresh_replicas",
+    default=CreateCollectionDefaults.spfresh_replicas,
+    type=int,
+    help="SPFresh replicas (default: None).",
+)
+@click.option(
+    "--spfresh_rng_factor",
+    default=CreateCollectionDefaults.spfresh_rng_factor,
+    type=int,
+    help="SPFresh RNG factor (default: None).",
+)
+@click.option(
+    "--spfresh_search_probe",
+    default=CreateCollectionDefaults.spfresh_search_probe,
+    type=int,
+    help="SPFresh search probe (default: None).",
+)
+@click.option(
+    "--spfresh_centroids_index_type",
+    default=CreateCollectionDefaults.spfresh_centroids_index_type,
+    type=click.Choice(["flat", "hnsw"]),
+    help="SPFresh centroids index type (default: None).",
+)
+@click.option(
+    "--spfresh_quantizer",
+    default=CreateCollectionDefaults.spfresh_quantizer,
+    type=click.Choice(["rq8", "rq1"]),
+    help="SPFresh quantizer type (default: None).",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -178,6 +220,13 @@ def create_collection_cli(
     replication_deletion_strategy: str,
     named_vector: bool,
     named_vector_name: Optional[str],
+    spfresh_max_posting_size: Optional[int],
+    spfresh_min_posting_size: Optional[int],
+    spfresh_replicas: Optional[int],
+    spfresh_rng_factor: Optional[int],
+    spfresh_search_probe: Optional[int],
+    spfresh_centroids_index_type: Optional[str],
+    spfresh_quantizer: Optional[str],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -203,6 +252,13 @@ def create_collection_cli(
             replication_deletion_strategy=replication_deletion_strategy,
             named_vector=named_vector,
             named_vector_name=named_vector_name,
+            spfresh_max_posting_size=spfresh_max_posting_size,
+            spfresh_min_posting_size=spfresh_min_posting_size,
+            spfresh_replicas=spfresh_replicas,
+            spfresh_rng_factor=spfresh_rng_factor,
+            spfresh_search_probe=spfresh_search_probe,
+            spfresh_centroids_index_type=spfresh_centroids_index_type,
+            spfresh_quantizer=spfresh_quantizer,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

@@ -5,7 +5,8 @@ from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
 from weaviate.collections.classes.config import _CollectionConfigSimple
 from weaviate.collections.classes.tenants import TenantActivityStatus
-from weaviate.classes.config import VectorFilterStrategy
+from weaviate.collections.classes.config_vector_index import VectorCentroidsIndexType
+from weaviate.collections.classes.config_vector_index import VectorFilterStrategy
 from weaviate_cli.defaults import (
     CreateCollectionDefaults,
     UpdateCollectionDefaults,
@@ -117,6 +118,53 @@ class CollectionManager:
     def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
         return self.client.collections.list_all()
 
+    def _build_spfresh_config(
+        self,
+        max_posting_size: Optional[int] = None,
+        min_posting_size: Optional[int] = None,
+        replicas: Optional[int] = None,
+        rng_factor: Optional[int] = None,
+        search_probe: Optional[int] = None,
+        centroids_index_type: Optional[str] = None,
+        quantizer: Optional[str] = None,
+    ):
+        """Build SPFresh configuration with provided parameters."""
+        kwargs = {}
+
+        if max_posting_size is not None:
+            kwargs["max_posting_size"] = max_posting_size
+        if min_posting_size is not None:
+            kwargs["min_posting_size"] = min_posting_size
+        if replicas is not None:
+            kwargs["replicas"] = replicas
+        if rng_factor is not None:
+            kwargs["rng_factor"] = rng_factor
+        if search_probe is not None:
+            kwargs["search_probe"] = search_probe
+
+        # Handle centroids index type
+        if centroids_index_type is not None:
+            if centroids_index_type == "flat":
+                kwargs["centroids_index_type"] = VectorCentroidsIndexType.FLAT
+            elif centroids_index_type == "hnsw":
+                kwargs["centroids_index_type"] = VectorCentroidsIndexType.HNSW
+
+        # Handle quantizer
+        quantizer_config = None
+        if quantizer is not None:
+            if quantizer == "rq8":
+                quantizer_config = wvc.Configure.VectorIndex.Quantizer.rq(bits=8)
+            elif quantizer == "rq1":
+                quantizer_config = wvc.Configure.VectorIndex.Quantizer.rq(bits=1)
+        else:
+            # Default quantizer if none specified
+            quantizer_config = wvc.Configure.VectorIndex.Quantizer.rq(bits=8)
+
+        if quantizer_config is not None:
+            kwargs["quantizer"] = quantizer_config
+
+        return wvc.Configure.VectorIndex.spfresh(**kwargs)
+
     def create_collection(
         self,
         collection: str = CreateCollectionDefaults.collection,
@@ -139,6 +187,21 @@ class CollectionManager:
         ] = CreateCollectionDefaults.replication_deletion_strategy,
         named_vector: bool = CreateCollectionDefaults.named_vector,
         named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
+        spfresh_max_posting_size: Optional[
+            int
+        ] = CreateCollectionDefaults.spfresh_max_posting_size,
+        spfresh_min_posting_size: Optional[
+            int
+        ] = CreateCollectionDefaults.spfresh_min_posting_size,
+        spfresh_replicas: Optional[int] = CreateCollectionDefaults.spfresh_replicas,
+        spfresh_rng_factor: Optional[int] = CreateCollectionDefaults.spfresh_rng_factor,
+        spfresh_search_probe: Optional[
+            int
+        ] = CreateCollectionDefaults.spfresh_search_probe,
+        spfresh_centroids_index_type: Optional[
+            str
+        ] = CreateCollectionDefaults.spfresh_centroids_index_type,
+        spfresh_quantizer: Optional[str] = CreateCollectionDefaults.spfresh_quantizer,
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -239,8 +302,14 @@ class CollectionManager:
             "flat_bq_cache": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
             ),
-            "spfresh": wvc.Configure.VectorIndex.spfresh(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.rq(),
+            "spfresh": self._build_spfresh_config(
+                max_posting_size=spfresh_max_posting_size,
+                min_posting_size=spfresh_min_posting_size,
+                replicas=spfresh_replicas,
+                rng_factor=spfresh_rng_factor,
+                search_probe=spfresh_search_probe,
+                centroids_index_type=spfresh_centroids_index_type,
+                quantizer=spfresh_quantizer,
             ),
         }
 
