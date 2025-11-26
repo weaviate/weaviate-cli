@@ -380,7 +380,7 @@ class DataManager:
         log_interval = max(1, batch_size // 5)  # Log 5 times per batch
         start_time = time.time()
 
-        with collection.batch.dynamic() as batch:
+        with collection.batch.experimental() as batch:
             for i, obj in enumerate(batch_objects):
                 if vectorizer == "none":
                     if multi_vector:
