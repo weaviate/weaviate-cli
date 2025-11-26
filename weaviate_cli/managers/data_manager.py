@@ -420,7 +420,7 @@ class DataManager:
 
             # Collect failed objects
             if collection.batch.failed_objects:
-                failed_objects.extend(batch.failed_objects)
+                failed_objects.extend(collection.batch.failed_objects)
 
         if verbose:
             total_elapsed = time.time() - start_time
