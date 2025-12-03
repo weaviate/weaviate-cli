@@ -152,18 +152,15 @@ COUNTRIES = [
 ]
 
 STATUSES = ["Released", "In Production", "Post Production", "Planned", "Cancelled"]
-
-
+FAKER=Faker()
 # Standalone function for parallel processing
 def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -> Dict:
     """Generate a single movie object - standalone function for parallel processing"""
     # Set seed if provided for deterministic generation
+    fake=FAKER
     if seed is not None:
         random.seed(seed)
-        fake = Faker()
         fake.seed_instance(seed)
-    else:
-        fake = Faker()
 
     # Generate a realistic release date
     date = datetime.now() - timedelta(
