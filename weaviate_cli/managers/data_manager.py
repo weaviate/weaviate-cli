@@ -4,6 +4,8 @@ import numpy as np
 import random
 import os
 from importlib import resources
+
+import semver
 from weaviate_cli.utils import get_random_string, pp_objects
 from weaviate import WeaviateClient
 from weaviate.classes.query import MetadataQuery
@@ -376,11 +378,16 @@ class DataManager:
 
         if verbose:
             print(f"Starting batch {batch_index+1} with {batch_size} objects")
+        version = semver.Version.parse(self.client.get_meta()["version"])
+        if version.compare(semver.Version.parse("1.34.0")) < 0:
+            batch_func = collection.batch.dynamic
+        else:
+            batch_func = collection.batch.experimental
 
         log_interval = max(1, batch_size // 5)  # Log 5 times per batch
         start_time = time.time()
-
-        with collection.batch.experimental() as batch:
+        
+        with batch_func() as batch:
             for i, obj in enumerate(batch_objects):
                 if vectorizer == "none":
                     if multi_vector:
