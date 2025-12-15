@@ -153,7 +153,10 @@ COUNTRIES = [
 
 STATUSES = ["Released", "In Production", "Post Production", "Planned", "Cancelled"]
 FAKER=Faker()
+DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+DAYS_IN_20_YEARS=20 * 365
 # Standalone function for parallel processing
+# this runs in tight loops thousands of time so use caution wrt performance
 def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -> Dict:
     """Generate a single movie object - standalone function for parallel processing"""
     # Set seed if provided for deterministic generation
@@ -164,9 +167,9 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
 
     # Generate a realistic release date
     date = datetime.now() - timedelta(
-        days=random.randint(0, 20 * 365)
+        days=random.randint(0, DAYS_IN_20_YEARS)
     )  # Random date in last 20 years
-    release_date = date.strftime("%Y-%m-%dT%H:%M:%SZ")
+    release_date = date.strftime(DATE_FORMAT)
 
     # Select random language codes for spoken languages
     num_spoken_languages = random.randint(1, 3)
