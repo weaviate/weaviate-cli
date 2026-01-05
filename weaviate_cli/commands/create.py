@@ -90,7 +90,7 @@ def create() -> None:
 @click.option(
     "--training_limit",
     default=CreateCollectionDefaults.training_limit,
-    help="Training limit for PQ and SQ (default: 10000).",
+    help=f"Training limit for PQ and SQ (default: {CreateCollectionDefaults.training_limit}).",
 )
 @click.option(
     "--multitenant", is_flag=True, help="Enable multitenancy (default: False)."
@@ -229,7 +229,7 @@ def create_collection_cli(
 @click.option(
     "--number_tenants",
     default=CreateTenantsDefaults.number_tenants,
-    help="Number of tenants to create (default: 100).",
+    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}).",
 )
 @click.option(
     "--tenant_batch_size",
@@ -337,7 +337,8 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.option(
     "--limit",
     default=CreateDataDefaults.limit,
-    help="Number of objects to import (default: 1000).",
+    help="Number of objects to import (default: {CreateDataDefaults.limit}).",
+    type=int,
 )
 @click.option(
     "--consistency_level",
@@ -399,7 +400,8 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.option(
     "--batch_size",
     default=CreateDataDefaults.batch_size,
-    help="Number of objects to ingest in each batch (default: 100).",
+    help=f"Number of objects to ingest in each batch (default: {CreateDataDefaults.batch_size}).",
+    type=int,
 )
 @click.option(
     "--concurrent_requests",
