@@ -9,6 +9,7 @@ import weaviate
 from weaviate.exceptions import WeaviateGRPCUnavailableError
 from pathlib import Path
 from typing import Dict, Optional, Union
+from weaviate.config import AdditionalConfig, Timeout as WeaviateTimeout
 
 
 class ConfigManager:
@@ -107,6 +108,9 @@ class ConfigManager:
     ) -> Union[weaviate.WeaviateClient, weaviate.WeaviateAsyncClient]:
         """Internal method to create client based on async flag"""
         auth_config: Optional[weaviate.auth.AuthCredentials] = None
+        additional_config: Optional[AdditionalConfig] = (
+            self.__additional_config_if_slow()
+        )
 
         if "auth" in self.config:
             if self.config["auth"].get("type") == "user":
@@ -133,6 +137,7 @@ class ConfigManager:
                 grpc_port=self.config["grpc_port"],
                 auth_credentials=auth_config,
                 headers=headers,
+                additional_config=additional_config,
             )
             if async_client:
                 return weaviate.use_async_with_local(**common_kwargs)
@@ -144,6 +149,7 @@ class ConfigManager:
                 cluster_url=self.config["host"],
                 auth_credentials=auth_config,
                 headers=headers,
+                additional_config=additional_config,
             )
             if async_client:
                 try:
@@ -189,6 +195,7 @@ class ConfigManager:
                 grpc_port=grpc_port,
                 auth_credentials=auth_config,
                 headers=headers,
+                additional_config=additional_config,
             )
         else:
             common_kwargs = dict(
@@ -200,8 +207,25 @@ class ConfigManager:
                 grpc_port=self.config["grpc_port"],
                 auth_credentials=auth_config,
                 headers=headers,
+                additional_config=additional_config,
             )
 
         if async_client:
             return weaviate.use_async_with_custom(**common_kwargs)
         return weaviate.connect_to_custom(**common_kwargs)
+
+    def __additional_config_if_slow(self) -> Optional[AdditionalConfig]:
+        """Return AdditionalConfig with doubled timeouts when SLOW_CONNECTION is set."""
+        env_flag = os.getenv("SLOW_CONNECTION")
+        if not env_flag:
+            return None
+        if str(env_flag).strip().lower() not in {"1", "true", "yes", "on"}:
+            return None
+        defaults = AdditionalConfig().timeout
+        return AdditionalConfig(
+            timeout=WeaviateTimeout(
+                query=defaults.query * 2,
+                insert=defaults.insert * 2,
+                init=defaults.init * 2,
+            )
+        )
