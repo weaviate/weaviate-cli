@@ -50,7 +50,14 @@ PERMISSION_HELP_STRING = (
 )
 QUERY_MAXIMUM_RESULTS = 10000
 MAX_OBJECTS_PER_BATCH = 5000
-MAX_WORKERS = min(32, multiprocessing.cpu_count() + 4)
+
+try:
+    _CPU_COUNT = multiprocessing.cpu_count()
+except (NotImplementedError, OSError):
+    _CPU_COUNT = None
+# Fallback to 1 worker if CPU count is unavailable or invalid
+_SAFE_CPU_COUNT = _CPU_COUNT if isinstance(_CPU_COUNT, int) and _CPU_COUNT > 0 else 1
+MAX_WORKERS = min(32, _SAFE_CPU_COUNT + 4)
 
 
 @dataclass
