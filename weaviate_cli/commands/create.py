@@ -26,6 +26,7 @@ from weaviate_cli.defaults import (
     CreateDataDefaults,
     CreateRoleDefaults,
     PERMISSION_HELP_STRING,
+    MAX_WORKERS,
 )
 
 
@@ -89,7 +90,7 @@ def create() -> None:
 @click.option(
     "--training_limit",
     default=CreateCollectionDefaults.training_limit,
-    help="Training limit for PQ and SQ (default: 10000).",
+    help=f"Training limit for PQ and SQ (default: {CreateCollectionDefaults.training_limit}).",
 )
 @click.option(
     "--multitenant", is_flag=True, help="Enable multitenancy (default: False)."
@@ -228,7 +229,7 @@ def create_collection_cli(
 @click.option(
     "--number_tenants",
     default=CreateTenantsDefaults.number_tenants,
-    help="Number of tenants to create (default: 100).",
+    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}).",
 )
 @click.option(
     "--tenant_batch_size",
@@ -336,7 +337,8 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.option(
     "--limit",
     default=CreateDataDefaults.limit,
-    help="Number of objects to import (default: 1000).",
+    help=f"Number of objects to import (default: {CreateDataDefaults.limit}).",
+    type=int,
 )
 @click.option(
     "--consistency_level",
@@ -390,6 +392,23 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     is_flag=True,
     help="Enable multi-vector (default: False).",
 )
+@click.option(
+    "--dynamic_batch",
+    is_flag=True,
+    help="Enable dynamic batching (default: False).",
+)
+@click.option(
+    "--batch_size",
+    default=CreateDataDefaults.batch_size,
+    help=f"Number of objects to ingest in each batch (default: {CreateDataDefaults.batch_size}).",
+    type=int,
+)
+@click.option(
+    "--concurrent_requests",
+    default=MAX_WORKERS,
+    type=int,
+    help=f"Number of concurrent requests to send to the server (default: {MAX_WORKERS}).",
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -406,6 +425,9 @@ def create_data_cli(
     wait_for_indexing,
     verbose,
     multi_vector,
+    dynamic_batch,
+    batch_size,
+    concurrent_requests,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -421,6 +443,12 @@ def create_data_cli(
 
     if uuid is not None and limit != 1:
         click.echo("Error: --uuid has no effect unless --limit=1 is enabled.")
+        sys.exit(1)
+
+    if dynamic_batch and not randomize:
+        click.echo(
+            "Error: --dynamic_batch has no effect unless --randomize is enabled."
+        )
         sys.exit(1)
 
     client: Optional[WeaviateClient] = None
@@ -442,6 +470,9 @@ def create_data_cli(
             wait_for_indexing=wait_for_indexing,
             verbose=verbose,
             multi_vector=multi_vector,
+            dynamic_batch=dynamic_batch,
+            batch_size=batch_size,
+            concurrent_requests=concurrent_requests,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
