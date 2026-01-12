@@ -337,7 +337,7 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.option(
     "--limit",
     default=CreateDataDefaults.limit,
-    help="Number of objects to import (default: {CreateDataDefaults.limit}).",
+    help=f"Number of objects to import (default: {CreateDataDefaults.limit}).",
     type=int,
 )
 @click.option(
@@ -406,6 +406,7 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
 @click.option(
     "--concurrent_requests",
     default=MAX_WORKERS,
+    type=int,
     help=f"Number of concurrent requests to send to the server (default: {MAX_WORKERS}).",
 )
 @click.pass_context

@@ -318,7 +318,11 @@ class DataManager:
         import threading
 
         failed_objects: List = []
-        error_tracker = _ErrorTracker(max_examples=10)  # NEW
+        error_tracker = _ErrorTracker(max_examples=10)
+
+        # Early return for zero objects to prevent hang in fixed-size mode
+        if num_objects <= 0:
+            return 0, failed_objects, error_tracker
 
         # Shared helper: build vector payload according to vectorizer configuration
         def build_vector() -> (
@@ -361,6 +365,8 @@ class DataManager:
             q: Queue[Optional[List[Dict]]] = Queue(maxsize=max_prefetch_chunks)
             consumed = 0
             consumed_lock = threading.Lock()
+            feeder_error: Optional[Exception] = None
+            feeder_error_lock = threading.Lock()
 
             num_chunks = math.ceil(num_objects / gen_chunk_size)
             task_args: List[Tuple[int, Optional[int], int, bool]] = []
@@ -371,12 +377,16 @@ class DataManager:
                     task_args.append((size, base_seed, start_index, False))
 
             def feeder() -> None:
+                nonlocal feeder_error
                 try:
                     with mp.Pool(processes=producer_processes) as pool:
-                        for chunk in pool.imap_unordered(
-                            _streaming_generate_chunk, task_args
-                        ):
+                        for chunk in pool.imap(_streaming_generate_chunk, task_args):
                             q.put(chunk)
+                except Exception as e:
+                    with feeder_error_lock:
+                        feeder_error = e
+                    if verbose:
+                        click.echo(f"Error in feeder thread: {e}", err=True)
                 finally:
                     # Always signal completion to the consumer, even on error.
                     try:
@@ -426,6 +436,19 @@ class DataManager:
             consumer_t.start()
             feeder_t.join()
             consumer_t.join()
+
+            # Report any feeder errors that occurred
+            if feeder_error:
+                error_msg = (
+                    "Feeder thread encountered an exception during data generation"
+                )
+                if verbose:
+                    click.echo(f"{error_msg}: {feeder_error}", err=True)
+                else:
+                    click.echo(f"{error_msg}. Use --verbose for details.", err=True)
+                # Add to error tracker for consistency
+                error_tracker.total += 1
+                error_tracker.examples.append((None, str(feeder_error)))
 
             return consumed, failed_objects, error_tracker
 
@@ -764,7 +787,7 @@ class DataManager:
                 raise Exception(
                     f"Either --tenants or --auto_tenants must be provided, not both."
                 )
-            if existing_tenants == "None":
+            if existing_tenants == ["None"]:
                 tenants = [f"{tenant_suffix}-{i}" for i in range(1, auto_tenants + 1)]
             else:
                 if len(existing_tenants) < auto_tenants:
@@ -888,11 +911,14 @@ class DataManager:
             limit=1, include_vector=True
         )
         if len(object_with_vector.objects) > 0:
-            vector_dimensions = len(
-                object_with_vector.objects[0].vector["default"]
-                if "default" in object_with_vector.objects[0].vector
-                else object_with_vector.objects[0].vector
-            )
+            vec = object_with_vector.objects[0].vector
+            if isinstance(vec, dict):
+                first_vec = next(iter(vec.values()))
+                vector_dimensions = (
+                    len(first_vec) if isinstance(first_vec, list) else len(first_vec[0])
+                )
+            else:
+                vector_dimensions = len(vec)
 
         for i in range(iterations):
             batch_size = min(MAX_OBJECTS_PER_BATCH, num_objects - total_updated)
@@ -1146,10 +1172,9 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-            print(
+            raise Exception(
                 f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
             )
-            return 1
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
