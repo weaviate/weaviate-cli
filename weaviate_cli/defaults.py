@@ -78,6 +78,11 @@ class CreateCollectionDefaults:
     replication_deletion_strategy: str = "no_automated_resolution"
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
+    hfresh_max_posting_size_kb: Optional[int] = None
+    hfresh_replicas: Optional[int] = None
+    hfresh_search_probe: Optional[int] = None
+    distance_metric: Optional[str] = "cosine"
+    rescore_limit: Optional[int] = None
 
 
 @dataclass

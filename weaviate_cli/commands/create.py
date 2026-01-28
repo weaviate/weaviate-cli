@@ -77,6 +77,7 @@ def create() -> None:
             "hnsw_acorn",
             "hnsw_multivector",
             "flat_bq",
+            "hfresh",
         ]
     ),
     help="Vector index type (default: 'hnsw').",
@@ -158,6 +159,36 @@ def create() -> None:
     ),
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
+@click.option(
+    "--hfresh_max_posting_size_kb",
+    default=CreateCollectionDefaults.hfresh_max_posting_size_kb,
+    type=int,
+    help="hfresh max posting size (default: None).",
+)
+@click.option(
+    "--hfresh_replicas",
+    default=CreateCollectionDefaults.hfresh_replicas,
+    type=int,
+    help="hfresh replicas (default: None).",
+)
+@click.option(
+    "--hfresh_search_probe",
+    default=CreateCollectionDefaults.hfresh_search_probe,
+    type=int,
+    help="hfresh search probe (default: None).",
+)
+@click.option(
+    "--distance_metric",
+    default=CreateCollectionDefaults.distance_metric,
+    type=click.Choice(["cosine", "dot", "l2-squared", "hamming", "manhattan"]),
+    help="Distance metric for hfresh (default: 'cosine').",
+)
+@click.option(
+    "--rescore_limit",
+    default=CreateCollectionDefaults.rescore_limit,
+    type=int,
+    help="Rescore limit for hfresh (default: None).",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -177,6 +208,11 @@ def create_collection_cli(
     replication_deletion_strategy: str,
     named_vector: bool,
     named_vector_name: Optional[str],
+    hfresh_max_posting_size_kb: Optional[int],
+    hfresh_replicas: Optional[int],
+    hfresh_search_probe: Optional[int],
+    distance_metric: Optional[str],
+    rescore_limit: Optional[int],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -202,6 +238,11 @@ def create_collection_cli(
             replication_deletion_strategy=replication_deletion_strategy,
             named_vector=named_vector,
             named_vector_name=named_vector_name,
+            hfresh_max_posting_size_kb=hfresh_max_posting_size_kb,
+            hfresh_replicas=hfresh_replicas,
+            hfresh_search_probe=hfresh_search_probe,
+            distance_metric=distance_metric,
+            rescore_limit=rescore_limit,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
