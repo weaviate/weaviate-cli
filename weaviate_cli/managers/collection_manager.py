@@ -5,7 +5,6 @@ from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
 from weaviate.collections.classes.config import _CollectionConfigSimple
 from weaviate.collections.classes.tenants import TenantActivityStatus
-from weaviate.collections.classes.config_vector_index import VectorCentroidsIndexType
 from weaviate.collections.classes.config_vector_index import VectorFilterStrategy
 from weaviate_cli.defaults import (
     CreateCollectionDefaults,
@@ -118,7 +117,7 @@ class CollectionManager:
     def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
         return self.client.collections.list_all()
 
-    def _build_spfresh_config(
+    def _build_hfresh_config(
         self,
         max_posting_size: Optional[int] = None,
         min_posting_size: Optional[int] = None,
@@ -128,7 +127,7 @@ class CollectionManager:
         centroids_index_type: Optional[str] = None,
         quantizer: Optional[str] = None,
     ):
-        """Build SPFresh configuration with provided parameters."""
+        """Build hfresh configuration with provided parameters."""
         kwargs = {}
 
         if max_posting_size is not None:
@@ -141,13 +140,6 @@ class CollectionManager:
             kwargs["rng_factor"] = rng_factor
         if search_probe is not None:
             kwargs["search_probe"] = search_probe
-
-        # Handle centroids index type
-        if centroids_index_type is not None:
-            if centroids_index_type == "flat":
-                kwargs["centroids_index_type"] = VectorCentroidsIndexType.FLAT
-            elif centroids_index_type == "hnsw":
-                kwargs["centroids_index_type"] = VectorCentroidsIndexType.HNSW
 
         # Handle quantizer
         quantizer_config = None
@@ -163,7 +155,7 @@ class CollectionManager:
         if quantizer_config is not None:
             kwargs["quantizer"] = quantizer_config
 
-        return wvc.Configure.VectorIndex.spfresh(**kwargs)
+        return wvc.Configure.VectorIndex.hfresh(**kwargs)
 
     def create_collection(
         self,
@@ -187,21 +179,21 @@ class CollectionManager:
         ] = CreateCollectionDefaults.replication_deletion_strategy,
         named_vector: bool = CreateCollectionDefaults.named_vector,
         named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
-        spfresh_max_posting_size: Optional[
+        hfresh_max_posting_size: Optional[
             int
-        ] = CreateCollectionDefaults.spfresh_max_posting_size,
-        spfresh_min_posting_size: Optional[
+        ] = CreateCollectionDefaults.hfresh_max_posting_size,
+        hfresh_min_posting_size: Optional[
             int
-        ] = CreateCollectionDefaults.spfresh_min_posting_size,
-        spfresh_replicas: Optional[int] = CreateCollectionDefaults.spfresh_replicas,
-        spfresh_rng_factor: Optional[int] = CreateCollectionDefaults.spfresh_rng_factor,
-        spfresh_search_probe: Optional[
+        ] = CreateCollectionDefaults.hfresh_min_posting_size,
+        hfresh_replicas: Optional[int] = CreateCollectionDefaults.hfresh_replicas,
+        hfresh_rng_factor: Optional[int] = CreateCollectionDefaults.hfresh_rng_factor,
+        hfresh_search_probe: Optional[
             int
-        ] = CreateCollectionDefaults.spfresh_search_probe,
-        spfresh_centroids_index_type: Optional[
+        ] = CreateCollectionDefaults.hfresh_search_probe,
+        hfresh_centroids_index_type: Optional[
             str
-        ] = CreateCollectionDefaults.spfresh_centroids_index_type,
-        spfresh_quantizer: Optional[str] = CreateCollectionDefaults.spfresh_quantizer,
+        ] = CreateCollectionDefaults.hfresh_centroids_index_type,
+        hfresh_quantizer: Optional[str] = CreateCollectionDefaults.hfresh_quantizer,
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -302,14 +294,14 @@ class CollectionManager:
             "flat_bq_cache": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
             ),
-            "spfresh": self._build_spfresh_config(
-                max_posting_size=spfresh_max_posting_size,
-                min_posting_size=spfresh_min_posting_size,
-                replicas=spfresh_replicas,
-                rng_factor=spfresh_rng_factor,
-                search_probe=spfresh_search_probe,
-                centroids_index_type=spfresh_centroids_index_type,
-                quantizer=spfresh_quantizer,
+            "hfresh": self._build_hfresh_config(
+                max_posting_size=hfresh_max_posting_size,
+                min_posting_size=hfresh_min_posting_size,
+                replicas=hfresh_replicas,
+                rng_factor=hfresh_rng_factor,
+                search_probe=hfresh_search_probe,
+                centroids_index_type=hfresh_centroids_index_type,
+                quantizer=hfresh_quantizer,
             ),
         }
 

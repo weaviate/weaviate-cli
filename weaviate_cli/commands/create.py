@@ -77,7 +77,7 @@ def create() -> None:
             "hnsw_acorn",
             "hnsw_multivector",
             "flat_bq",
-            "spfresh",
+            "hfresh",
         ]
     ),
     help="Vector index type (default: 'hnsw').",
@@ -160,46 +160,46 @@ def create() -> None:
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
 @click.option(
-    "--spfresh_max_posting_size",
-    default=CreateCollectionDefaults.spfresh_max_posting_size,
+    "--hfresh_max_posting_size",
+    default=CreateCollectionDefaults.hfresh_max_posting_size,
     type=int,
-    help="SPFresh max posting size (default: None).",
+    help="hfresh max posting size (default: None).",
 )
 @click.option(
-    "--spfresh_min_posting_size",
-    default=CreateCollectionDefaults.spfresh_min_posting_size,
+    "--hfresh_min_posting_size",
+    default=CreateCollectionDefaults.hfresh_min_posting_size,
     type=int,
-    help="SPFresh min posting size (default: None).",
+    help="hfresh min posting size (default: None).",
 )
 @click.option(
-    "--spfresh_replicas",
-    default=CreateCollectionDefaults.spfresh_replicas,
+    "--hfresh_replicas",
+    default=CreateCollectionDefaults.hfresh_replicas,
     type=int,
-    help="SPFresh replicas (default: None).",
+    help="hfresh replicas (default: None).",
 )
 @click.option(
-    "--spfresh_rng_factor",
-    default=CreateCollectionDefaults.spfresh_rng_factor,
+    "--hfresh_rng_factor",
+    default=CreateCollectionDefaults.hfresh_rng_factor,
     type=int,
-    help="SPFresh RNG factor (default: None).",
+    help="hfresh RNG factor (default: None).",
 )
 @click.option(
-    "--spfresh_search_probe",
-    default=CreateCollectionDefaults.spfresh_search_probe,
+    "--hfresh_search_probe",
+    default=CreateCollectionDefaults.hfresh_search_probe,
     type=int,
-    help="SPFresh search probe (default: None).",
+    help="hfresh search probe (default: None).",
 )
 @click.option(
-    "--spfresh_centroids_index_type",
-    default=CreateCollectionDefaults.spfresh_centroids_index_type,
+    "--hfresh_centroids_index_type",
+    default=CreateCollectionDefaults.hfresh_centroids_index_type,
     type=click.Choice(["flat", "hnsw"]),
-    help="SPFresh centroids index type (default: None).",
+    help="hfresh centroids index type (default: None).",
 )
 @click.option(
-    "--spfresh_quantizer",
-    default=CreateCollectionDefaults.spfresh_quantizer,
+    "--hfresh_quantizer",
+    default=CreateCollectionDefaults.hfresh_quantizer,
     type=click.Choice(["rq8", "rq1"]),
-    help="SPFresh quantizer type (default: None).",
+    help="hfresh quantizer type (default: None).",
 )
 @click.pass_context
 def create_collection_cli(
@@ -220,13 +220,13 @@ def create_collection_cli(
     replication_deletion_strategy: str,
     named_vector: bool,
     named_vector_name: Optional[str],
-    spfresh_max_posting_size: Optional[int],
-    spfresh_min_posting_size: Optional[int],
-    spfresh_replicas: Optional[int],
-    spfresh_rng_factor: Optional[int],
-    spfresh_search_probe: Optional[int],
-    spfresh_centroids_index_type: Optional[str],
-    spfresh_quantizer: Optional[str],
+    hfresh_max_posting_size: Optional[int],
+    hfresh_min_posting_size: Optional[int],
+    hfresh_replicas: Optional[int],
+    hfresh_rng_factor: Optional[int],
+    hfresh_search_probe: Optional[int],
+    hfresh_centroids_index_type: Optional[str],
+    hfresh_quantizer: Optional[str],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -252,13 +252,13 @@ def create_collection_cli(
             replication_deletion_strategy=replication_deletion_strategy,
             named_vector=named_vector,
             named_vector_name=named_vector_name,
-            spfresh_max_posting_size=spfresh_max_posting_size,
-            spfresh_min_posting_size=spfresh_min_posting_size,
-            spfresh_replicas=spfresh_replicas,
-            spfresh_rng_factor=spfresh_rng_factor,
-            spfresh_search_probe=spfresh_search_probe,
-            spfresh_centroids_index_type=spfresh_centroids_index_type,
-            spfresh_quantizer=spfresh_quantizer,
+            hfresh_max_posting_size=hfresh_max_posting_size,
+            hfresh_min_posting_size=hfresh_min_posting_size,
+            hfresh_replicas=hfresh_replicas,
+            hfresh_rng_factor=hfresh_rng_factor,
+            hfresh_search_probe=hfresh_search_probe,
+            hfresh_centroids_index_type=hfresh_centroids_index_type,
+            hfresh_quantizer=hfresh_quantizer,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

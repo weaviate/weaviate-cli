@@ -78,13 +78,13 @@ class CreateCollectionDefaults:
     replication_deletion_strategy: str = "no_automated_resolution"
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
-    spfresh_max_posting_size: Optional[int] = None
-    spfresh_min_posting_size: Optional[int] = None
-    spfresh_replicas: Optional[int] = None
-    spfresh_rng_factor: Optional[int] = None
-    spfresh_search_probe: Optional[int] = None
-    spfresh_centroids_index_type: Optional[str] = None
-    spfresh_quantizer: Optional[str] = None
+    hfresh_max_posting_size: Optional[int] = None
+    hfresh_min_posting_size: Optional[int] = None
+    hfresh_replicas: Optional[int] = None
+    hfresh_rng_factor: Optional[int] = None
+    hfresh_search_probe: Optional[int] = None
+    hfresh_centroids_index_type: Optional[str] = None
+    hfresh_quantizer: Optional[str] = None
 
 
 @dataclass
