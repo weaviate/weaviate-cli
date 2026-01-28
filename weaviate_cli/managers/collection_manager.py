@@ -119,41 +119,41 @@ class CollectionManager:
 
     def _build_hfresh_config(
         self,
-        max_posting_size: Optional[int] = None,
-        min_posting_size: Optional[int] = None,
+        max_posting_size_kb: Optional[int] = None,
+        distance_metric: Optional[str] = "cosine",
+        rescore_limit: Optional[int] = None,
         replicas: Optional[int] = None,
-        rng_factor: Optional[int] = None,
         search_probe: Optional[int] = None,
-        centroids_index_type: Optional[str] = None,
-        quantizer: Optional[str] = None,
     ):
         """Build hfresh configuration with provided parameters."""
+        # Explicit mapping of distance metric strings to enum values
+        distance_metric_map = {
+            "cosine": wvc.VectorDistances.COSINE,
+            "dot": wvc.VectorDistances.DOT,
+            "l2-squared": wvc.VectorDistances.L2_SQUARED,
+            "hamming": wvc.VectorDistances.HAMMING,
+            "manhattan": wvc.VectorDistances.MANHATTAN,
+        }
+
         kwargs = {}
 
-        if max_posting_size is not None:
-            kwargs["max_posting_size"] = max_posting_size
-        if min_posting_size is not None:
-            kwargs["min_posting_size"] = min_posting_size
+        if max_posting_size_kb is not None:
+            kwargs["max_posting_size_kb"] = max_posting_size_kb
+        if distance_metric is not None:
+            if distance_metric not in distance_metric_map:
+                raise ValueError(
+                    f"Invalid distance_metric: '{distance_metric}'. "
+                    f"Must be one of: {list(distance_metric_map.keys())}"
+                )
+            kwargs["distance_metric"] = distance_metric_map[distance_metric]
         if replicas is not None:
             kwargs["replicas"] = replicas
-        if rng_factor is not None:
-            kwargs["rng_factor"] = rng_factor
         if search_probe is not None:
             kwargs["search_probe"] = search_probe
-
-        # Handle quantizer
-        quantizer_config = None
-        if quantizer is not None:
-            if quantizer == "rq8":
-                quantizer_config = wvc.Configure.VectorIndex.Quantizer.rq(bits=8)
-            elif quantizer == "rq1":
-                quantizer_config = wvc.Configure.VectorIndex.Quantizer.rq(bits=1)
-        else:
-            # Default quantizer if none specified
-            quantizer_config = wvc.Configure.VectorIndex.Quantizer.rq(bits=8)
-
-        if quantizer_config is not None:
-            kwargs["quantizer"] = quantizer_config
+        if rescore_limit is not None:
+            kwargs["quantizer"] = wvc.Configure.VectorIndex.Quantizer.rq(
+                bits=8, rescore_limit=rescore_limit
+            )
 
         return wvc.Configure.VectorIndex.hfresh(**kwargs)
 
@@ -179,21 +179,15 @@ class CollectionManager:
         ] = CreateCollectionDefaults.replication_deletion_strategy,
         named_vector: bool = CreateCollectionDefaults.named_vector,
         named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
-        hfresh_max_posting_size: Optional[
+        hfresh_max_posting_size_kb: Optional[
             int
-        ] = CreateCollectionDefaults.hfresh_max_posting_size,
-        hfresh_min_posting_size: Optional[
-            int
-        ] = CreateCollectionDefaults.hfresh_min_posting_size,
+        ] = CreateCollectionDefaults.hfresh_max_posting_size_kb,
         hfresh_replicas: Optional[int] = CreateCollectionDefaults.hfresh_replicas,
-        hfresh_rng_factor: Optional[int] = CreateCollectionDefaults.hfresh_rng_factor,
         hfresh_search_probe: Optional[
             int
         ] = CreateCollectionDefaults.hfresh_search_probe,
-        hfresh_centroids_index_type: Optional[
-            str
-        ] = CreateCollectionDefaults.hfresh_centroids_index_type,
-        hfresh_quantizer: Optional[str] = CreateCollectionDefaults.hfresh_quantizer,
+        distance_metric: Optional[str] = CreateCollectionDefaults.distance_metric,
+        rescore_limit: Optional[int] = CreateCollectionDefaults.rescore_limit,
     ) -> None:
 
         if self.client.collections.exists(collection):
@@ -295,13 +289,11 @@ class CollectionManager:
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
             ),
             "hfresh": self._build_hfresh_config(
-                max_posting_size=hfresh_max_posting_size,
-                min_posting_size=hfresh_min_posting_size,
+                max_posting_size_kb=hfresh_max_posting_size_kb,
+                distance_metric=distance_metric,
+                rescore_limit=rescore_limit,
                 replicas=hfresh_replicas,
-                rng_factor=hfresh_rng_factor,
                 search_probe=hfresh_search_probe,
-                centroids_index_type=hfresh_centroids_index_type,
-                quantizer=hfresh_quantizer,
             ),
         }
 

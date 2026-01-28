@@ -160,16 +160,10 @@ def create() -> None:
     help="Replication deletion strategy (default: 'delete_on_conflict').",
 )
 @click.option(
-    "--hfresh_max_posting_size",
-    default=CreateCollectionDefaults.hfresh_max_posting_size,
+    "--hfresh_max_posting_size_kb",
+    default=CreateCollectionDefaults.hfresh_max_posting_size_kb,
     type=int,
     help="hfresh max posting size (default: None).",
-)
-@click.option(
-    "--hfresh_min_posting_size",
-    default=CreateCollectionDefaults.hfresh_min_posting_size,
-    type=int,
-    help="hfresh min posting size (default: None).",
 )
 @click.option(
     "--hfresh_replicas",
@@ -178,28 +172,22 @@ def create() -> None:
     help="hfresh replicas (default: None).",
 )
 @click.option(
-    "--hfresh_rng_factor",
-    default=CreateCollectionDefaults.hfresh_rng_factor,
-    type=int,
-    help="hfresh RNG factor (default: None).",
-)
-@click.option(
     "--hfresh_search_probe",
     default=CreateCollectionDefaults.hfresh_search_probe,
     type=int,
     help="hfresh search probe (default: None).",
 )
 @click.option(
-    "--hfresh_centroids_index_type",
-    default=CreateCollectionDefaults.hfresh_centroids_index_type,
-    type=click.Choice(["flat", "hnsw"]),
-    help="hfresh centroids index type (default: None).",
+    "--distance_metric",
+    default=CreateCollectionDefaults.distance_metric,
+    type=click.Choice(["cosine", "dot", "l2-squared", "hamming", "manhattan"]),
+    help="Distance metric for hfresh (default: 'cosine').",
 )
 @click.option(
-    "--hfresh_quantizer",
-    default=CreateCollectionDefaults.hfresh_quantizer,
-    type=click.Choice(["rq8", "rq1"]),
-    help="hfresh quantizer type (default: None).",
+    "--rescore_limit",
+    default=CreateCollectionDefaults.rescore_limit,
+    type=int,
+    help="Rescore limit for hfresh (default: None).",
 )
 @click.pass_context
 def create_collection_cli(
@@ -220,13 +208,11 @@ def create_collection_cli(
     replication_deletion_strategy: str,
     named_vector: bool,
     named_vector_name: Optional[str],
-    hfresh_max_posting_size: Optional[int],
-    hfresh_min_posting_size: Optional[int],
+    hfresh_max_posting_size_kb: Optional[int],
     hfresh_replicas: Optional[int],
-    hfresh_rng_factor: Optional[int],
     hfresh_search_probe: Optional[int],
-    hfresh_centroids_index_type: Optional[str],
-    hfresh_quantizer: Optional[str],
+    distance_metric: Optional[str],
+    rescore_limit: Optional[int],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -252,13 +238,11 @@ def create_collection_cli(
             replication_deletion_strategy=replication_deletion_strategy,
             named_vector=named_vector,
             named_vector_name=named_vector_name,
-            hfresh_max_posting_size=hfresh_max_posting_size,
-            hfresh_min_posting_size=hfresh_min_posting_size,
+            hfresh_max_posting_size_kb=hfresh_max_posting_size_kb,
             hfresh_replicas=hfresh_replicas,
-            hfresh_rng_factor=hfresh_rng_factor,
             hfresh_search_probe=hfresh_search_probe,
-            hfresh_centroids_index_type=hfresh_centroids_index_type,
-            hfresh_quantizer=hfresh_quantizer,
+            distance_metric=distance_metric,
+            rescore_limit=rescore_limit,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
