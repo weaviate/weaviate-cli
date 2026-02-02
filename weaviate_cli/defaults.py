@@ -78,6 +78,10 @@ class CreateCollectionDefaults:
     replication_deletion_strategy: str = "no_automated_resolution"
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
+    object_ttl_type: str = "create"
+    object_ttl_time: Optional[int] = None
+    object_ttl_filter_expired: Optional[bool] = None
+    object_ttl_property_name: str = "releaseDate"
 
 
 @dataclass
@@ -245,6 +249,10 @@ class UpdateCollectionDefaults:
     auto_tenant_creation: Optional[bool] = None
     auto_tenant_activation: Optional[bool] = None
     replication_deletion_strategy: Optional[str] = None
+    object_ttl_type: str = "create"
+    object_ttl_time: Optional[int] = None
+    object_ttl_filter_expired: Optional[bool] = None
+    object_ttl_property_name: str = "releaseDate"
 
 
 @dataclass
