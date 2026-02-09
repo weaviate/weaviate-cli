@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import MagicMock
 from weaviate.aliases.alias import AliasReturn
@@ -207,3 +208,95 @@ def test_print_alias(alias_manager: AliasManager, capsys) -> None:
 
     captured = capsys.readouterr()
     assert captured.out == f"Alias: {alias_name} -> {collection_name}\n"
+
+
+# ---------------------------------------------------------------------------
+# delete_alias json_output
+# ---------------------------------------------------------------------------
+
+
+def test_delete_alias_success_text(
+    alias_manager: AliasManager, mock_client: MagicMock, capsys
+) -> None:
+    """Test delete_alias emits a text success message."""
+    alias_manager.delete_alias("my_alias", json_output=False)
+
+    mock_client.alias.delete.assert_called_once_with(alias_name="my_alias")
+    out = capsys.readouterr().out
+    assert "my_alias" in out
+    assert "deleted successfully" in out
+
+
+def test_delete_alias_success_json(
+    alias_manager: AliasManager, mock_client: MagicMock, capsys
+) -> None:
+    """Test delete_alias emits a JSON success message."""
+    alias_manager.delete_alias("my_alias", json_output=True)
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "success"
+    assert "my_alias" in data["message"]
+
+
+def test_delete_alias_error(
+    alias_manager: AliasManager, mock_client: MagicMock
+) -> None:
+    """Test delete_alias raises on client error."""
+    mock_client.alias.delete.side_effect = Exception("network error")
+
+    with pytest.raises(Exception) as exc_info:
+        alias_manager.delete_alias("bad_alias")
+
+    assert "Error deleting alias 'bad_alias': network error" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# create_alias / update_alias json_output
+# ---------------------------------------------------------------------------
+
+
+def test_create_alias_json_output(
+    alias_manager: AliasManager, mock_client: MagicMock, capsys
+) -> None:
+    """Test create_alias emits JSON when json_output=True."""
+    alias_manager.create_alias("my_alias", "MyCollection", json_output=True)
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "success"
+    assert "my_alias" in data["message"]
+
+
+def test_create_alias_text_output(
+    alias_manager: AliasManager, mock_client: MagicMock, capsys
+) -> None:
+    """Test create_alias emits text when json_output=False."""
+    alias_manager.create_alias("my_alias", "MyCollection", json_output=False)
+
+    out = capsys.readouterr().out
+    assert "my_alias" in out
+    assert "created successfully" in out
+
+
+def test_update_alias_json_output(
+    alias_manager: AliasManager, mock_client: MagicMock, capsys
+) -> None:
+    """Test update_alias emits JSON when json_output=True."""
+    alias_manager.update_alias("my_alias", "NewCollection", json_output=True)
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "success"
+    assert "my_alias" in data["message"]
+
+
+def test_update_alias_text_output(
+    alias_manager: AliasManager, mock_client: MagicMock, capsys
+) -> None:
+    """Test update_alias emits text when json_output=False."""
+    alias_manager.update_alias("my_alias", "NewCollection", json_output=False)
+
+    out = capsys.readouterr().out
+    assert "my_alias" in out
+    assert "updated successfully" in out

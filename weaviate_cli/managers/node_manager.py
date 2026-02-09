@@ -1,3 +1,6 @@
+import json
+
+import click
 from typing import Dict, List, Optional
 from prettytable import PrettyTable
 from weaviate.client import WeaviateClient
@@ -14,21 +17,109 @@ class NodeManager:
         shards: bool = False,
         collections: bool = False,
         collection: Optional[str] = None,
+        json_output: bool = False,
     ) -> None:
         if minimal:
             nodes = self.__get_nodes_minimal()
-            self.__print_minimal_nodes(nodes)
+            if json_output:
+                nodes_data = [
+                    {"name": n.name, "status": str(n.status), "version": n.version}
+                    for n in nodes
+                ]
+                click.echo(json.dumps({"nodes": nodes_data}, indent=2, default=str))
+            else:
+                self.__print_minimal_nodes(nodes)
         else:
             nodes = self.__get_nodes_verbose(collection)
             if collection:
                 collection_shards = self.get_collection_shards(collection, nodes)
-                self.__print_collection_shards(collection, collection_shards)
+                if json_output:
+                    rf = (
+                        self.client.collections.get(collection)
+                        .config.get()
+                        .replication_config.factor
+                    )
+                    shards_data = []
+                    for s in collection_shards:
+                        shards_data.append(
+                            {
+                                "name": s.name,
+                                "node_distribution": s.node_objects,
+                                "status": str(s.vector_indexing_status),
+                                "loaded": s.loaded,
+                            }
+                        )
+                    click.echo(
+                        json.dumps(
+                            {
+                                "collection": collection,
+                                "replication_factor": rf,
+                                "shards": shards_data,
+                            },
+                            indent=2,
+                            default=str,
+                        )
+                    )
+                else:
+                    self.__print_collection_shards(collection, collection_shards)
             elif shards:
-                self.__print_shards_info(self.get_shards_objects(nodes))
+                shard_objects = self.get_shards_objects(nodes)
+                if json_output:
+                    shards_data = []
+                    for s in shard_objects:
+                        shards_data.append(
+                            {
+                                "name": s.name,
+                                "collection": s.collection,
+                                "node_distribution": s.node_objects,
+                                "status": str(s.vector_indexing_status),
+                                "loaded": s.loaded,
+                            }
+                        )
+                    click.echo(
+                        json.dumps({"shards": shards_data}, indent=2, default=str)
+                    )
+                else:
+                    self.__print_shards_info(shard_objects)
             elif collections:
-                self.__print_collections_info(self.get_collections_objects(nodes))
+                collection_objects = self.get_collections_objects(nodes)
+                if json_output:
+                    cols_data = []
+                    for c in collection_objects:
+                        rf = (
+                            self.client.collections.get(c.name)
+                            .config.get()
+                            .replication_config.factor
+                        )
+                        cols_data.append(
+                            {
+                                "name": c.name,
+                                "replication_factor": rf,
+                                "node_distribution": c.node_objects,
+                                "total_objects": c.total_objects,
+                            }
+                        )
+                    click.echo(
+                        json.dumps({"collections": cols_data}, indent=2, default=str)
+                    )
+                else:
+                    self.__print_collections_info(collection_objects)
             else:
-                self.__print_nodes_info(self.get_nodes_objects(nodes))
+                node_objects = self.get_nodes_objects(nodes)
+                if json_output:
+                    nodes_data = [
+                        {
+                            "name": n.name,
+                            "status": str(n.status),
+                            "version": n.version,
+                            "object_count": n.object_count,
+                            "shard_count": n.shard_count,
+                        }
+                        for n in node_objects
+                    ]
+                    click.echo(json.dumps({"nodes": nodes_data}, indent=2, default=str))
+                else:
+                    self.__print_nodes_info(node_objects)
 
     def get_nodes_objects(self, nodes=None) -> List[NodeInfo]:
         if nodes is None:

@@ -3,13 +3,14 @@ Utility functions.
 """
 
 from collections.abc import Sequence
+import json
 import click
 import string
 import random
 import semver
 import weaviate
 from weaviate.rbac.models import Permissions, RoleScope, PermissionsCreateType
-from typing import Optional, Union, List
+from typing import Callable, Optional, Union, List
 
 
 def get_client_from_context(ctx: click.Context) -> weaviate.WeaviateClient:
@@ -37,8 +38,56 @@ def get_random_string(length):
     return result_str
 
 
+def print_json_or_text(
+    data: object, json_output: bool, text_fn: Callable[[], None]
+) -> None:
+    """Output data as JSON or formatted text.
+
+    Args:
+        data: The data to serialize when json_output is True.
+        json_output: If True, emit JSON to stdout; otherwise call text_fn().
+        text_fn: A callable that prints the human-readable representation.
+    """
+    if json_output:
+        click.echo(json.dumps(data, indent=2, default=str))
+    else:
+        text_fn()
+
+
 # Pretty print objects in the response in a table format
-def pp_objects(response, main_properties):
+def pp_objects(response, main_properties, json_output: bool = False):
+
+    objects = []
+    if type(response) == weaviate.collections.classes.internal.ObjectSingleReturn:
+        objects.append(response)
+    else:
+        objects = response.objects
+
+    if json_output:
+        json_objects = []
+        for obj in objects:
+            obj_dict = {
+                "uuid": str(obj.uuid),
+                "properties": {
+                    prop: obj.properties.get(prop, None) for prop in main_properties
+                },
+                "distance": (
+                    getattr(obj.metadata, "distance", None) if obj.metadata else None
+                ),
+                "certainty": (
+                    getattr(obj.metadata, "certainty", None) if obj.metadata else None
+                ),
+                "score": getattr(obj.metadata, "score", None) if obj.metadata else None,
+            }
+            json_objects.append(obj_dict)
+        click.echo(
+            json.dumps(
+                {"objects": json_objects, "total": len(json_objects)},
+                indent=2,
+                default=str,
+            )
+        )
+        return
 
     # Create the header
     header = f"{'ID':<37}"
@@ -46,12 +95,6 @@ def pp_objects(response, main_properties):
         header += f"{prop.capitalize():<37}"
     header += f"{'Distance':<11}{'Certainty':<11}{'Score':<11}"
     print(header)
-
-    objects = []
-    if type(response) == weaviate.collections.classes.internal.ObjectSingleReturn:
-        objects.append(response)
-    else:
-        objects = response.objects
 
     if len(objects) == 0:
         print("No objects found")

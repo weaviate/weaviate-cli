@@ -1,3 +1,4 @@
+import json
 import sys
 import click
 
@@ -36,8 +37,13 @@ def delete() -> None:
     shell_complete=collection_name_complete,
 )
 @click.option("--all", is_flag=True, help="Delete all collections (default: False).")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> None:
+def delete_collection_cli(
+    ctx: click.Context, collection: str, all: bool, json_output: bool
+) -> None:
     """Delete a collection in Weaviate."""
 
     client = None
@@ -45,7 +51,9 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
         # Call the function from delete_collection.py with general and specific arguments
-        collection_man.delete_collection(collection=collection, all=all)
+        collection_man.delete_collection(
+            collection=collection, all=all, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -78,6 +86,9 @@ def delete_collection_cli(ctx: click.Context, collection: str, all: bool) -> Non
     default=DeleteTenantsDefaults.tenants,
     help="Comma separated list of tenants to delete. Example: --tenants 'Tenant-1,Tenant-2'",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def delete_tenants_cli(
     ctx: click.Context,
@@ -85,6 +96,7 @@ def delete_tenants_cli(
     tenant_suffix: str,
     number_tenants: int,
     tenants: str,
+    json_output: bool,
 ) -> None:
     """Delete tenants from a collection in Weaviate."""
 
@@ -97,6 +109,7 @@ def delete_tenants_cli(
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             tenants_list=tenants.split(",") if tenants else None,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -142,8 +155,13 @@ def delete_tenants_cli(
     default=DeleteDataDefaults.verbose,
     help="Show detailed progress information (default: False).",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid, verbose):
+def delete_data_cli(
+    ctx, collection, limit, consistency_level, tenants, uuid, verbose, json_output
+):
     """Delete data from a collection in Weaviate."""
 
     client = None
@@ -158,6 +176,7 @@ def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid, ve
             tenants_list=tenants.split(",") if tenants else None,
             uuid=uuid,
             verbose=verbose,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -175,16 +194,18 @@ def delete_data_cli(ctx, collection, limit, consistency_level, tenants, uuid, ve
     default=DeleteRoleDefaults.role_name,
     help="The name of the role to delete.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_role_cli(ctx, role_name):
+def delete_role_cli(ctx, role_name, json_output):
     """Delete a role in Weaviate."""
 
     client = None
     try:
         client = get_client_from_context(ctx)
         role_manager = RoleManager(client)
-        role_manager.delete_role(role_name=role_name)
-        click.echo(f"Role '{role_name}' deleted successfully.")
+        role_manager.delete_role(role_name=role_name, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -201,8 +222,11 @@ def delete_role_cli(ctx, role_name):
     default=None,
     help="The name of the user to delete.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_user_cli(ctx, user_name):
+def delete_user_cli(ctx, user_name, json_output):
     """Delete a user in Weaviate."""
 
     client = None
@@ -210,7 +234,18 @@ def delete_user_cli(ctx, user_name):
         client = get_client_from_context(ctx)
         user_manager = UserManager(client)
         user_manager.delete_user(user_name=user_name)
-        click.echo(f"User '{user_name}' deleted successfully.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"User '{user_name}' deleted successfully.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"User '{user_name}' deleted successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -223,15 +258,17 @@ def delete_user_cli(ctx, user_name):
 
 @delete.command("alias")
 @click.argument("alias_name")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_alias_cli(ctx: click.Context, alias_name: str) -> None:
+def delete_alias_cli(ctx: click.Context, alias_name: str, json_output: bool) -> None:
     """Delete an alias for a collection in Weaviate."""
     client = None
     try:
         client = get_client_from_context(ctx)
         alias_man = AliasManager(client)
-        alias_man.delete_alias(alias_name=alias_name)
-        click.echo(f"Alias '{alias_name}' deleted successfully.")
+        alias_man.delete_alias(alias_name=alias_name, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -244,17 +281,31 @@ def delete_alias_cli(ctx: click.Context, alias_name: str) -> None:
 
 @delete.command("replication", help="Delete a replication operation in Weaviate.")
 @click.argument("op_id")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_replication_cli(ctx: click.Context, op_id: str) -> None:
+def delete_replication_cli(ctx: click.Context, op_id: str, json_output: bool) -> None:
     """Delete a replication operation in Weaviate."""
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         manager = ClusterManager(client)
         manager.delete_replication(op_id=op_id)
-        click.echo(
-            f"Replication scheduled for deletion successfully with UUID: {op_id}"
-        )
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Replication scheduled for deletion successfully with UUID: {op_id}",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(
+                f"Replication scheduled for deletion successfully with UUID: {op_id}"
+            )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -268,15 +319,29 @@ def delete_replication_cli(ctx: click.Context, op_id: str) -> None:
 @delete.command(
     "all-replications", help="Delete all replication operations in Weaviate."
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def delete_all_replications_cli(ctx: click.Context) -> None:
+def delete_all_replications_cli(ctx: click.Context, json_output: bool) -> None:
     """Delete all replication operations in Weaviate."""
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         manager = ClusterManager(client)
         manager.delete_all_replication()
-        click.echo("All replications scheduled for deletion successfully.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": "All replications scheduled for deletion successfully.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo("All replications scheduled for deletion successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

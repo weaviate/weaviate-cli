@@ -1,4 +1,5 @@
 import asyncio
+import json
 import click
 import sys
 from typing import Optional, List
@@ -108,6 +109,9 @@ def benchmark():
     default=CreateBenchmarkDefaults.tenant,
     help="Tenant to use to run the benchmark against. Works only on multitenant collections. Default: None",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def benchmark_qps(
     ctx: click.Context,
@@ -128,6 +132,7 @@ def benchmark_qps(
     concurrency: Optional[int],
     file_alias: Optional[str],
     tenant: Optional[str],
+    json_output: bool,
 ) -> None:
     """Run QPS benchmark on the specified collection."""
     async_client = None
@@ -161,6 +166,7 @@ def benchmark_qps(
                 generate_graph=generate_graph,
                 file_alias=file_alias,
                 tenant=tenant,
+                json_output=json_output,
             )
         )
     except Exception as e:

@@ -83,6 +83,9 @@ def update() -> None:
     ),
     help="Replication deletion strategy.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def update_collection_cli(
     ctx: click.Context,
@@ -95,6 +98,7 @@ def update_collection_cli(
     auto_tenant_creation: Optional[bool],
     auto_tenant_activation: Optional[bool],
     replication_deletion_strategy: Optional[str],
+    json_output: bool,
 ) -> None:
     """Update a collection in Weaviate."""
 
@@ -113,6 +117,7 @@ def update_collection_cli(
             auto_tenant_creation=auto_tenant_creation,
             auto_tenant_activation=auto_tenant_activation,
             replication_deletion_strategy=replication_deletion_strategy,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -150,8 +155,13 @@ def update_collection_cli(
     default=UpdateTenantsDefaults.tenants,
     help="Comma separated list of tenants to update. Ex: 'Tenant-1,Tenant-2,Tenant-3,Tenant-4'",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state, tenants):
+def update_tenants_cli(
+    ctx, collection, tenant_suffix, number_tenants, state, tenants, json_output
+):
     """Update tenants in Weaviate."""
 
     client = None
@@ -164,6 +174,7 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state, te
             number_tenants=number_tenants,
             state=state,
             tenants=tenants,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -197,6 +208,9 @@ def update_tenants_cli(ctx, collection, tenant_suffix, number_tenants, state, te
     is_flag=True,
     help="Update all collections.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def update_shards_cli(
     ctx: click.Context,
@@ -204,6 +218,7 @@ def update_shards_cli(
     collection: Optional[str],
     shards: Optional[str],
     all: bool,
+    json_output: bool,
 ) -> None:
     """Update shards in Weaviate."""
 
@@ -217,6 +232,7 @@ def update_shards_cli(
             collection=collection,
             shards=shards,
             all=all,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -255,9 +271,19 @@ def update_shards_cli(
     default=UpdateDataDefaults.verbose,
     help="Show detailed progress information (default: True).",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def update_data_cli(
-    ctx, collection, limit, consistency_level, randomize, skip_seed, verbose
+    ctx,
+    collection,
+    limit,
+    consistency_level,
+    randomize,
+    skip_seed,
+    verbose,
+    json_output,
 ):
     """Update data in a collection in Weaviate."""
 
@@ -273,6 +299,7 @@ def update_data_cli(
             randomize=randomize,
             skip_seed=skip_seed,
             verbose=verbose,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -313,6 +340,9 @@ def update_data_cli(
     is_flag=True,
     help="Store the rotated API key in the config file. Only works when auth type is 'user' and --rotate_api_key is used.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def update_user_cli(
     ctx: click.Context,
@@ -321,6 +351,7 @@ def update_user_cli(
     activate: bool,
     deactivate: bool,
     store: bool,
+    json_output: bool,
 ) -> None:
     """Update a user in Weaviate."""
 
@@ -365,17 +396,62 @@ def update_user_cli(
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
 
-            click.echo(
-                f"API key for user '{user_name}' has been rotated and stored in config file at {config_path}"
-            )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"API key for user '{user_name}' has been rotated and stored in config file at {config_path}",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"API key for user '{user_name}' has been rotated and stored in config file at {config_path}"
+                )
         elif rotate_api_key and api_key:
-            click.echo(
-                f"API key for user '{user_name}' rotated successfully: \n{api_key}"
-            )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"API key for user '{user_name}' rotated successfully.",
+                            "api_key": api_key,
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"API key for user '{user_name}' rotated successfully: \n{api_key}"
+                )
         elif activate:
-            click.echo(f"User '{user_name}' activated successfully.")
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"User '{user_name}' activated successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(f"User '{user_name}' activated successfully.")
         elif deactivate:
-            click.echo(f"User '{user_name}' deactivated successfully.")
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"User '{user_name}' deactivated successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(f"User '{user_name}' deactivated successfully.")
 
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -390,14 +466,21 @@ def update_user_cli(
 @update.command("alias")
 @click.argument("alias_name")
 @click.argument("collection")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def update_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> None:
+def update_alias_cli(
+    ctx: click.Context, alias_name: str, collection: str, json_output: bool
+) -> None:
     """Update an alias for a collection in Weaviate."""
     client = None
     try:
         client = get_client_from_context(ctx)
         alias_man = AliasManager(client)
-        alias_man.update_alias(alias_name=alias_name, collection=collection)
+        alias_man.update_alias(
+            alias_name=alias_name, collection=collection, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

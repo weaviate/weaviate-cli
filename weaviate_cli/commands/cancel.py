@@ -1,3 +1,4 @@
+import json
 import click
 import sys
 from weaviate_cli.utils import get_client_from_context
@@ -25,15 +26,22 @@ def cancel():
     default=CancelBackupDefaults.backup_id,
     help="Identifier used for the backup (default: test-backup).",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def cancel_backup_cli(ctx: click.Context, backend: str, backup_id: str) -> None:
+def cancel_backup_cli(
+    ctx: click.Context, backend: str, backup_id: str, json_output: bool
+) -> None:
     """Cancel a backup in Weaviate."""
 
     client = None
     try:
         client = get_client_from_context(ctx)
         backup_manager = BackupManager(client)
-        backup_manager.cancel_backup(backend=backend, backup_id=backup_id)
+        backup_manager.cancel_backup(
+            backend=backend, backup_id=backup_id, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -46,15 +54,29 @@ def cancel_backup_cli(ctx: click.Context, backend: str, backup_id: str) -> None:
 
 @cancel.command("replication", help="Cancel a replication operation in Weaviate.")
 @click.argument("op_id")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def cancel_replication_cli(ctx: click.Context, op_id: str) -> None:
+def cancel_replication_cli(ctx: click.Context, op_id: str, json_output: bool) -> None:
     """Cancel a replication operation in Weaviate by OP_ID."""
     client = None
     try:
         client = get_client_from_context(ctx)
         manager = ClusterManager(client)
         manager.cancel_replication(op_id=op_id)
-        click.echo(f"Replication with UUID '{op_id}' cancelled successfully.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Replication with UUID '{op_id}' cancelled successfully.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"Replication with UUID '{op_id}' cancelled successfully.")
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

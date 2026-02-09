@@ -120,7 +120,6 @@ class CreateBenchmarkDefaults:
     fail_on_timeout: bool = False
     max_duration: int = 300
     collection: str = "Movies"
-    term: str = "Action movies"
     certainty: bool = False
     output: str = "stdout"
     query_type: str = "hybrid"
