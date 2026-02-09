@@ -87,6 +87,7 @@ class CreateTenantsDefaults:
     number_tenants: int = 100
     tenant_batch_size: Optional[int] = None
     state: str = "active"
+    tenants: Optional[List[str]] = None
 
 
 @dataclass

@@ -713,6 +713,83 @@ class DataManager:
             )
             return collection
 
+    def _resolve_tenants_for_ingestion(
+        self,
+        col: Collection,
+        mt_enabled: bool,
+        auto_tenant_creation_enabled: bool,
+        tenant_suffix: str,
+        auto_tenants: int,
+        tenants_list: Optional[List[str]],
+    ) -> List[str]:
+        """
+        Resolve which tenants to ingest data into based on collection config and user options.
+
+        Cases handled:
+        1. Non-MT collection: no tenant options allowed, returns ["None"] sentinel
+        2. MT collection with --auto_tenants N: generates N tenant names (requires auto_tenant_creation)
+        3. MT collection with --tenants: uses provided list (tenants auto-created if enabled, else must exist)
+        4. MT collection with neither: uses existing tenants matching suffix (error if none and no auto-creation)
+        """
+        # Case 1: Non-multi-tenant collection
+        if not mt_enabled:
+            if tenants_list is not None or auto_tenants > 0:
+                raise Exception(
+                    f"Collection '{col.name}' does not have multi-tenancy enabled. "
+                    "Adding data to tenants is not possible."
+                )
+            return ["None"]  # Sentinel for non-MT ingestion
+
+        # Multi-tenant collection from here on
+        # Case 2: Auto-generate N tenants
+        if auto_tenants > 0:
+            if not auto_tenant_creation_enabled:
+                raise Exception(
+                    f"Auto tenant creation is not enabled for class '{col.name}'. "
+                    "Please enable it using <update class> command"
+                )
+            # Find existing tenants matching the suffix pattern and highest index
+            existing_tenants = col.tenants.get()
+            existing_matching = []
+            highest_index = -1
+
+            for tenant_name in existing_tenants.keys():
+                if tenant_name.startswith(f"{tenant_suffix}-"):
+                    existing_matching.append(tenant_name)
+                    try:
+                        index = int(tenant_name[len(f"{tenant_suffix}-") :])
+                        highest_index = max(highest_index, index)
+                    except ValueError:
+                        # Tenant matches prefix but doesn't follow numeric pattern - skip indexing
+                        continue
+
+            if len(existing_matching) >= auto_tenants:
+                return existing_matching[:auto_tenants]
+
+            # Generate additional tenant names starting from highest_index + 1
+            num_to_generate = auto_tenants - len(existing_matching)
+            start_index = highest_index + 1
+            additional = [
+                f"{tenant_suffix}-{i}"
+                for i in range(start_index, start_index + num_to_generate)
+            ]
+            return existing_matching + additional
+
+        # Case 3: Explicit tenant list provided
+        if tenants_list is not None:
+            return tenants_list
+
+        # Case 4: No tenant options - use existing tenants matching suffix
+        existing_tenants = [
+            name for name in col.tenants.get().keys() if name.startswith(tenant_suffix)
+        ]
+        if not existing_tenants and not auto_tenant_creation_enabled:
+            raise Exception(
+                f"No tenants present in class '{col.name}' with suffix '{tenant_suffix}'. "
+                "Please create tenants using <create tenants> command or provide tenants using --tenants"
+            )
+        return existing_tenants
+
     def create_data(
         self,
         collection: Optional[str] = CreateDataDefaults.collection,
@@ -739,65 +816,32 @@ class DataManager:
             )
 
         col: Collection = self.client.collections.get(collection)
-        mt_enabled = col.config.get().multi_tenancy_config.enabled
+        mt_config = col.config.get().multi_tenancy_config
+        mt_enabled = mt_config.enabled
+        auto_tenant_creation_enabled = mt_config.auto_tenant_creation
+        auto_tenants_activated_enabled = mt_config.auto_tenant_activation
 
-        if mt_enabled:
-            existing_tenants = [
-                name
-                for name in col.tenants.get().keys()
-                if name.startswith(tenant_suffix)
-            ]
-            if (
-                auto_tenants == CreateDataDefaults.auto_tenants
-                and len(existing_tenants) == 0
-            ):
-                raise Exception(
-                    f"No tenants present in class '{col.name}' with suffix '{tenant_suffix}'. Please create tenants using <create tenants> command"
-                )
-        else:
-            if (
-                tenants_list is not None
-                or auto_tenants != CreateDataDefaults.auto_tenants
-            ):
-                raise Exception(
-                    f"Collection '{col.name}' does not have multi-tenancy enabled. Adding data to tenants is not possible."
-                )
-
-            existing_tenants = ["None"]
-
-        auto_tenants_activated_enabled = (
-            col.config.get().multi_tenancy_config.auto_tenant_activation
-        )
-        auto_tenants_enabled = (
-            col.config.get().multi_tenancy_config.auto_tenant_creation
-        )
-        if auto_tenants > 0 and auto_tenants_enabled is False:
+        # Validate mutual exclusivity of tenant options
+        if auto_tenants > 0 and tenants_list is not None:
             raise Exception(
-                f"Auto tenant creation is not enabled for class '{col.name}'. Please enable it using <update class> command"
+                "Either --tenants or --auto_tenants must be provided, not both."
             )
+
+        # Determine tenants based on multi-tenancy configuration
+        tenants = self._resolve_tenants_for_ingestion(
+            col=col,
+            mt_enabled=mt_enabled,
+            auto_tenant_creation_enabled=auto_tenant_creation_enabled,
+            tenant_suffix=tenant_suffix,
+            auto_tenants=auto_tenants,
+            tenants_list=tenants_list,
+        )
 
         cl_map = {
             "quorum": wvc.ConsistencyLevel.QUORUM,
             "all": wvc.ConsistencyLevel.ALL,
             "one": wvc.ConsistencyLevel.ONE,
         }
-        tenants = existing_tenants
-        if auto_tenants > 0:
-            if tenants_list is not None:
-                raise Exception(
-                    f"Either --tenants or --auto_tenants must be provided, not both."
-                )
-            if existing_tenants == ["None"]:
-                tenants = [f"{tenant_suffix}-{i}" for i in range(1, auto_tenants + 1)]
-            else:
-                if len(existing_tenants) < auto_tenants:
-                    tenants += [
-                        f"{tenant_suffix}-{i}"
-                        for i in range(len(existing_tenants) + 1, auto_tenants + 1)
-                    ]
-        else:
-            if tenants_list is not None:
-                tenants = tenants_list
 
         click.echo(f"Preparing to insert {limit} objects into class '{col.name}'")
         for tenant in tenants:
@@ -819,7 +863,7 @@ class DataManager:
                 )
                 after_length = len(col)
             else:
-                if not auto_tenants_enabled and not col.tenants.exists(tenant):
+                if not auto_tenant_creation_enabled and not col.tenants.exists(tenant):
                     raise Exception(
                         f"Tenant '{tenant}' does not exist. Please create it using <create tenants> command"
                     )
@@ -832,7 +876,7 @@ class DataManager:
                     raise Exception(
                         f"Tenant '{tenant}' is not active. Please activate it using <update tenants> command"
                     )
-                if auto_tenants_enabled and not col.tenants.exists(tenant):
+                if auto_tenant_creation_enabled and not col.tenants.exists(tenant):
                     initial_length = 0
                 else:
                     initial_length = len(col.with_tenant(tenant))

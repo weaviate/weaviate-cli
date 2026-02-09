@@ -224,12 +224,17 @@ def create_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=CreateTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant-').",
+    help="The prefix for auto-generated tenant names (default: 'Tenant').",
 )
 @click.option(
     "--number_tenants",
     default=CreateTenantsDefaults.number_tenants,
-    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}).",
+    help=f"Number of tenants to auto-generate (default: {CreateTenantsDefaults.number_tenants}). Ignored if --tenants is provided.",
+)
+@click.option(
+    "--tenants",
+    default=None,
+    help="Comma separated list of tenant names to create. Overrides --tenant_suffix and --number_tenants.",
 )
 @click.option(
     "--tenant_batch_size",
@@ -244,21 +249,22 @@ def create_collection_cli(
 )
 @click.pass_context
 def create_tenants_cli(
-    ctx, collection, tenant_suffix, number_tenants, tenant_batch_size, state
+    ctx, collection, tenant_suffix, number_tenants, tenants, tenant_batch_size, state
 ):
     """Create tenants in Weaviate."""
 
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
-        # Call the function from create_tenants.py with general and specific arguments
         tenant_manager = TenantManager(client)
+        tenants_list = tenants.split(",") if tenants else None
         tenant_manager.create_tenants(
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             tenant_batch_size=tenant_batch_size,
             state=state,
+            tenants_list=tenants_list,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
