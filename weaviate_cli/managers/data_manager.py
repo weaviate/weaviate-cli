@@ -382,7 +382,7 @@ class DataManager:
         if version.compare(semver.Version.parse("1.34.0")) < 0:
             batch_func = collection.batch.dynamic
         else:
-            batch_func = collection.batch.experimental
+            batch_func = collection.batch.stream
 
         log_interval = max(1, batch_size // 5)  # Log 5 times per batch
         start_time = time.time()
