@@ -379,7 +379,7 @@ class DataManager:
         if verbose:
             print(f"Starting batch {batch_index+1} with {batch_size} objects")
         version = semver.Version.parse(self.client.get_meta()["version"])
-        if version.compare(semver.Version.parse("1.34.0")) < 0:
+        if version.compare(semver.Version.parse("1.36.0")) < 0:
             batch_func = collection.batch.dynamic
         else:
             batch_func = collection.batch.stream
