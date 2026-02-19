@@ -569,6 +569,7 @@ class DataManager:
         file_name: str,
         cl: wvc.ConsistencyLevel,
         num_objects: Optional[int] = None,
+        json_output: bool = False,
     ) -> int:
         counter = 0
         properties: List[wvc.Property] = collection.config.get().properties
@@ -617,7 +618,8 @@ class DataManager:
             print(f"Unexpected error loading data file: {str(e)}")
             return -1
 
-        print(f"Finished processing {counter} objects.")
+        if not json_output:
+            print(f"Finished processing {counter} objects.")
         return counter
 
     def __convert_property_value(self, value: Any, data_type: wvc.DataType) -> Any:
@@ -648,9 +650,11 @@ class DataManager:
         dynamic_batch: bool = False,
         batch_size: int = 1000,
         concurrent_requests: int = MAX_WORKERS,
+        json_output: bool = False,
     ) -> Collection:
         if randomize:
-            click.echo(f"Generating and ingesting {num_objects} objects")
+            if not json_output:
+                click.echo(f"Generating and ingesting {num_objects} objects")
             start_time = time.time()
 
             # Determine vectorizer setup
@@ -694,23 +698,26 @@ class DataManager:
                     print(f"{idx:2d}. UUID {uuid_str}: {msg}")
 
             total_elapsed = time.time() - start_time
-            print(
-                f"Inserted {counter} objects into class '{collection.name}'"
-                + (
-                    f" in {total_elapsed:.2f} seconds ({counter / total_elapsed:.1f} objects/second)"
-                    if verbose
-                    else ""
+            if not json_output:
+                print(
+                    f"Inserted {counter} objects into class '{collection.name}'"
+                    + (
+                        f" in {total_elapsed:.2f} seconds ({counter / total_elapsed:.1f} objects/second)"
+                        if verbose
+                        else ""
+                    )
                 )
-            )
             return cl_collection
         else:
-            click.echo(f"Importing {num_objects} objects from Movies dataset")
+            if not json_output:
+                click.echo(f"Importing {num_objects} objects from Movies dataset")
             num_objects_inserted = self.__import_json(
-                collection, "movies.json", cl, num_objects
+                collection, "movies.json", cl, num_objects, json_output=json_output
             )
-            print(
-                f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
-            )
+            if not json_output:
+                print(
+                    f"Inserted {num_objects_inserted} objects into class '{collection.name}'"
+                )
             return collection
 
     def create_data(
@@ -731,6 +738,7 @@ class DataManager:
         dynamic_batch: bool = CreateDataDefaults.dynamic_batch,
         batch_size: int = CreateDataDefaults.batch_size,
         concurrent_requests: int = MAX_WORKERS,
+        json_output: bool = False,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -799,7 +807,9 @@ class DataManager:
             if tenants_list is not None:
                 tenants = tenants_list
 
-        click.echo(f"Preparing to insert {limit} objects into class '{col.name}'")
+        if not json_output:
+            click.echo(f"Preparing to insert {limit} objects into class '{col.name}'")
+        total_inserted = 0
         for tenant in tenants:
             if tenant == "None":
                 initial_length = len(col)
@@ -816,6 +826,7 @@ class DataManager:
                     dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
                     concurrent_requests=concurrent_requests,
+                    json_output=json_output,
                 )
                 after_length = len(col)
             else:
@@ -836,7 +847,8 @@ class DataManager:
                     initial_length = 0
                 else:
                     initial_length = len(col.with_tenant(tenant))
-                click.echo(f"Processing objects for tenant '{tenant}'")
+                if not json_output:
+                    click.echo(f"Processing objects for tenant '{tenant}'")
                 collection = self.__ingest_data(
                     collection=col.with_tenant(tenant),
                     num_objects=limit,
@@ -850,14 +862,28 @@ class DataManager:
                     dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
                     concurrent_requests=concurrent_requests,
+                    json_output=json_output,
                 )
                 after_length = len(col.with_tenant(tenant))
             if wait_for_indexing:
                 collection.batch.wait_for_vector_indexing()
-            if after_length - initial_length != limit:
+            inserted = after_length - initial_length
+            total_inserted += inserted
+            if inserted != limit:
                 click.echo(
-                    f"Error occurred while ingesting data for tenant '{tenant}'. Expected number of objects inserted: {limit}. Actual number of objects inserted: {after_length - initial_length}. Double check with weaviate-cli get collection"
+                    f"Error occurred while ingesting data for tenant '{tenant}'. Expected number of objects inserted: {limit}. Actual number of objects inserted: {inserted}. Double check with weaviate-cli get collection"
                 )
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "collection": col.name,
+                        "objects_inserted": total_inserted,
+                    },
+                    indent=2,
+                )
+            )
         return collection
 
     def __update_data(
@@ -868,6 +894,7 @@ class DataManager:
         randomize: bool,
         skip_seed: bool,
         verbose: bool = False,
+        json_output: bool = False,
     ) -> int:
         """Update objects in the collection, either with random data or incremental changes."""
 
@@ -913,11 +940,14 @@ class DataManager:
         if len(object_with_vector.objects) > 0:
             vec = object_with_vector.objects[0].vector
             if isinstance(vec, dict):
-                first_vec = next(iter(vec.values()))
-                vector_dimensions = (
-                    len(first_vec) if isinstance(first_vec, list) else len(first_vec[0])
-                )
-            else:
+                first_vec = next(iter(vec.values()), None)
+                if first_vec is not None:
+                    vector_dimensions = (
+                        len(first_vec)
+                        if isinstance(first_vec, list)
+                        else len(first_vec[0])
+                    )
+            elif vec is not None:
                 vector_dimensions = len(vec)
 
         for i in range(iterations):
@@ -1017,20 +1047,21 @@ class DataManager:
             if not use_random_offsets and batch_count < batch_size:
                 break
 
-        if total_updated < num_objects:
+        if total_updated < num_objects and not json_output:
             print(
                 f"Warning: Only found {total_updated} objects to update, less than the requested {num_objects}"
             )
 
         total_elapsed = time.time() - start_time
-        print(
-            f"Updated {total_updated} objects in class '{collection.name}'"
-            + (
-                f" in {total_elapsed:.2f} seconds ({total_updated / total_elapsed:.1f} objects/second)"
-                if verbose
-                else ""
+        if not json_output:
+            print(
+                f"Updated {total_updated} objects in class '{collection.name}'"
+                + (
+                    f" in {total_elapsed:.2f} seconds ({total_updated / total_elapsed:.1f} objects/second)"
+                    if verbose
+                    else ""
+                )
             )
-        )
 
         return total_updated
 
@@ -1042,6 +1073,7 @@ class DataManager:
         randomize: bool = UpdateDataDefaults.randomize,
         skip_seed: bool = UpdateDataDefaults.skip_seed,
         verbose: bool = UpdateDataDefaults.verbose,
+        json_output: bool = False,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -1054,9 +1086,10 @@ class DataManager:
             tenants = [key for key in col.tenants.get().keys()]
         except Exception as e:
             if "multi-tenancy is not enabled" in str(e):
-                click.echo(
-                    f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
-                )
+                if not json_output:
+                    click.echo(
+                        f"Collection '{col.name}' does not have multi-tenancy enabled. Skipping tenant information collection."
+                    )
                 tenants = ["None"]
 
         cl_map = {
@@ -1065,14 +1098,23 @@ class DataManager:
             "one": wvc.ConsistencyLevel.ONE,
         }
 
-        click.echo(f"Preparing to update {limit} objects into class '{col.name}'")
+        if not json_output:
+            click.echo(f"Preparing to update {limit} objects into class '{col.name}'")
+        total_updated = 0
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__update_data(
-                    col, limit, cl_map[consistency_level], randomize, skip_seed, verbose
+                    col,
+                    limit,
+                    cl_map[consistency_level],
+                    randomize,
+                    skip_seed,
+                    verbose,
+                    json_output=json_output,
                 )
             else:
-                click.echo(f"Processing tenant '{tenant}'")
+                if not json_output:
+                    click.echo(f"Processing tenant '{tenant}'")
                 ret = self.__update_data(
                     col.with_tenant(tenant),
                     limit,
@@ -1080,11 +1122,24 @@ class DataManager:
                     randomize,
                     skip_seed,
                     verbose,
+                    json_output=json_output,
                 )
             if ret == -1:
                 raise Exception(
                     f"Failed to update objects in class '{col.name}' for tenant '{tenant}'"
                 )
+            total_updated += ret
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "collection": col.name,
+                        "objects_updated": total_updated,
+                    },
+                    indent=2,
+                )
+            )
 
     def __delete_data(
         self,
@@ -1093,16 +1148,18 @@ class DataManager:
         cl: wvc.ConsistencyLevel,
         uuid: Optional[str] = None,
         verbose: bool = False,
+        json_output: bool = False,
     ) -> int:
 
         if uuid:
             start_time = time.time()
             collection.with_consistency_level(cl).data.delete_by_id(uuid=uuid)
             elapsed = time.time() - start_time
-            print(
-                f"Object deleted: {uuid} from class '{collection.name}'"
-                + (f" in {elapsed:.2f} seconds" if verbose else "")
-            )
+            if not json_output:
+                print(
+                    f"Object deleted: {uuid} from class '{collection.name}'"
+                    + (f" in {elapsed:.2f} seconds" if verbose else "")
+                )
             return 1
 
         start_time = time.time()
@@ -1151,14 +1208,15 @@ class DataManager:
                 break
 
         total_elapsed = time.time() - start_time
-        print(
-            f"Deleted {deleted_objects} objects from class '{collection.name}'"
-            + (
-                f" in {total_elapsed:.2f} seconds ({deleted_objects / total_elapsed:.1f} objects/second)"
-                if verbose
-                else ""
+        if not json_output:
+            print(
+                f"Deleted {deleted_objects} objects from class '{collection.name}'"
+                + (
+                    f" in {total_elapsed:.2f} seconds ({deleted_objects / total_elapsed:.1f} objects/second)"
+                    if verbose
+                    else ""
+                )
             )
-        )
         return deleted_objects
 
     def delete_data(
@@ -1169,6 +1227,7 @@ class DataManager:
         tenants_list: Optional[List[str]] = None,
         uuid: Optional[str] = DeleteDataDefaults.uuid,
         verbose: bool = DeleteDataDefaults.verbose,
+        json_output: bool = False,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -1191,24 +1250,39 @@ class DataManager:
 
         tenants = tenants_list if tenants_list is not None else existing_tenants
 
+        total_deleted = 0
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__delete_data(  # NOTE: call the correct delete impl
-                    col, limit, cl_map[consistency_level], uuid, verbose
+                    col, limit, cl_map[consistency_level], uuid, verbose, json_output
                 )
             else:
-                click.echo(f"Processing tenant '{tenant}'")
+                if not json_output:
+                    click.echo(f"Processing tenant '{tenant}'")
                 ret = self.__delete_data(
                     col.with_tenant(tenant),
                     limit,
                     cl_map[consistency_level],
                     uuid,
                     verbose,
+                    json_output,
                 )
             if ret == -1:
                 raise Exception(
                     f"Failed to delete objects in class '{col.name}' for tenant '{tenant}'"
                 )
+            total_deleted += ret
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "collection": col.name,
+                        "objects_deleted": total_deleted,
+                    },
+                    indent=2,
+                )
+            )
 
     def __query_data(
         self,
@@ -1219,6 +1293,7 @@ class DataManager:
         query: str,
         properties: str,
         target_vector: Optional[str] = None,
+        json_output: bool = False,
     ) -> None:
 
         start_time = datetime.now()
@@ -1261,7 +1336,7 @@ class DataManager:
 
         if response is not None:
             properties_list = [prop.strip() for prop in properties.split(",")]
-            pp_objects(response, properties_list)
+            pp_objects(response, properties_list, json_output=json_output)
         else:
             click.echo("No objects found")
             return -1
@@ -1283,6 +1358,7 @@ class DataManager:
         properties: str = QueryDataDefaults.properties,
         tenants: Optional[str] = QueryDataDefaults.tenants,
         target_vector: Optional[str] = QueryDataDefaults.target_vector,
+        json_output: bool = False,
     ) -> None:
 
         if not self.client.collections.exists(collection):
@@ -1341,9 +1417,11 @@ class DataManager:
                     query,
                     properties,
                     target_vector,
+                    json_output=json_output,
                 )
             else:
-                print(f"Querying tenant '{tenant}'")
+                if not json_output:
+                    print(f"Querying tenant '{tenant}'")
                 ret = self.__query_data(
                     col.with_tenant(tenant),
                     limit,
@@ -1352,6 +1430,7 @@ class DataManager:
                     query,
                     properties,
                     target_vector,
+                    json_output=json_output,
                 )
             if ret == -1:
                 raise Exception(

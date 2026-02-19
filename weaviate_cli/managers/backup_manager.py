@@ -1,3 +1,4 @@
+import json
 import semver
 import click
 from typing import Optional
@@ -23,6 +24,7 @@ class BackupManager:
         exclude: Optional[str] = CreateBackupDefaults.exclude,
         wait: bool = CreateBackupDefaults.wait,
         cpu_for_backup: int = CreateBackupDefaults.cpu_for_backup,
+        json_output: bool = False,
     ) -> None:
 
         version = semver.Version.parse(self.client.get_meta()["version"])
@@ -59,7 +61,18 @@ class BackupManager:
                 f"Backup '{backup_id}' failed with status '{result.status.value}'"
             )
 
-        click.echo(f"Backup '{backup_id}' created successfully in Weaviate.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Backup '{backup_id}' created successfully in Weaviate.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"Backup '{backup_id}' created successfully in Weaviate.")
 
     def restore_backup(
         self,
@@ -68,6 +81,7 @@ class BackupManager:
         include: Optional[str] = RestoreBackupDefaults.include,
         exclude: Optional[str] = RestoreBackupDefaults.exclude,
         wait: bool = RestoreBackupDefaults.wait,
+        json_output: bool = False,
     ) -> None:
 
         result = self.client.backup.restore(
@@ -84,13 +98,25 @@ class BackupManager:
                 f"Backup '{backup_id}' failed with status '{result.status.value}'"
             )
 
-        click.echo(f"Backup '{backup_id}' restored successfully in Weaviate.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Backup '{backup_id}' restored successfully in Weaviate.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"Backup '{backup_id}' restored successfully in Weaviate.")
 
     def get_backup(
         self,
         backend: str = GetBackupDefaults.backend,
         backup_id: str = GetBackupDefaults.backup_id,
         restore: bool = GetBackupDefaults.restore,
+        json_output: bool = False,
     ) -> None:
 
         if restore:
@@ -98,21 +124,41 @@ class BackupManager:
                 backup_id=backup_id,
                 backend=backend,
             )
-            print(f"Backup ID: {backup.backup_id}")
-            print(f"Backup Path: {backup.path}")
-            print(f"Backup Status: {backup.status}")
+            data = {
+                "backup_id": backup.backup_id,
+                "path": backup.path,
+                "status": str(backup.status),
+            }
             if "collections" in backup:
-                print(f"Collections: {backup.collections}")
-        else:
-            if backup_id is not None:
-                backup = self.client.backup.get_create_status(
-                    backup_id=backup_id, backend=backend
-                )
+                data["collections"] = backup.collections
+            if json_output:
+                click.echo(json.dumps(data, indent=2, default=str))
+            else:
                 print(f"Backup ID: {backup.backup_id}")
                 print(f"Backup Path: {backup.path}")
                 print(f"Backup Status: {backup.status}")
                 if "collections" in backup:
                     print(f"Collections: {backup.collections}")
+        else:
+            if backup_id is not None:
+                backup = self.client.backup.get_create_status(
+                    backup_id=backup_id, backend=backend
+                )
+                data = {
+                    "backup_id": backup.backup_id,
+                    "path": backup.path,
+                    "status": str(backup.status),
+                }
+                if "collections" in backup:
+                    data["collections"] = backup.collections
+                if json_output:
+                    click.echo(json.dumps(data, indent=2, default=str))
+                else:
+                    print(f"Backup ID: {backup.backup_id}")
+                    print(f"Backup Path: {backup.path}")
+                    print(f"Backup Status: {backup.status}")
+                    if "collections" in backup:
+                        print(f"Collections: {backup.collections}")
             else:
                 raise Exception("This functionality is not supported yet.")
                 # backups = client.backup.list_backups(backend=backend)
@@ -128,9 +174,21 @@ class BackupManager:
         self,
         backend: str = CancelBackupDefaults.backend,
         backup_id: str = CancelBackupDefaults.backup_id,
+        json_output: bool = False,
     ) -> None:
         if self.client.backup.cancel(backend=backend, backup_id=backup_id):
-            click.echo(f"Backup '{backup_id}' cancelled successfully in Weaviate.")
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Backup '{backup_id}' cancelled successfully in Weaviate.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(f"Backup '{backup_id}' cancelled successfully in Weaviate.")
         else:
             backup_status = self.client.backup.get_create_status(
                 backend=backend, backup_id=backup_id

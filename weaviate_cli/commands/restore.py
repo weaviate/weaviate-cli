@@ -38,8 +38,11 @@ def restore() -> None:
     default=RestoreBackupDefaults.exclude,
     help="Collection to exclude in backup (default: None).",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait):
+def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait, json_output):
     """Restore a backup in Weaviate."""
 
     client = None
@@ -52,6 +55,7 @@ def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait):
             include=include,
             exclude=exclude,
             wait=wait,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

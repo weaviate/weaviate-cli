@@ -1,4 +1,5 @@
 from typing import Optional
+import json
 import click
 import semver
 
@@ -23,6 +24,7 @@ class TenantManager:
         number_tenants: int = CreateTenantsDefaults.number_tenants,
         tenant_batch_size: Optional[int] = CreateTenantsDefaults.tenant_batch_size,
         state: str = CreateTenantsDefaults.state,
+        json_output: bool = False,
     ) -> None:
         """
         Create tenants for a given collection in Weaviate.
@@ -142,13 +144,37 @@ class TenantManager:
                         f"Tenant '{tenant_name}' has activity status '{tenant.activity_status}', but expected '{tenant_state_map[state]}'"
                     )
 
-            click.echo(
-                f"{len(new_tenant_names)} tenants added with tenant status '{tenant_state_map[state]}' for collection '{collection.name}'"
-            )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "tenants_created": len(new_tenant_names),
+                            "message": f"{len(new_tenant_names)} tenants added with status '{tenant_state_map[state]}' for collection '{collection.name}'",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"{len(new_tenant_names)} tenants added with tenant status '{tenant_state_map[state]}' for collection '{collection.name}'"
+                )
         else:
-            click.echo(
-                f"No new tenants were created for collection '{collection.name}'"
-            )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "tenants_created": 0,
+                            "message": f"No new tenants were created for collection '{collection.name}'",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"No new tenants were created for collection '{collection.name}'"
+                )
 
     def delete_tenants(
         self,
@@ -156,6 +182,7 @@ class TenantManager:
         tenant_suffix: str = DeleteTenantsDefaults.tenant_suffix,
         number_tenants: int = DeleteTenantsDefaults.number_tenants,
         tenants_list: Optional[list] = DeleteTenantsDefaults.tenants,
+        json_output: bool = False,
     ) -> None:
         """
         Delete tenants for a given collection in Weaviate.
@@ -186,9 +213,10 @@ class TenantManager:
             )
 
         if tenant_suffix == "*":
-            click.echo(
-                f"Deleting {number_tenants} existing tenants from {collection.name} (not taking into account the tenant suffix)"
-            )
+            if not json_output:
+                click.echo(
+                    f"Deleting {number_tenants} existing tenants from {collection.name} (not taking into account the tenant suffix)"
+                )
             tenants_list_with_suffix = collection.tenants.get()
         else:
             if tenants_list is not None:
@@ -239,13 +267,26 @@ class TenantManager:
             len(remaining_tenants) == total_tenants - removed_tenants
         ), f"Expected {total_tenants - removed_tenants} tenants, but found {len(remaining_tenants)}"
 
-        click.echo(f"{len(deleting_tenants)} tenants deleted")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "tenants_deleted": len(deleting_tenants),
+                        "message": f"{len(deleting_tenants)} tenants deleted",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"{len(deleting_tenants)} tenants deleted")
 
     def get_tenants(
         self,
         collection: str = GetTenantsDefaults.collection,
         tenant_id: str = GetTenantsDefaults.tenant_id,
         verbose: bool = GetTenantsDefaults.verbose,
+        json_output: bool = False,
     ) -> dict:
         """
         Retrieve tenants for a given collection in Weaviate.
@@ -269,6 +310,44 @@ class TenantManager:
                 raise Exception(f"Tenant '{tenant_id}' not found in class {collection}")
         else:
             tenants = self.client.collections.get(collection).tenants.get()
+
+        if json_output:
+            tenants_data = []
+            for name, tenant in tenants.items():
+                tenants_data.append(
+                    {"name": name, "activity_status": tenant.activity_status.value}
+                )
+            active = sum(
+                1
+                for t in tenants.values()
+                if t.activity_status == TenantActivityStatus.ACTIVE
+            )
+            inactive = sum(
+                1
+                for t in tenants.values()
+                if t.activity_status == TenantActivityStatus.INACTIVE
+            )
+            offloaded = sum(
+                1
+                for t in tenants.values()
+                if t.activity_status == TenantActivityStatus.OFFLOADED
+            )
+            click.echo(
+                json.dumps(
+                    {
+                        "tenants": tenants_data,
+                        "summary": {
+                            "total": len(tenants),
+                            "active": active,
+                            "inactive": inactive,
+                            "offloaded": offloaded,
+                        },
+                    },
+                    indent=2,
+                    default=str,
+                )
+            )
+            return tenants
 
         if verbose:
             click.echo(f"{'Tenant Name':<30}{'Activity Status':<20}")
@@ -306,6 +385,7 @@ class TenantManager:
         number_tenants: int = UpdateTenantsDefaults.number_tenants,
         state: str = UpdateTenantsDefaults.state,
         tenants: Optional[str] = UpdateTenantsDefaults.tenants,
+        json_output: bool = False,
     ) -> None:
         """
         Updates the activity status of a specified number of tenants in a collection.
@@ -410,6 +490,18 @@ class TenantManager:
                 raise Exception(
                     f"Tenant '{tenant.name}' has activity status '{tenant.activity_status}', but expected '{tenant_state_map[state]}'"
                 )
-        click.echo(
-            f"{len(tenants_list)} tenants updated with tenant status '{tenant.activity_status}' for class '{collection.name}'."
-        )
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "tenants_updated": len(tenants_list),
+                        "message": f"{len(tenants_list)} tenants updated with tenant status '{tenant.activity_status}' for class '{collection.name}'.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(
+                f"{len(tenants_list)} tenants updated with tenant status '{tenant.activity_status}' for class '{collection.name}'."
+            )

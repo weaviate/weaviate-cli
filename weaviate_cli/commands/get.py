@@ -1,3 +1,4 @@
+import json
 import sys
 from typing import List, Optional
 import click
@@ -43,8 +44,11 @@ def get():
     help="The name of the collection to get.",
     shell_complete=collection_name_complete,
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_collection_cli(ctx, collection):
+def get_collection_cli(ctx, collection, json_output):
     """Get all collections in Weaviate. If --collection is provided, get the specific collection."""
 
     client = None
@@ -52,7 +56,7 @@ def get_collection_cli(ctx, collection):
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
         # Call the function from get_collections.py with general arguments
-        collection_man.get_collection(collection=collection)
+        collection_man.get_collection(collection=collection, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -75,8 +79,11 @@ def get_collection_cli(ctx, collection):
     help="The tenant ID to get.",
 )
 @click.option("--verbose", is_flag=True, help="Print verbose output.")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_tenants_cli(ctx, collection, tenant_id, verbose):
+def get_tenants_cli(ctx, collection, tenant_id, verbose, json_output):
     """Get tenants from a collection in Weaviate."""
 
     client = None
@@ -87,6 +94,7 @@ def get_tenants_cli(ctx, collection, tenant_id, verbose):
             collection=collection,
             tenant_id=tenant_id,
             verbose=verbose,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -105,8 +113,11 @@ def get_tenants_cli(ctx, collection, tenant_id, verbose):
     help="The name of the collection to get tenants from.",
     shell_complete=collection_name_complete,
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_shards_cli(ctx, collection):
+def get_shards_cli(ctx, collection, json_output):
     """Get shards from a collection in Weaviate."""
 
     client = None
@@ -116,6 +127,7 @@ def get_shards_cli(ctx, collection):
         shard_man = ShardManager(client)
         shard_man.get_shards(
             collection=collection,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -144,15 +156,23 @@ def get_shards_cli(ctx, collection):
     is_flag=True,
     help="Get the status of the restoration job for the backup.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_backup_cli(ctx, backend, backup_id, restore):
+def get_backup_cli(ctx, backend, backup_id, restore, json_output):
     """Get backup status for a given backup ID. If --restore is provided, get the status of the restoration job for the backup."""
 
     client = None
     try:
         client = get_client_from_context(ctx)
         backup_man = BackupManager(client)
-        backup_man.get_backup(backend=backend, backup_id=backup_id, restore=restore)
+        backup_man.get_backup(
+            backend=backend,
+            backup_id=backup_id,
+            restore=restore,
+            json_output=json_output,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -186,8 +206,11 @@ def get_backup_cli(ctx, backend, backup_id, restore):
     is_flag=True,
     help="Get all roles in Weaviate.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_role_cli(ctx, role_name, user_name, user_type, all):
+def get_role_cli(ctx, role_name, user_name, user_type, all, json_output):
     """Get a specific role or all roles in Weaviate. If no arguments are provided, get the roles of the current user. If --role_name is provided, get the specific role. If --user_name is provided, get the roles of the specific user."""
 
     client = None
@@ -221,7 +244,13 @@ def get_role_cli(ctx, role_name, user_name, user_type, all):
             else:
                 roles = role_man.role_of_current_user().values()
         if len(roles) == 0:
-            click.echo("No roles found.")
+            if json_output:
+                click.echo(json.dumps({"roles": []}, indent=2))
+            else:
+                click.echo("No roles found.")
+        elif json_output:
+            roles_data = [RoleManager.role_to_dict(role) for role in roles]
+            click.echo(json.dumps({"roles": roles_data}, indent=2, default=str))
         else:
             for role in roles:
                 role_man.print_role(role)
@@ -251,8 +280,17 @@ def get_role_cli(ctx, role_name, user_name, user_type, all):
     is_flag=True,
     help="Get all users in Weaviate.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_user_cli(ctx, role_name: Optional[str], user_name: Optional[str], all: bool):
+def get_user_cli(
+    ctx,
+    role_name: Optional[str],
+    user_name: Optional[str],
+    all: bool,
+    json_output: bool,
+):
     """Get users of a specific role."""
 
     client = None
@@ -265,26 +303,45 @@ def get_user_cli(ctx, role_name: Optional[str], user_name: Optional[str], all: b
         user_man = UserManager(client)
         if all:
             users = user_man.get_all_users()
-            click.echo("Users:")
-            for user in users:
-                click.echo("-" * 50)
-                user_man.print_db_user(user)
+            if json_output:
+                users_data = [
+                    {
+                        "user_id": u.user_id,
+                        "active": u.active,
+                        "user_type": u.user_type.name,
+                        "roles": list(u.role_names),
+                    }
+                    for u in users
+                ]
+                click.echo(json.dumps({"users": users_data}, indent=2, default=str))
+            else:
+                click.echo("Users:")
+                for user in users:
+                    click.echo("-" * 50)
+                    user_man.print_db_user(user)
         elif role_name:
             users = user_man.get_user_from_role(role_name=role_name)
-            print(f"Users of role '{role_name}':")
-            separator = "-" * 50
-            print(f"\n{separator}")
-            if len(users) == 0:
-                print(f"No users found for role '{role_name}'.")
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {"role": role_name, "users": list(users)}, indent=2, default=str
+                    )
+                )
             else:
-                for user in users:
-                    user_man.print_user(user)
+                print(f"Users of role '{role_name}':")
+                separator = "-" * 50
+                print(f"\n{separator}")
+                if len(users) == 0:
+                    print(f"No users found for role '{role_name}'.")
+                else:
+                    for user in users:
+                        user_man.print_user(user)
         elif user_name:
             user = user_man.get_user(user_name=user_name)
-            user_man.print_db_user(user)
+            user_man.print_db_user(user, json_output=json_output)
         else:
             user = user_man.get_user()
-            user_man.print_own_user(user)
+            user_man.print_own_user(user, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -317,8 +374,11 @@ def get_user_cli(ctx, role_name: Optional[str], user_name: Optional[str], all: b
     help="The name of the collection to get shards information from.",
     shell_complete=collection_name_complete,
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_nodes_cli(ctx, minimal, shards, collections, collection):
+def get_nodes_cli(ctx, minimal, shards, collections, collection, json_output):
     """Get the node information."""
     client = None
     try:
@@ -333,6 +393,7 @@ def get_nodes_cli(ctx, minimal, shards, collections, collection):
             shards=shards,
             collections=collections,
             collection=collection,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -360,9 +421,16 @@ def get_nodes_cli(ctx, minimal, shards, collections, collection):
     is_flag=True,
     help="Get all aliases in Weaviate.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def get_alias_cli(
-    ctx: click.Context, alias_name: Optional[str], collection: Optional[str], all: bool
+    ctx: click.Context,
+    alias_name: Optional[str],
+    collection: Optional[str],
+    all: bool,
+    json_output: bool,
 ) -> None:
     """Get an alias for a collection in Weaviate."""
     client = None
@@ -380,34 +448,56 @@ def get_alias_cli(
         alias_man = AliasManager(client)
         if all:
             aliases = alias_man.list_aliases()
-            click.echo("Aliases")
-            separator = "-" * 50
-            click.echo(f"\n{separator}")
-            if len(aliases) == 0:
-                click.echo("No aliases found.")
+            if json_output:
+                aliases_data = [
+                    {"alias": a.alias, "collection": a.collection}
+                    for a in aliases.values()
+                ]
+                click.echo(json.dumps({"aliases": aliases_data}, indent=2, default=str))
             else:
-                for alias in aliases.values():
-                    alias_man.print_alias(alias)
-                    click.echo(f"\n{separator}")
+                click.echo("Aliases")
+                separator = "-" * 50
+                click.echo(f"\n{separator}")
+                if len(aliases) == 0:
+                    click.echo("No aliases found.")
+                else:
+                    for alias in aliases.values():
+                        alias_man.print_alias(alias)
+                        click.echo(f"\n{separator}")
         elif collection:
             aliases = alias_man.list_aliases(collection=collection)
-            click.echo(f"Aliases for collection '{collection}'")
-            separator = "-" * 50
-            click.echo(f"\n{separator}")
-            if len(aliases) == 0:
-                click.echo(f"No aliases found for collection '{collection}'.")
+            if json_output:
+                aliases_data = [
+                    {"alias": a.alias, "collection": a.collection}
+                    for a in aliases.values()
+                ]
+                click.echo(
+                    json.dumps(
+                        {"collection": collection, "aliases": aliases_data},
+                        indent=2,
+                        default=str,
+                    )
+                )
             else:
-                for alias in aliases.values():
-                    alias_man.print_alias(alias)
-                    click.echo(f"\n{separator}")
+                click.echo(f"Aliases for collection '{collection}'")
+                separator = "-" * 50
+                click.echo(f"\n{separator}")
+                if len(aliases) == 0:
+                    click.echo(f"No aliases found for collection '{collection}'.")
+                else:
+                    for alias in aliases.values():
+                        alias_man.print_alias(alias)
+                        click.echo(f"\n{separator}")
         else:
-            click.echo(f"Alias '{alias_name}'")
-            separator = "-" * 50
-            click.echo(f"\n{separator}")
             alias = alias_man.get_alias(alias_name=alias_name)
             if alias:
-                alias_man.print_alias(alias)
-                click.echo(f"\n{separator}")
+                if not json_output:
+                    separator = "-" * 50
+                    click.echo(f"Alias '{alias_name}'")
+                    click.echo(f"\n{separator}")
+                alias_man.print_alias(alias, json_output=json_output)
+                if not json_output:
+                    click.echo(f"\n{separator}")
             else:
                 click.echo(f"Alias '{alias_name}' not found.")
     except Exception as e:
@@ -427,8 +517,13 @@ def get_alias_cli(
     default=False,
     help="Include the history of the replication operation.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_replication_cli(ctx: click.Context, op_id: str, history: bool) -> None:
+def get_replication_cli(
+    ctx: click.Context, op_id: str, history: bool, json_output: bool
+) -> None:
     """Get a replication operation in Weaviate by OP-ID."""
     client = None
     try:
@@ -436,7 +531,7 @@ def get_replication_cli(ctx: click.Context, op_id: str, history: bool) -> None:
         manager = ClusterManager(client, click.echo)
         op = manager.get_replication(op_id=op_id, include_history=history)
         if op is not None:
-            manager.print_replication(op)
+            manager.print_replication(op, json_output=json_output)
         else:
             click.echo(f"No replication operation found with UUID '{op_id}'")
     except Exception as e:
@@ -450,15 +545,18 @@ def get_replication_cli(ctx: click.Context, op_id: str, history: bool) -> None:
 
 
 @get.command("all-replications", help="Get all replication operations in Weaviate.")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def get_replications_cli(ctx: click.Context) -> None:
+def get_replications_cli(ctx: click.Context, json_output: bool) -> None:
     """Get all replication operations in Weaviate."""
     client = None
     try:
         client = get_client_from_context(ctx)
         manager = ClusterManager(client, click.echo)
         ops = manager.get_all_replications()
-        manager.print_replications(ops)
+        manager.print_replications(ops, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

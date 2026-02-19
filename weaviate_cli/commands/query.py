@@ -62,6 +62,13 @@ def query() -> None:
     default=QueryDataDefaults.target_vector,
     help="Target vector to query (default: 'None').",
 )
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    default=False,
+    help="Output in JSON format.",
+)
 @click.pass_context
 def query_data_cli(
     ctx,
@@ -73,6 +80,7 @@ def query_data_cli(
     properties,
     tenants,
     target_vector,
+    json_output,
 ):
     """Query data in a collection in Weaviate."""
 
@@ -90,6 +98,7 @@ def query_data_cli(
             properties=properties,
             tenants=tenants,
             target_vector=target_vector,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -125,6 +134,13 @@ def query_data_cli(
     default=False,
     help="Include the history of the replication operations.",
 )
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    default=False,
+    help="Output in JSON format.",
+)
 @click.pass_context
 def query_replications_cli(
     ctx: click.Context,
@@ -132,6 +148,7 @@ def query_replications_cli(
     shard: Optional[str],
     target_node: Optional[str],
     history: bool,
+    json_output: bool,
 ) -> None:
     """Query replication operations by collection, collection and shard, or target node in Weaviate."""
 
@@ -159,10 +176,7 @@ def query_replications_cli(
         else:
             ops = manager.query_all_replications(history)
 
-        for op in ops:
-            manager.print_replication(op)
-        if not ops:
-            click.echo("No replication operations found.")
+        manager.print_replications(ops, json_output=json_output)
 
     except WeaviateConnectionError as e:
         click.echo(f"Connection error: {e}")
@@ -184,11 +198,19 @@ def query_replications_cli(
     default=None,
     help="The shard to query. If not provided, the state of all shards will be queried.",
 )
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    default=False,
+    help="Output in JSON format.",
+)
 @click.pass_context
 def query_sharding_state_cli(
     ctx: click.Context,
     collection: str,
     shard: Optional[str],
+    json_output: bool,
 ):
     """Query the sharding state of a COLLECTION in Weaviate."""
 
@@ -203,14 +225,15 @@ def query_sharding_state_cli(
             click.echo(f"No sharding state found for collection '{collection}'")
             return
 
-        if shard:
-            click.echo(
-                f"Sharding state for collection '{collection}', shard '{shard}':"
-            )
-        else:
-            click.echo(f"Sharding state for collection '{collection}':")
+        if not json_output:
+            if shard:
+                click.echo(
+                    f"Sharding state for collection '{collection}', shard '{shard}':"
+                )
+            else:
+                click.echo(f"Sharding state for collection '{collection}':")
 
-        manager.print_sharding_state(state)
+        manager.print_sharding_state(state, json_output=json_output)
 
     except WeaviateConnectionError as e:
         click.echo(f"Connection error: {e}")
