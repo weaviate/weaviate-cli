@@ -139,9 +139,29 @@ weaviate-cli delete collection --collection MyCollection --json
 weaviate-cli delete collection --all --json
 ```
 
-Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`
+Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
 
-Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`
+Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+
+#### Object TTL
+
+```bash
+# Create with timestamp-based TTL (requires inverted_index timestamp for existing collections)
+weaviate-cli create collection --collection MyTTL --inverted_index timestamp --object_ttl_type create --object_ttl_time 3600 --json
+
+# Create with property-based TTL (date property, time=0 means expire at exact property date)
+weaviate-cli create collection --collection MyTTL --object_ttl_type property --object_ttl_time 0 --object_ttl_property_name expiresAt --json
+
+# Enable TTL on existing collection
+weaviate-cli update collection --collection MyTTL --object_ttl_type create --object_ttl_time 3600 --object_ttl_filter_expired true --json
+
+# Disable TTL (use "disable", not "disabled")
+weaviate-cli update collection --collection MyTTL --object_ttl_type disable --json
+```
+
+TTL types: `create` (by `_creationTimeUnix`), `update` (by `_lastUpdateTimeUnix`), `property` (by custom date property), `disable`
+
+**Note**: `--object_ttl_time` is in seconds. Value of `0` is valid for property type (expire at exact date). Timestamp types (`create`/`update`) require a minimum of 60 seconds.
 
 See [references/collections.md](references/collections.md) for full options.
 
@@ -160,6 +180,8 @@ Search types: `fetch`, `vector` (near_text), `keyword` (bm25), `hybrid`, `uuid`
 Key data options: `--consistency_level`, `--auto_tenants N`, `--tenants "T1,T2"`, `--vector_dimensions`, `--batch_size`, `--concurrent_requests`, `--wait_for_indexing`, `--dynamic_batch`, `--multi_vector`
 
 Key query options: `--properties "title,keywords"`, `--tenants "T1"`, `--target_vector "default"`, `--consistency_level`
+
+**Note**: `--consistency_level` values must be **lowercase**: `one`, `quorum`, `all` (not `ONE`, `QUORUM`, `ALL`).
 
 See [references/data.md](references/data.md) and [references/search.md](references/search.md).
 
@@ -220,6 +242,8 @@ weaviate-cli delete user --user_name test-user --json
 ```
 
 Permission format: `action:target`. See [references/rbac.md](references/rbac.md) for full permission reference.
+
+**Shell quoting**: Permissions with wildcards must be quoted to prevent shell globbing: `-p 'crud_data:*'` (not `-p crud_data:*`, which fails in zsh with `no matches found`).
 
 ### Cluster & Nodes
 
@@ -304,11 +328,14 @@ hot/active  <-->  cold/inactive
 - Data operations require tenants in `hot`/`active` state
 
 ### RBAC Workflow
-1. `create role --role_name X -p <permission>` -- create role with permissions
-2. `create user --user_name Y` -- create user (returns API key)
+1. `create role --role_name X -p '<permission>'` -- create role with permissions (quote wildcards!)
+2. `create user --user_name Y --store` -- create user and auto-save API key into active config
 3. `assign role --role_name X --user_name Y` -- assign role to user
 4. Verify: `get role --role_name X` and `get user --user_name Y`
-5. Cleanup: `revoke role` -> `delete role` / `delete user`
+5. Test as new user: `weaviate-cli --config-file <config> --user Y <command> --json`
+6. Cleanup: `revoke role` -> `delete role` / `delete user`
+
+**Prerequisite**: The Weaviate cluster must be deployed with `DYNAMIC_USERS=true` for `create user` to work. Without it, only static API key users (configured at deploy time) are available.
 
 ### Backup Workflow
 1. `create backup --backend s3 --backup_id my-backup --wait` -- wait for completion
@@ -323,6 +350,14 @@ hot/active  <-->  cold/inactive
 4. `get replication <UUID>` -- monitor progress
 5. `cancel replication <UUID>` -- cancel if needed
 6. `delete replication <UUID>` -- cleanup completed operation
+
+### Object TTL Workflow
+1. `create collection --object_ttl_type create --object_ttl_time 3600` -- create with TTL (or `update collection` to enable later)
+2. TTL requires server-side `objects_ttl_delete_schedule` runtime config to be set (e.g., `@every 10s`)
+3. `get collection --collection X` -- verify `objectTtlConfig` in response
+4. `update collection --object_ttl_type disable` -- disable TTL (stops background deletion)
+5. For timestamp-based TTL on existing collections: `--inverted_index timestamp` must be set at creation or already enabled
+6. For property-based TTL: the date property must exist, be `date` type, and have filterable or rangeable index
 
 ### Alias Workflow
 1. `create collection --collection Movies_v1` -- create the target collection

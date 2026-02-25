@@ -161,6 +161,29 @@ def create() -> None:
 @click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
+@click.option(
+    "--object_ttl_type",
+    default=CreateCollectionDefaults.object_ttl_type,
+    type=click.Choice(["create", "update", "property"]),
+    help="Object TTL type, check https://docs.weaviate.io/weaviate/manage-collections/time-to-live for reference (default: 'create').",
+)
+@click.option(
+    "--object_ttl_time",
+    default=CreateCollectionDefaults.object_ttl_time,
+    type=int,
+    help="Object TTL time in seconds (default: None).",
+)
+@click.option(
+    "--object_ttl_filter_expired",
+    is_flag=True,
+    help="Filter expired objects (default: False).",
+)
+@click.option(
+    "--object_ttl_property_name",
+    default=CreateCollectionDefaults.object_ttl_property_name,
+    type=str,
+    help="Date property name for TTL when object_ttl_type is 'property' (default: 'releaseDate'). Only valid when --object_ttl_type=property.",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -181,9 +204,23 @@ def create_collection_cli(
     named_vector: bool,
     named_vector_name: Optional[str],
     json_output: bool,
+    object_ttl_type: str,
+    object_ttl_time: Optional[int],
+    object_ttl_filter_expired: bool,
+    object_ttl_property_name: Optional[str],
 ) -> None:
     """Create a collection in Weaviate."""
 
+    if (
+        object_ttl_type != "property"
+        and object_ttl_property_name
+        != CreateCollectionDefaults.object_ttl_property_name
+    ):
+        click.echo(
+            "Error: object_ttl_property_name is only valid when object_ttl_type is 'property'.",
+            err=True,
+        )
+        sys.exit(1)
     client = None
     try:
         client = get_client_from_context(ctx)
@@ -207,6 +244,10 @@ def create_collection_cli(
             named_vector=named_vector,
             named_vector_name=named_vector_name,
             json_output=json_output,
+            object_ttl_type=object_ttl_type,
+            object_ttl_time=object_ttl_time,
+            object_ttl_filter_expired=object_ttl_filter_expired,
+            object_ttl_property_name=object_ttl_property_name,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
