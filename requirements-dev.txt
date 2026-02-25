@@ -1,4 +1,5 @@
-weaviate-client>=4.16.7
+# weaviate-client>=4.16.7
+weaviate-client@git+https://github.com/weaviate/weaviate-python-client.git@incremental_backup_support
 click==8.1.7
 twine
 pytest

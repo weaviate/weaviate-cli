@@ -25,6 +25,7 @@ class BackupManager:
         wait: bool = CreateBackupDefaults.wait,
         cpu_for_backup: int = CreateBackupDefaults.cpu_for_backup,
         json_output: bool = False,
+        incremental_backup_base_id: Optional[str] = CreateBackupDefaults.incremental_backup_base_id,
     ) -> None:
 
         version = semver.Version.parse(self.client.get_meta()["version"])
@@ -44,6 +45,7 @@ class BackupManager:
         result = self.client.backup.create(
             backup_id=backup_id,
             backend=backend,
+            incremental_backup_base_id=incremental_backup_base_id,
             include_collections=include.split(",") if include else None,
             exclude_collections=exclude.split(",") if exclude else None,
             wait_for_completion=wait,
