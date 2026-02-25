@@ -93,6 +93,7 @@ class CreateTenantsDefaults:
 class CreateBackupDefaults:
     backend: str = "s3"
     backup_id: str = "test-backup"
+    incremental_backup_base_id: Optional[str] = None
     include: Optional[str] = None
     exclude: Optional[str] = None
     wait: bool = False
