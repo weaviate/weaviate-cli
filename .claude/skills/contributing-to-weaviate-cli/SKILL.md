@@ -124,20 +124,22 @@ When adding a new command, always create a corresponding defaults dataclass.
 
 ## Issue Tracking
 
-Every non-trivial task (new feature, bug fix, improvement) **must** have a GitHub Issue
-created on `weaviate/weaviate-cli` before implementation starts. This provides:
+By default, every non-trivial task (new feature, bug fix, improvement) should follow the
+GitHub Issue workflow defined in `references/issue-workflow.md` (including any documented
+exceptions, such as documentation-only or agent/Claude-specific changes). This provides:
 - A record of what was added in each release
 - A link between issues and PRs for code review
 - Visibility into work in progress
 
-**Workflow:**
+**Default workflow for non-trivial changes:**
 1. Create issue with `draft` label via `gh issue create --repo weaviate/weaviate-cli`
 2. Plan and implement the change
 3. Create a PR with `Closes #N` in the body
 4. Remove `draft` label when PR is ready for review
 
 See [references/issue-workflow.md](references/issue-workflow.md) for full details,
-templates, and examples.
+templates, examples, and the authoritative list of exceptions. If this section ever
+conflicts with that reference, defer to `references/issue-workflow.md`.
 
 ## Adding a New Command
 
