@@ -122,17 +122,36 @@ Click options reference these: `default=CreateCollectionDefaults.collection`. Th
 
 When adding a new command, always create a corresponding defaults dataclass.
 
+## Issue Tracking
+
+Every non-trivial task (new feature, bug fix, improvement) **must** have a GitHub Issue
+created on `weaviate/weaviate-cli` before implementation starts. This provides:
+- A record of what was added in each release
+- A link between issues and PRs for code review
+- Visibility into work in progress
+
+**Workflow:**
+1. Create issue with `draft` label via `gh issue create --repo weaviate/weaviate-cli`
+2. Plan and implement the change
+3. Create a PR with `Closes #N` in the body
+4. Remove `draft` label when PR is ready for review
+
+See [references/issue-workflow.md](references/issue-workflow.md) for full details,
+templates, and examples.
+
 ## Adding a New Command
 
 Step-by-step guide: see [references/adding-commands.md](references/adding-commands.md).
 
 Summary:
-1. Add a defaults dataclass in `defaults.py`
-2. Add Click command in the appropriate `commands/<group>.py`
-3. Add manager method in `managers/<domain>_manager.py`
-4. Add `--json` flag (mandatory for all commands)
-5. Add unit test in `test/unittests/test_managers/`
-6. Update the operating skill documentation
+1. Create a GitHub Issue to track the work (see Issue Tracking above)
+2. Add a defaults dataclass in `defaults.py`
+3. Add Click command in the appropriate `commands/<group>.py`
+4. Add manager method in `managers/<domain>_manager.py`
+5. Add `--json` flag (mandatory for all commands)
+6. Add unit test in `test/unittests/test_managers/`
+7. Update the operating skill documentation
+8. Create a PR linked to the issue
 
 ## JSON Output Convention
 
@@ -220,14 +239,15 @@ lint-and-format (Black + build check)
 
 ## Code Review Checklist
 
-1. New command has `--json` support
-2. Defaults dataclass added/updated in `defaults.py`
-3. Unit test covers happy path and error cases
-4. Black formatting passes (`make lint`)
-5. No hardcoded paths or credentials
-6. Error messages follow `Error: <description>` pattern
-7. Client is properly closed in `finally` block
-8. Manager method handles both JSON and text output
+1. GitHub Issue exists and is linked to the PR (`Closes #N`)
+2. New command has `--json` support
+3. Defaults dataclass added/updated in `defaults.py`
+4. Unit test covers happy path and error cases
+5. Black formatting passes (`make lint`)
+6. No hardcoded paths or credentials
+7. Error messages follow `Error: <description>` pattern
+8. Client is properly closed in `finally` block
+9. Manager method handles both JSON and text output
 
 See [references/code-review.md](references/code-review.md) for detailed checklist.
 
@@ -254,3 +274,4 @@ When adding new commands or options to `weaviate-cli`, update the agent skills:
 - [references/adding-commands.md](references/adding-commands.md) -- Complete worked example for new commands
 - [references/testing.md](references/testing.md) -- Test fixtures, patterns, CI details
 - [references/code-review.md](references/code-review.md) -- PR checklist, common pitfalls, conventions
+- [references/issue-workflow.md](references/issue-workflow.md) -- GitHub Issue creation, tracking, and PR linking

@@ -203,6 +203,7 @@ from weaviate_cli.managers.widget_manager import WidgetManager
 
 ## Checklist
 
+- [ ] GitHub Issue created on `weaviate/weaviate-cli` with `draft` label
 - [ ] Defaults dataclass in `defaults.py`
 - [ ] Click command with `--json` support
 - [ ] Manager with `print_json_or_text()` output
@@ -210,3 +211,5 @@ from weaviate_cli.managers.widget_manager import WidgetManager
 - [ ] Import in command file
 - [ ] Black formatting passes (`make format && make lint`)
 - [ ] Skill documentation updated
+- [ ] PR created with `Closes #N` linking to the issue
+- [ ] `draft` label removed from issue
