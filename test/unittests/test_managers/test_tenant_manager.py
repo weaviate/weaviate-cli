@@ -407,7 +407,7 @@ class TestDeleteTenants:
             json_output=False,
         )
 
-        mock_collection.tenants.remove.assert_called_once_with(mock_tenant)
+        mock_collection.tenants.remove.assert_called_once_with([mock_tenant])
         out = capsys.readouterr().out
         assert "1" in out
         assert "deleted" in out
@@ -459,7 +459,10 @@ class TestDeleteTenants:
             json_output=False,
         )
 
-        assert mock_collection.tenants.remove.call_count == 2
+        # Batch delete: single call with list of tenants to delete
+        mock_collection.tenants.remove.assert_called_once()
+        removed = mock_collection.tenants.remove.call_args[0][0]
+        assert len(removed) == 2
 
     def test_deletes_using_tenants_list(self, mock_client: MagicMock, capsys) -> None:
         """When tenants_list is provided, get_by_names is used."""
@@ -505,7 +508,10 @@ class TestDeleteTenants:
             json_output=False,
         )
 
-        assert mock_collection.tenants.remove.call_count == 2
+        # Batch delete: single call with all tenants
+        mock_collection.tenants.remove.assert_called_once()
+        removed = mock_collection.tenants.remove.call_args[0][0]
+        assert len(removed) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -844,5 +850,5 @@ class TestUpdateTenants:
             json_output=False,
         )
 
-        # The existing tenant object should be passed directly (no new Tenant)
-        mock_collection.tenants.update.assert_called_once_with(already_active)
+        # Batch update: single call with list containing the existing tenant as-is
+        mock_collection.tenants.update.assert_called_once_with([already_active])
