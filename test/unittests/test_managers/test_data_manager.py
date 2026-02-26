@@ -489,8 +489,10 @@ class TestCreateDataConcurrentRequestsScaling:
                 parallel_workers=4,
             )
 
-        # Each tenant should get concurrent_requests // parallel_workers = 2
-        expected = max(1, 8 // 4)
+        # actual_workers = min(parallel_workers, len(tenants), concurrent_requests)
+        #                = min(4, 2, 8) = 2
+        # effective_concurrent = concurrent_requests // actual_workers = 8 // 2 = 4
+        expected = max(1, 8 // min(4, 2, 8))
         assert all(c == expected for c in captured_concurrent)
         assert len(captured_concurrent) == 2
 

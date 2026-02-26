@@ -814,15 +814,18 @@ class DataManager:
             click.echo(f"Preparing to insert {limit} objects into class '{col.name}'")
         total_inserted = 0
 
-        # When running multiple tenants in parallel, cap per-tenant internal
-        # concurrency so the total number of in-flight requests stays bounded.
+        # Clamp actual thread count to the number of tenants (no point creating
+        # more threads than tasks) and to concurrent_requests (so the max(1,…)
+        # floor can't push total in-flight above the budget when
+        # parallel_workers > concurrent_requests).
+        actual_workers = min(parallel_workers, len(tenants), concurrent_requests)
         effective_concurrent = (
-            max(1, concurrent_requests // parallel_workers)
-            if parallel_workers > 1 and len(tenants) > 1
+            max(1, concurrent_requests // actual_workers)
+            if actual_workers > 1
             else concurrent_requests
         )
 
-        _parallel_mode = len(tenants) > 1 and parallel_workers > 1
+        _parallel_mode = actual_workers > 1
         _output_lock = threading.Lock()
 
         def _ingest_one_tenant(tenant: str):
@@ -898,7 +901,7 @@ class DataManager:
         if _parallel_mode:
             _lock = threading.Lock()
             _errors: List[str] = []
-            with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            with ThreadPoolExecutor(max_workers=actual_workers) as executor:
                 future_to_tenant = {
                     executor.submit(_ingest_one_tenant, t): t for t in tenants
                 }
