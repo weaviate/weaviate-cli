@@ -342,6 +342,114 @@ class TestDeleteDataParallel:
 
 
 # ---------------------------------------------------------------------------
+# create_data – parallel tenant processing
+# ---------------------------------------------------------------------------
+
+
+class TestCreateDataParallel:
+    def _make_col(self, tenant_names):
+        """MT collection with active tenant status ready for create_data."""
+        col = _make_mt_col(tenant_names)
+        tenant_status = MagicMock()
+        tenant_status.activity_status = TenantActivityStatus.ACTIVE
+        col.tenants.get_by_name.return_value = tenant_status
+        return col
+
+    def test_all_tenants_processed_in_parallel(self, mock_client):
+        """All tenants are processed when parallel_workers > 1."""
+        manager = DataManager(mock_client)
+        col = self._make_col(["Tenant-0", "Tenant-1", "Tenant-2"])
+        _setup_mock_client_with_col(mock_client, col)
+
+        processed = []
+        lock = threading.Lock()
+
+        def fake_ingest(collection, **kwargs):
+            with lock:
+                processed.append(collection)
+            return collection
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            manager.create_data(
+                collection="TestCollection",
+                limit=5,
+                parallel_workers=4,
+            )
+
+        assert len(processed) == 3
+
+    def test_sequential_when_parallel_workers_is_1(self, mock_client):
+        """When parallel_workers=1, all tenants are still processed (sequentially)."""
+        manager = DataManager(mock_client)
+        col = self._make_col(["Tenant-0", "Tenant-1", "Tenant-2"])
+        _setup_mock_client_with_col(mock_client, col)
+
+        processed = []
+
+        def fake_ingest(collection, **kwargs):
+            processed.append(collection)
+            return collection
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            manager.create_data(
+                collection="TestCollection",
+                limit=5,
+                parallel_workers=1,
+            )
+
+        assert len(processed) == 3
+
+    def test_parallel_errors_collected_and_raised(self, mock_client):
+        """Errors from parallel tenant ingestion are collected and raised together."""
+        manager = DataManager(mock_client)
+        col = self._make_col(["Tenant-0", "Tenant-1"])
+        _setup_mock_client_with_col(mock_client, col)
+
+        def fake_ingest(collection, **kwargs):
+            raise Exception("simulated ingest error")
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            with pytest.raises(
+                Exception, match="Errors during parallel data ingestion"
+            ):
+                manager.create_data(
+                    collection="TestCollection",
+                    limit=5,
+                    parallel_workers=4,
+                )
+
+    def test_non_mt_collection_unaffected(self, mock_client):
+        """Non-MT collections are processed as a single 'None' tenant."""
+        manager = DataManager(mock_client)
+        col = _make_non_mt_col()
+        _setup_mock_client_with_col(mock_client, col)
+
+        processed = []
+
+        def fake_ingest(collection, **kwargs):
+            processed.append(collection)
+            return collection
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            manager.create_data(
+                collection="TestCollection",
+                limit=5,
+                parallel_workers=4,
+            )
+
+        # Single "None" pseudo-tenant processed
+        assert len(processed) == 1
+
+
+# ---------------------------------------------------------------------------
 # create_data – concurrent_requests scaling with parallel_workers
 # ---------------------------------------------------------------------------
 
