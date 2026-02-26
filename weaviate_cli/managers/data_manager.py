@@ -1361,14 +1361,8 @@ class DataManager:
                 for future in as_completed(future_to_tenant):
                     t = future_to_tenant[future]
                     try:
-                        ret = future.result()
-                        if ret == -1:
-                            _errors.append(
-                                f"Failed to delete objects in class '{col.name}' for tenant '{t}'"
-                            )
-                        else:
-                            with _lock:
-                                total_deleted += ret
+                        with _lock:
+                            total_deleted += future.result()
                     except Exception as exc:
                         _errors.append(f"Tenant '{t}': {exc}")
             if _errors:
@@ -1376,19 +1370,8 @@ class DataManager:
                     "Errors during parallel data deletion:\n" + "\n".join(_errors)
                 )
         else:
-            _errors: List[str] = []
             for tenant in tenants:
-                ret = _delete_one_tenant(tenant)
-                if ret == -1:
-                    _errors.append(
-                        f"Failed to delete objects in class '{col.name}' for tenant '{tenant}'"
-                    )
-                else:
-                    total_deleted += ret
-            if _errors:
-                raise Exception(
-                    "Errors during sequential data deletion:\n" + "\n".join(_errors)
-                )
+                total_deleted += _delete_one_tenant(tenant)
 
         if json_output:
             click.echo(
