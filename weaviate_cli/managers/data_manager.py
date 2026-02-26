@@ -2,8 +2,10 @@ import importlib.resources as resources
 import json
 import math
 import random
+import threading
 import time
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union, Any, Tuple
 
@@ -738,6 +740,7 @@ class DataManager:
         dynamic_batch: bool = CreateDataDefaults.dynamic_batch,
         batch_size: int = CreateDataDefaults.batch_size,
         concurrent_requests: int = MAX_WORKERS,
+        parallel_workers: int = CreateDataDefaults.parallel_workers,
         json_output: bool = False,
     ) -> Collection:
 
@@ -810,10 +813,20 @@ class DataManager:
         if not json_output:
             click.echo(f"Preparing to insert {limit} objects into class '{col.name}'")
         total_inserted = 0
-        for tenant in tenants:
+
+        # When running multiple tenants in parallel, cap per-tenant internal
+        # concurrency so the total number of in-flight requests stays bounded.
+        effective_concurrent = (
+            max(1, concurrent_requests // parallel_workers)
+            if parallel_workers > 1 and len(tenants) > 1
+            else concurrent_requests
+        )
+
+        def _ingest_one_tenant(tenant: str):
+            """Ingest data for a single tenant; returns (inserted_count, collection)."""
             if tenant == "None":
-                initial_length = len(col)
-                collection = self.__ingest_data(
+                _initial = len(col)
+                _coll = self.__ingest_data(
                     collection=col,
                     num_objects=limit,
                     cl=cl_map[consistency_level],
@@ -825,10 +838,10 @@ class DataManager:
                     multi_vector=multi_vector,
                     dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
-                    concurrent_requests=concurrent_requests,
+                    concurrent_requests=effective_concurrent,
                     json_output=json_output,
                 )
-                after_length = len(col)
+                _after = len(col)
             else:
                 if not auto_tenants_enabled and not col.tenants.exists(tenant):
                     raise Exception(
@@ -844,12 +857,12 @@ class DataManager:
                         f"Tenant '{tenant}' is not active. Please activate it using <update tenants> command"
                     )
                 if auto_tenants_enabled and not col.tenants.exists(tenant):
-                    initial_length = 0
+                    _initial = 0
                 else:
-                    initial_length = len(col.with_tenant(tenant))
+                    _initial = len(col.with_tenant(tenant))
                 if not json_output:
                     click.echo(f"Processing objects for tenant '{tenant}'")
-                collection = self.__ingest_data(
+                _coll = self.__ingest_data(
                     collection=col.with_tenant(tenant),
                     num_objects=limit,
                     cl=cl_map[consistency_level],
@@ -861,18 +874,47 @@ class DataManager:
                     multi_vector=multi_vector,
                     dynamic_batch=dynamic_batch,
                     batch_size=batch_size,
-                    concurrent_requests=concurrent_requests,
+                    concurrent_requests=effective_concurrent,
                     json_output=json_output,
                 )
-                after_length = len(col.with_tenant(tenant))
+                _after = len(col.with_tenant(tenant))
             if wait_for_indexing:
-                collection.batch.wait_for_vector_indexing()
-            inserted = after_length - initial_length
-            total_inserted += inserted
-            if inserted != limit:
+                _coll.batch.wait_for_vector_indexing()
+            _inserted = _after - _initial
+            if _inserted != limit:
                 click.echo(
-                    f"Error occurred while ingesting data for tenant '{tenant}'. Expected number of objects inserted: {limit}. Actual number of objects inserted: {inserted}. Double check with weaviate-cli get collection"
+                    f"Error occurred while ingesting data for tenant '{tenant}'. "
+                    f"Expected number of objects inserted: {limit}. "
+                    f"Actual number of objects inserted: {_inserted}. "
+                    f"Double check with weaviate-cli get collection"
                 )
+            return _inserted, _coll
+
+        collection = col
+        if len(tenants) > 1 and parallel_workers > 1:
+            _lock = threading.Lock()
+            _errors: List[str] = []
+            with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+                future_to_tenant = {
+                    executor.submit(_ingest_one_tenant, t): t for t in tenants
+                }
+                for future in as_completed(future_to_tenant):
+                    t = future_to_tenant[future]
+                    try:
+                        inserted, collection = future.result()
+                        with _lock:
+                            total_inserted += inserted
+                    except Exception as exc:
+                        _errors.append(f"Tenant '{t}': {exc}")
+            if _errors:
+                raise Exception(
+                    "Errors during parallel data ingestion:\n" + "\n".join(_errors)
+                )
+        else:
+            for tenant in tenants:
+                inserted, collection = _ingest_one_tenant(tenant)
+                total_inserted += inserted
+
         if json_output:
             click.echo(
                 json.dumps(
@@ -1073,6 +1115,7 @@ class DataManager:
         randomize: bool = UpdateDataDefaults.randomize,
         skip_seed: bool = UpdateDataDefaults.skip_seed,
         verbose: bool = UpdateDataDefaults.verbose,
+        parallel_workers: int = UpdateDataDefaults.parallel_workers,
         json_output: bool = False,
     ) -> None:
 
@@ -1101,9 +1144,10 @@ class DataManager:
         if not json_output:
             click.echo(f"Preparing to update {limit} objects into class '{col.name}'")
         total_updated = 0
-        for tenant in tenants:
+
+        def _update_one_tenant(tenant: str) -> int:
             if tenant == "None":
-                ret = self.__update_data(
+                return self.__update_data(
                     col,
                     limit,
                     cl_map[consistency_level],
@@ -1112,23 +1156,51 @@ class DataManager:
                     verbose,
                     json_output=json_output,
                 )
-            else:
-                if not json_output:
-                    click.echo(f"Processing tenant '{tenant}'")
-                ret = self.__update_data(
-                    col.with_tenant(tenant),
-                    limit,
-                    cl_map[consistency_level],
-                    randomize,
-                    skip_seed,
-                    verbose,
-                    json_output=json_output,
-                )
-            if ret == -1:
+            if not json_output:
+                click.echo(f"Processing tenant '{tenant}'")
+            return self.__update_data(
+                col.with_tenant(tenant),
+                limit,
+                cl_map[consistency_level],
+                randomize,
+                skip_seed,
+                verbose,
+                json_output=json_output,
+            )
+
+        if len(tenants) > 1 and parallel_workers > 1:
+            _lock = threading.Lock()
+            _errors: List[str] = []
+            with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+                future_to_tenant = {
+                    executor.submit(_update_one_tenant, t): t for t in tenants
+                }
+                for future in as_completed(future_to_tenant):
+                    t = future_to_tenant[future]
+                    try:
+                        ret = future.result()
+                        if ret == -1:
+                            _errors.append(
+                                f"Failed to update objects in class '{col.name}' for tenant '{t}'"
+                            )
+                        else:
+                            with _lock:
+                                total_updated += ret
+                    except Exception as exc:
+                        _errors.append(f"Tenant '{t}': {exc}")
+            if _errors:
                 raise Exception(
-                    f"Failed to update objects in class '{col.name}' for tenant '{tenant}'"
+                    "Errors during parallel data update:\n" + "\n".join(_errors)
                 )
-            total_updated += ret
+        else:
+            for tenant in tenants:
+                ret = _update_one_tenant(tenant)
+                if ret == -1:
+                    raise Exception(
+                        f"Failed to update objects in class '{col.name}' for tenant '{tenant}'"
+                    )
+                total_updated += ret
+
         if json_output:
             click.echo(
                 json.dumps(
@@ -1227,6 +1299,7 @@ class DataManager:
         tenants_list: Optional[List[str]] = None,
         uuid: Optional[str] = DeleteDataDefaults.uuid,
         verbose: bool = DeleteDataDefaults.verbose,
+        parallel_workers: int = DeleteDataDefaults.parallel_workers,
         json_output: bool = False,
     ) -> None:
 
@@ -1251,27 +1324,56 @@ class DataManager:
         tenants = tenants_list if tenants_list is not None else existing_tenants
 
         total_deleted = 0
-        for tenant in tenants:
+
+        def _delete_one_tenant(tenant: str) -> int:
             if tenant == "None":
-                ret = self.__delete_data(  # NOTE: call the correct delete impl
+                return self.__delete_data(
                     col, limit, cl_map[consistency_level], uuid, verbose, json_output
                 )
-            else:
-                if not json_output:
-                    click.echo(f"Processing tenant '{tenant}'")
-                ret = self.__delete_data(
-                    col.with_tenant(tenant),
-                    limit,
-                    cl_map[consistency_level],
-                    uuid,
-                    verbose,
-                    json_output,
-                )
-            if ret == -1:
+            if not json_output:
+                click.echo(f"Processing tenant '{tenant}'")
+            return self.__delete_data(
+                col.with_tenant(tenant),
+                limit,
+                cl_map[consistency_level],
+                uuid,
+                verbose,
+                json_output,
+            )
+
+        if len(tenants) > 1 and parallel_workers > 1:
+            _lock = threading.Lock()
+            _errors: List[str] = []
+            with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+                future_to_tenant = {
+                    executor.submit(_delete_one_tenant, t): t for t in tenants
+                }
+                for future in as_completed(future_to_tenant):
+                    t = future_to_tenant[future]
+                    try:
+                        ret = future.result()
+                        if ret == -1:
+                            _errors.append(
+                                f"Failed to delete objects in class '{col.name}' for tenant '{t}'"
+                            )
+                        else:
+                            with _lock:
+                                total_deleted += ret
+                    except Exception as exc:
+                        _errors.append(f"Tenant '{t}': {exc}")
+            if _errors:
                 raise Exception(
-                    f"Failed to delete objects in class '{col.name}' for tenant '{tenant}'"
+                    "Errors during parallel data deletion:\n" + "\n".join(_errors)
                 )
-            total_deleted += ret
+        else:
+            for tenant in tenants:
+                ret = _delete_one_tenant(tenant)
+                if ret == -1:
+                    raise Exception(
+                        f"Failed to delete objects in class '{col.name}' for tenant '{tenant}'"
+                    )
+                total_deleted += ret
+
         if json_output:
             click.echo(
                 json.dumps(

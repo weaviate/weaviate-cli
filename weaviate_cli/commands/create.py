@@ -431,6 +431,12 @@ def create_backup_cli(
     help=f"Number of concurrent requests to send to the server (default: {MAX_WORKERS}).",
 )
 @click.option(
+    "--parallel_workers",
+    default=CreateDataDefaults.parallel_workers,
+    type=int,
+    help=f"Number of tenants to process in parallel (default: {CreateDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -452,6 +458,7 @@ def create_data_cli(
     dynamic_batch,
     batch_size,
     concurrent_requests,
+    parallel_workers,
     json_output,
 ):
     """Ingest data into a collection in Weaviate."""
@@ -498,6 +505,7 @@ def create_data_cli(
             dynamic_batch=dynamic_batch,
             batch_size=batch_size,
             concurrent_requests=concurrent_requests,
+            parallel_workers=parallel_workers,
             json_output=json_output,
         )
     except Exception as e:
