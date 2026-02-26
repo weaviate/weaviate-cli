@@ -156,11 +156,25 @@ def delete_tenants_cli(
     help="Show detailed progress information (default: False).",
 )
 @click.option(
+    "--parallel_workers",
+    default=DeleteDataDefaults.parallel_workers,
+    type=int,
+    help=f"Number of tenants to process in parallel (default: {DeleteDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
 def delete_data_cli(
-    ctx, collection, limit, consistency_level, tenants, uuid, verbose, json_output
+    ctx,
+    collection,
+    limit,
+    consistency_level,
+    tenants,
+    uuid,
+    verbose,
+    parallel_workers,
+    json_output,
 ):
     """Delete data from a collection in Weaviate."""
 
@@ -176,6 +190,7 @@ def delete_data_cli(
             tenants_list=tenants.split(",") if tenants else None,
             uuid=uuid,
             verbose=verbose,
+            parallel_workers=parallel_workers,
             json_output=json_output,
         )
     except Exception as e:
