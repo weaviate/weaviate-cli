@@ -229,12 +229,12 @@ def create_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=CreateTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant-').",
+    help="The suffix to add to the tenant name (default: 'Tenant-'). Ignored if --tenants is provided.",
 )
 @click.option(
     "--number_tenants",
     default=CreateTenantsDefaults.number_tenants,
-    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}).",
+    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}). Ignored if --tenants is provided.",
 )
 @click.option(
     "--tenant_batch_size",
@@ -248,6 +248,11 @@ def create_collection_cli(
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
 @click.option(
+    "--tenants",
+    default=None,
+    help="Comma-separated list of custom tenant names/IDs. If provided, --tenant_suffix and --number_tenants are ignored.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -258,6 +263,7 @@ def create_tenants_cli(
     number_tenants,
     tenant_batch_size,
     state,
+    tenants,
     json_output,
 ):
     """Create tenants in Weaviate."""
@@ -273,6 +279,7 @@ def create_tenants_cli(
             number_tenants=number_tenants,
             tenant_batch_size=tenant_batch_size,
             state=state,
+            tenants=tenants,
             json_output=json_output,
         )
     except Exception as e:

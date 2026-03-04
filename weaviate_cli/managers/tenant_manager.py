@@ -24,6 +24,7 @@ class TenantManager:
         number_tenants: int = CreateTenantsDefaults.number_tenants,
         tenant_batch_size: Optional[int] = CreateTenantsDefaults.tenant_batch_size,
         state: str = CreateTenantsDefaults.state,
+        tenants: Optional[str] = None,
         json_output: bool = False,
     ) -> None:
         """
@@ -31,9 +32,11 @@ class TenantManager:
 
         Args:
             collection (str): The name of the collection to add tenants to.
-            tenant_suffix (str): The suffix to append to tenant names.
-            number_tenants (int): The number of tenants to create.
+            tenant_suffix (str): The suffix to append to tenant names (used if --tenants not provided).
+            number_tenants (int): The number of tenants to create (used if --tenants not provided).
             state (str): The activity status of the tenants to be created.
+            tenants (str): Comma-separated list of custom tenant names/IDs. If provided,
+                          tenant_suffix and number_tenants are ignored.
 
         Raises:
             Exception: If the collection does not exist, multi-tenancy is not enabled,
@@ -65,7 +68,19 @@ class TenantManager:
         existing_tenants = collection.tenants.get()
         new_tenant_names = []
 
-        if existing_tenants:
+        if tenants:
+            # Use custom tenant names provided via --tenants argument
+            new_tenant_names = [t.strip() for t in tenants.split(",")]
+            
+            # Check if any of the custom tenants already exist
+            existing_tenant_names = list(existing_tenants.keys()) if existing_tenants else []
+            duplicate_tenants = set(new_tenant_names) & set(existing_tenant_names)
+            if duplicate_tenants:
+                raise Exception(
+                    f"Tenants already exist: {', '.join(duplicate_tenants)}. "
+                    f"Please use different tenant names or delete existing tenants first."
+                )
+        elif existing_tenants:
             # Check if existing tenants follow the same suffix pattern
             existing_tenant_names = list(existing_tenants.keys())
             for tenant_name in existing_tenant_names:
