@@ -50,6 +50,19 @@ weaviate-cli delete data --collection "Movies" --tenants "T1,T2" --limit 50 --js
 3. **For multi-tenant data ingestion:** tenants must be in `hot`/`active` state
 4. **For vectorizer-based ingestion (non-randomize):** the collection uses a built-in dataset; vectorizer API keys may be needed
 
+## Using Aliases
+
+The `--collection` flag accepts aliases in all data commands (`create data`, `query data`, `update data`, `delete data`). If the given name doesn't match a collection directly, the CLI checks the alias list and resolves it transparently.
+
+```bash
+# Create an alias, then use it for data operations
+weaviate-cli create alias MyAlias Movies --json
+weaviate-cli create data --collection MyAlias --limit 100 --randomize --json
+weaviate-cli query data --collection MyAlias --search_type fetch --limit 10 --json
+weaviate-cli update data --collection MyAlias --limit 50 --randomize --json
+weaviate-cli delete data --collection MyAlias --limit 50 --json
+```
+
 ## Notes
 
 - `--randomize` generates synthetic data with random vectors -- useful for testing

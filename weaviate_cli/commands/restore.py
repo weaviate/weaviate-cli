@@ -39,10 +39,17 @@ def restore() -> None:
     help="Collection to exclude in backup (default: None).",
 )
 @click.option(
+    "--override-alias",
+    is_flag=True,
+    help="Override the alias of the collection (default: False).",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
-def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait, json_output):
+def restore_backup_cli(
+    ctx, backend, include, exclude, backup_id, wait, override_alias, json_output
+):
     """Restore a backup in Weaviate."""
 
     client = None
@@ -55,6 +62,7 @@ def restore_backup_cli(ctx, backend, include, exclude, backup_id, wait, json_out
             include=include,
             exclude=exclude,
             wait=wait,
+            override_alias=override_alias,
             json_output=json_output,
         )
     except Exception as e:

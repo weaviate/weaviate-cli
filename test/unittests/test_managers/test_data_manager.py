@@ -223,6 +223,118 @@ class TestResolveTenants:
         assert result == []
 
 
+# ---------------------------------------------------------------------------
+# Alias resolution in data operations
+# ---------------------------------------------------------------------------
+
+
+class TestAliasResolution:
+    """Unit tests for alias resolution in create/update/delete/query data."""
+
+    def _setup_alias_mock(self, mock_client, alias_name="MyAlias"):
+        """Set up a mock client where collection doesn't exist but alias does."""
+        mock_collections = MagicMock()
+        mock_collections.exists.return_value = False
+        mock_client.collections = mock_collections
+
+        mock_alias = MagicMock()
+        mock_alias.list_all.return_value = {alias_name: MagicMock()}
+        mock_client.alias = mock_alias
+
+        mock_collection = MagicMock()
+        mock_collection.config.get.return_value = MagicMock(
+            multi_tenancy_config=MagicMock(
+                enabled=False,
+                auto_tenant_creation=False,
+                auto_tenant_activation=False,
+            )
+        )
+        mock_client.collections.get.return_value = mock_collection
+        return mock_collection
+
+    def test_create_data_with_alias(self, mock_client):
+        self._setup_alias_mock(mock_client)
+        manager = DataManager(mock_client)
+        manager.create_data(collection="MyAlias", limit=10, randomize=True)
+        mock_client.collections.get.assert_called_once_with("MyAlias")
+
+    def test_update_data_with_alias(self, mock_client):
+        self._setup_alias_mock(mock_client)
+        manager = DataManager(mock_client)
+        manager.update_data(collection="MyAlias", limit=10, randomize=True)
+        mock_client.collections.get.assert_called_once_with("MyAlias")
+
+    def test_delete_data_with_alias(self, mock_client):
+        col = self._setup_alias_mock(mock_client)
+        col.config.get.return_value.multi_tenancy_config.enabled = False
+        # delete_data iterates objects, mock the iterator
+        col.iterator.return_value = iter([])
+        manager = DataManager(mock_client)
+        manager.delete_data(collection="MyAlias", limit=10)
+        mock_client.collections.get.assert_called_once_with("MyAlias")
+
+    def test_query_data_with_alias(self, mock_client):
+        col = self._setup_alias_mock(mock_client)
+        col.config.get.return_value.multi_tenancy_config.enabled = False
+        col.query.fetch_objects.return_value = MagicMock(objects=[])
+        manager = DataManager(mock_client)
+        manager.query_data(collection="MyAlias", search_type="fetch", limit=5)
+        mock_client.collections.get.assert_called_once_with("MyAlias")
+
+    def _setup_not_found_mock(self, mock_client):
+        """Set up a mock client where neither collection nor alias exists."""
+        mock_collections = MagicMock()
+        mock_collections.exists.return_value = False
+        mock_client.collections = mock_collections
+        mock_alias = MagicMock()
+        mock_alias.list_all.return_value = {}
+        mock_client.alias = mock_alias
+
+    def test_create_data_not_collection_not_alias_raises(self, mock_client):
+        self._setup_not_found_mock(mock_client)
+        manager = DataManager(mock_client)
+        with pytest.raises(Exception, match="does not exist"):
+            manager.create_data(collection="NonExistent", limit=10, randomize=True)
+
+    def test_update_data_not_collection_not_alias_raises(self, mock_client):
+        self._setup_not_found_mock(mock_client)
+        manager = DataManager(mock_client)
+        with pytest.raises(Exception, match="does not exist"):
+            manager.update_data(collection="NonExistent", limit=10, randomize=True)
+
+    def test_delete_data_not_collection_not_alias_raises(self, mock_client):
+        self._setup_not_found_mock(mock_client)
+        manager = DataManager(mock_client)
+        with pytest.raises(Exception, match="does not exist"):
+            manager.delete_data(collection="NonExistent", limit=10)
+
+    def test_query_data_not_collection_not_alias_raises(self, mock_client):
+        self._setup_not_found_mock(mock_client)
+        manager = DataManager(mock_client)
+        with pytest.raises(Exception, match="does not exist"):
+            manager.query_data(collection="NonExistent", search_type="fetch", limit=5)
+
+    def test_create_data_direct_collection_skips_alias_check(self, mock_client):
+        """When collection exists directly, alias.list_all should not be called."""
+        mock_collections = MagicMock()
+        mock_collections.exists.return_value = True
+        mock_client.collections = mock_collections
+        mock_alias = MagicMock()
+        mock_client.alias = mock_alias
+        mock_collection = MagicMock()
+        mock_collection.config.get.return_value = MagicMock(
+            multi_tenancy_config=MagicMock(
+                enabled=False,
+                auto_tenant_creation=False,
+                auto_tenant_activation=False,
+            )
+        )
+        mock_client.collections.get.return_value = mock_collection
+        manager = DataManager(mock_client)
+        manager.create_data(collection="DirectCollection", limit=10, randomize=True)
+        mock_client.alias.list_all.assert_not_called()
+
+
 def test_ingest_data(mock_client):
     manager = DataManager(mock_client)
     mock_collections = MagicMock()

@@ -572,6 +572,7 @@ class DataManager:
         json_output: bool = False,
     ) -> int:
         counter = 0
+
         properties: List[wvc.Property] = collection.config.get().properties
 
         try:
@@ -657,8 +658,9 @@ class DataManager:
                 click.echo(f"Generating and ingesting {num_objects} objects")
             start_time = time.time()
 
-            # Determine vectorizer setup
+            # Determine vector dimensions based on vectorizer
             config = collection.config.get()
+
             if not config.vectorizer and config.vector_config:
                 named_vectors = list(config.vector_config.keys())
                 vectorizer = config.vector_config[
@@ -821,9 +823,11 @@ class DataManager:
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command"
+                )
 
         col: Collection = self.client.collections.get(collection)
         mt_config = col.config.get().multi_tenancy_config
@@ -1123,9 +1127,11 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using ./create_class.py"
+                )
 
         col: Collection = self.client.collections.get(collection)
         try:
@@ -1277,9 +1283,11 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
+                )
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
@@ -1297,6 +1305,7 @@ class DataManager:
         tenants = tenants_list if tenants_list is not None else existing_tenants
 
         total_deleted = 0
+
         for tenant in tenants:
             if tenant == "None":
                 ret = self.__delete_data(  # NOTE: call the correct delete impl
@@ -1408,9 +1417,11 @@ class DataManager:
     ) -> None:
 
         if not self.client.collections.exists(collection):
-            raise Exception(
-                f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
-            )
+            alias_list = self.client.alias.list_all()
+            if collection not in alias_list.keys():
+                raise Exception(
+                    f"Class '{collection}' does not exist in Weaviate. Create first using <create class> command."
+                )
 
         col: Collection = self.client.collections.get(collection)
         mt_enabled = col.config.get().multi_tenancy_config.enabled
