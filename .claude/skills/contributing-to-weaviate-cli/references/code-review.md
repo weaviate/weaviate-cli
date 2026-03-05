@@ -94,6 +94,23 @@ Commands must exit with code 1 on error for proper scripting support. Don't just
 
 Every manager method that produces output should accept and use `json_output`.
 
+### 6. Unstripped Comma-Separated Tenant Input
+
+Wrong:
+```python
+tenants_list = tenants.split(",") if tenants else None
+```
+
+Right:
+```python
+tenants_list = (
+    [t.strip() for t in tenants.split(",") if t.strip()] if tenants else None
+)
+```
+
+This prevents invalid tenant names like `" b"` or `""` when users pass `--tenants "a, b,"`.
+Apply the same pattern inside manager methods when splitting a `tenants` string argument.
+
 ## Code Conventions
 
 ### Formatting

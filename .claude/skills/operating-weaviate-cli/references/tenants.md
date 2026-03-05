@@ -3,6 +3,8 @@
 Manage tenants in multi-tenant Weaviate collections.
 
 ## Create Tenants
+
+**Auto-generate N tenants** (named `Tenant-0` through `Tenant-99`):
 ```bash
 weaviate-cli create tenants \
   --collection "Movies" \
@@ -11,7 +13,16 @@ weaviate-cli create tenants \
   --state active \
   --json
 ```
-Creates tenants named `Tenant-0` through `Tenant-99`.
+
+**Create specific tenants by name** (comma-separated):
+```bash
+weaviate-cli create tenants \
+  --collection "Movies" \
+  --tenants "Alice,Bob,Charlie" \
+  --state active \
+  --json
+```
+When `--tenants` is provided it overrides `--tenant_suffix` and `--number_tenants`.
 
 Options: `--tenant_batch_size N` for batched creation.
 

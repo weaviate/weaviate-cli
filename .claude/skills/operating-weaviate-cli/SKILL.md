@@ -167,6 +167,7 @@ See [references/data.md](references/data.md) and [references/search.md](referenc
 
 ```bash
 weaviate-cli create tenants --collection Movies --number_tenants 100 --tenant_suffix "Tenant" --state active --json
+weaviate-cli create tenants --collection Movies --tenants "Alice,Bob,Charlie" --state active --json
 weaviate-cli get tenants --collection Movies --json
 weaviate-cli get tenants --collection Movies --tenant_id "Tenant-1" --verbose --json
 weaviate-cli update tenants --collection Movies --state cold --number_tenants 100 --json

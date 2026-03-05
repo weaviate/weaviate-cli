@@ -229,12 +229,17 @@ def create_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=CreateTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant-').",
+    help="The prefix for auto-generated tenant names (default: 'Tenant'). Ignored if --tenants is provided.",
 )
 @click.option(
     "--number_tenants",
     default=CreateTenantsDefaults.number_tenants,
-    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}).",
+    help=f"Number of tenants to auto-generate (default: {CreateTenantsDefaults.number_tenants}). Ignored if --tenants is provided.",
+)
+@click.option(
+    "--tenants",
+    default=None,
+    help="Comma separated list of tenant names to create. Overrides --tenant_suffix and --number_tenants.",
 )
 @click.option(
     "--tenant_batch_size",
@@ -256,6 +261,7 @@ def create_tenants_cli(
     collection,
     tenant_suffix,
     number_tenants,
+    tenants,
     tenant_batch_size,
     state,
     json_output,
@@ -265,14 +271,17 @@ def create_tenants_cli(
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
-        # Call the function from create_tenants.py with general and specific arguments
         tenant_manager = TenantManager(client)
+        tenants_list = (
+            [t.strip() for t in tenants.split(",") if t.strip()] if tenants else None
+        )
         tenant_manager.create_tenants(
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             tenant_batch_size=tenant_batch_size,
             state=state,
+            tenants_list=tenants_list,
             json_output=json_output,
         )
     except Exception as e:
@@ -488,7 +497,11 @@ def create_data_cli(
             randomize=randomize,
             skip_seed=skip_seed,
             auto_tenants=auto_tenants,
-            tenants_list=tenants.split(",") if tenants else None,
+            tenants_list=(
+                [t.strip() for t in tenants.split(",") if t.strip()]
+                if tenants
+                else None
+            ),
             vector_dimensions=vector_dimensions,
             uuid=uuid,
             tenant_suffix=tenant_suffix,
