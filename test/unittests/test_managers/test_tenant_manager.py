@@ -205,48 +205,62 @@ class TestCreateTenants:
         out = capsys.readouterr().out
         assert str(number_new) in out
 
-    def test_raises_when_existing_tenant_does_not_match_suffix_pattern(
-        self, mock_client: MagicMock
+    def test_skips_tenant_with_non_numeric_index_in_suffix_pattern(
+        self, mock_client: MagicMock, capsys
     ) -> None:
         """
-        When an existing tenant name starts with the suffix but the index part
-        is not a valid integer, create_tenants raises.
+        When an existing tenant matches the suffix prefix but has a non-numeric
+        index (e.g. "Tenant-abc"), it is silently skipped for index tracking.
+        New tenants are still generated from index 0.
         """
         manager, mock_collection = _make_manager_and_collection(mock_client)
 
-        # Existing tenant whose index portion is non-numeric
-        mock_collection.tenants.get.return_value = {
-            "Tenant-abc": _make_tenant(TenantActivityStatus.ACTIVE),
-        }
+        # "Tenant-abc" matches prefix "Tenant-" but index is non-numeric → skipped
+        non_numeric = _make_tenant(TenantActivityStatus.ACTIVE)
+        # Single get() call: used for both resolve and filter
+        mock_collection.tenants.get.return_value = {"Tenant-abc": non_numeric}
+        new_tenant = _make_tenant(TenantActivityStatus.ACTIVE)
+        mock_collection.tenants.get_by_names.return_value = {"Tenant-0": new_tenant}
 
-        with pytest.raises(Exception, match="does not follow the expected pattern"):
-            manager.create_tenants(
-                collection="TestCollection",
-                tenant_suffix="Tenant",
-                number_tenants=1,
-                state="active",
-            )
+        # Should succeed: generates "Tenant-0" because highest_index stays -1
+        manager.create_tenants(
+            collection="TestCollection",
+            tenant_suffix="Tenant",
+            number_tenants=1,
+            state="active",
+            json_output=False,
+        )
 
-    def test_raises_when_existing_tenant_uses_different_suffix(
-        self, mock_client: MagicMock
+        mock_collection.tenants.create.assert_called_once()
+        out = capsys.readouterr().out
+        assert "1" in out
+
+    def test_ignores_tenants_with_different_suffix(
+        self, mock_client: MagicMock, capsys
     ) -> None:
         """
         When an existing tenant does not start with the provided suffix,
-        create_tenants raises.
+        it is ignored and new tenants are generated from index 0.
         """
         manager, mock_collection = _make_manager_and_collection(mock_client)
 
-        mock_collection.tenants.get.return_value = {
-            "OtherSuffix-0": _make_tenant(TenantActivityStatus.ACTIVE),
-        }
+        other_tenant = _make_tenant(TenantActivityStatus.ACTIVE)
+        # Single get() call: used for both resolve and filter
+        mock_collection.tenants.get.return_value = {"OtherSuffix-0": other_tenant}
+        new_tenant = _make_tenant(TenantActivityStatus.ACTIVE)
+        mock_collection.tenants.get_by_names.return_value = {"Tenant-0": new_tenant}
 
-        with pytest.raises(Exception, match="does not use the provided tenant_suffix"):
-            manager.create_tenants(
-                collection="TestCollection",
-                tenant_suffix="Tenant",
-                number_tenants=1,
-                state="active",
-            )
+        manager.create_tenants(
+            collection="TestCollection",
+            tenant_suffix="Tenant",
+            number_tenants=1,
+            state="active",
+            json_output=False,
+        )
+
+        mock_collection.tenants.create.assert_called_once()
+        out = capsys.readouterr().out
+        assert "1" in out
 
     def test_uses_batching_when_tenant_batch_size_provided(
         self, mock_client: MagicMock, capsys
@@ -305,6 +319,10 @@ class TestCreateTenants:
         """
         For Weaviate < 1.25.0, verification falls back to tenants.get() instead
         of tenants.get_by_names().
+
+        create_tenants calls tenants.get() twice:
+          1. In create_tenants (resolve + filter, single fetch)
+          2. In _verify_tenant_creation (fallback for old versions)
         """
         manager, mock_collection = _make_manager_and_collection(
             mock_client, version=WEAVIATE_VERSION_LT_1_25
@@ -314,7 +332,8 @@ class TestCreateTenants:
         all_tenants = {
             name: _make_tenant(TenantActivityStatus.ACTIVE) for name in expected_names
         }
-        # First call (existing check) returns empty; second call (verify) returns all
+        # Call 1 (resolve + filter): no existing → generates Tenant-0, Tenant-1
+        # Call 2 (verify, old-version fallback): returns created tenants
         mock_collection.tenants.get.side_effect = [{}, all_tenants]
 
         manager.create_tenants(
@@ -377,12 +396,9 @@ class TestDeleteTenants:
         tenant_name = "Tenant-0"
         mock_tenant = _make_tenant(TenantActivityStatus.ACTIVE)
 
-        # First call: list tenants to decide what to delete
-        # Second call: verify remaining count after deletion
-        mock_collection.tenants.get.side_effect = [
-            {tenant_name: mock_tenant},  # initial listing
-            {},  # after deletion (0 remaining)
-        ]
+        # get() for initial listing; get_by_names() for post-delete verification
+        mock_collection.tenants.get.return_value = {tenant_name: mock_tenant}
+        mock_collection.tenants.get_by_names.return_value = {}
 
         manager.delete_tenants(
             collection="TestCollection",
@@ -403,10 +419,8 @@ class TestDeleteTenants:
         manager, mock_collection = _make_manager_and_collection(mock_client)
 
         mock_tenant = _make_tenant(TenantActivityStatus.ACTIVE)
-        mock_collection.tenants.get.side_effect = [
-            {"Tenant-0": mock_tenant},
-            {},
-        ]
+        mock_collection.tenants.get.return_value = {"Tenant-0": mock_tenant}
+        mock_collection.tenants.get_by_names.return_value = {}
 
         manager.delete_tenants(
             collection="TestCollection",
@@ -433,10 +447,10 @@ class TestDeleteTenants:
         tenants = {
             f"Tenant-{i}": _make_tenant(TenantActivityStatus.ACTIVE) for i in range(5)
         }
-        mock_collection.tenants.get.side_effect = [
-            tenants,  # initial listing
-            dict(list(tenants.items())[2:]),  # 3 remaining after deleting 2
-        ]
+        mock_collection.tenants.get.return_value = tenants
+        mock_collection.tenants.get_by_names.return_value = (
+            {}
+        )  # verification: all deleted
 
         manager.delete_tenants(
             collection="TestCollection",
@@ -452,14 +466,11 @@ class TestDeleteTenants:
         manager, mock_collection = _make_manager_and_collection(mock_client)
 
         specific_tenant = _make_tenant(TenantActivityStatus.ACTIVE)
-        # tenants.get() is called for the suffix-filter even when tenants_list given
-        mock_collection.tenants.get.side_effect = [
-            {"Tenant-5": specific_tenant},  # suffix-filter listing
+        # get_by_names called twice: once to fetch, once to verify deletion
+        mock_collection.tenants.get_by_names.side_effect = [
+            {"Tenant-5": specific_tenant},  # fetch tenants to delete
             {},  # post-delete verification
         ]
-        mock_collection.tenants.get_by_names.return_value = {
-            "Tenant-5": specific_tenant
-        }
 
         manager.delete_tenants(
             collection="TestCollection",
@@ -469,7 +480,9 @@ class TestDeleteTenants:
             json_output=False,
         )
 
-        mock_collection.tenants.get_by_names.assert_called_once_with(["Tenant-5"])
+        # get() should NOT be called when tenants_list is provided
+        mock_collection.tenants.get.assert_not_called()
+        assert mock_collection.tenants.get_by_names.call_count == 2
         mock_collection.tenants.remove.assert_called_once_with(specific_tenant)
 
     def test_delete_all_with_wildcard_suffix(
@@ -482,10 +495,8 @@ class TestDeleteTenants:
             "Alpha-0": _make_tenant(TenantActivityStatus.ACTIVE),
             "Beta-0": _make_tenant(TenantActivityStatus.INACTIVE),
         }
-        mock_collection.tenants.get.side_effect = [
-            tenants,  # initial listing (wildcard uses all)
-            {},  # post-delete verification
-        ]
+        mock_collection.tenants.get.return_value = tenants
+        mock_collection.tenants.get_by_names.return_value = {}  # verification
 
         manager.delete_tenants(
             collection="TestCollection",

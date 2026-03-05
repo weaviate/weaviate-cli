@@ -74,12 +74,12 @@ def delete_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=DeleteTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant-'). If passing the asterisk as a suffix * it will delete as many tenants as specified in --number_tenants, it will not take into account the tenant suffix.",
+    help="The suffix to add to the tenant name (default: 'Tenant-'). Ignored if --tenants is provided. If passing '*' it will delete up to --number_tenants regardless of suffix.",
 )
 @click.option(
     "--number_tenants",
     default=DeleteTenantsDefaults.number_tenants,
-    help="Number of tenants to delete (default: 100).",
+    help="Number of tenants to delete (default: 100). Ignored if --tenants is provided.",
 )
 @click.option(
     "--tenants",
@@ -108,7 +108,11 @@ def delete_tenants_cli(
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
-            tenants_list=tenants.split(",") if tenants else None,
+            tenants_list=(
+                [t.strip() for t in tenants.split(",") if t.strip()]
+                if tenants
+                else None
+            ),
             json_output=json_output,
         )
     except Exception as e:
@@ -173,7 +177,11 @@ def delete_data_cli(
             collection=collection,
             limit=limit,
             consistency_level=consistency_level,
-            tenants_list=tenants.split(",") if tenants else None,
+            tenants_list=(
+                [t.strip() for t in tenants.split(",") if t.strip()]
+                if tenants
+                else None
+            ),
             uuid=uuid,
             verbose=verbose,
             json_output=json_output,
