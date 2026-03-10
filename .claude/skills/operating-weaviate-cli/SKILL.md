@@ -209,13 +209,14 @@ See [references/tenants.md](references/tenants.md).
 ```bash
 weaviate-cli create backup --backend s3 --backup_id my-backup --wait --json
 weaviate-cli create backup --backend s3 --backup_id my-backup --include "Movies,Books" --wait --json
+weaviate-cli create backup --backend s3 --backup_id my-incremental --incremental_base_backup_id my-backup --json
 weaviate-cli get backup --backend s3 --backup_id my-backup --json
 weaviate-cli get backup --backend s3 --backup_id my-backup --restore --json
 weaviate-cli restore backup --backend s3 --backup_id my-backup --wait --json
 weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 ```
 
-Backends: `s3`, `gcs`, `filesystem`. Options: `--include`, `--exclude`, `--wait`, `--cpu_for_backup N`, `--override-alias`
+Backends: `s3`, `gcs`, `filesystem`. Options: `--include`, `--exclude`, `--wait`, `--cpu_for_backup N`, `--override-alias`, `--incremental_base_backup_id`
 
 See [references/backups.md](references/backups.md).
 
