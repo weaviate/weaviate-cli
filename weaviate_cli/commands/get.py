@@ -8,6 +8,7 @@ from weaviate_cli.completion.complete import (
     collection_name_complete,
 )
 from weaviate_cli.managers.alias_manager import AliasManager
+from weaviate_cli.managers.export_manager import ExportManager
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
@@ -19,6 +20,7 @@ from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate.rbac.models import Role
 from weaviate_cli.defaults import (
     GetBackupDefaults,
+    GetExportCollectionDefaults,
     GetTenantsDefaults,
     GetShardsDefaults,
     GetCollectionDefaults,
@@ -557,6 +559,62 @@ def get_replications_cli(ctx: click.Context, json_output: bool) -> None:
         manager = ClusterManager(client, click.echo)
         ops = manager.get_all_replications()
         manager.print_replications(ops, json_output=json_output)
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@get.command("export-collection")
+@click.option(
+    "--export_id",
+    default=GetExportCollectionDefaults.export_id,
+    help=f"Identifier for the export (default: {GetExportCollectionDefaults.export_id}).",
+)
+@click.option(
+    "--backend",
+    default=GetExportCollectionDefaults.backend,
+    type=click.Choice(["filesystem", "s3", "gcs", "azure"]),
+    help=f"The backend used for storing the export (default: {GetExportCollectionDefaults.backend}).",
+)
+@click.option(
+    "--bucket",
+    default=GetExportCollectionDefaults.bucket,
+    help="Bucket name for cloud storage backends.",
+)
+@click.option(
+    "--path",
+    default=GetExportCollectionDefaults.path,
+    help="Path within the storage backend.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def get_export_collection_cli(
+    ctx: click.Context,
+    export_id: str,
+    backend: str,
+    bucket: Optional[str],
+    path: Optional[str],
+    json_output: bool,
+) -> None:
+    """Get the status of a collection export in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        export_manager = ExportManager(client)
+        export_manager.get_export_status(
+            export_id=export_id,
+            backend=backend,
+            bucket=bucket,
+            path=path,
+            json_output=json_output,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
