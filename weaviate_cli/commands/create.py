@@ -11,6 +11,7 @@ from weaviate_cli.completion.complete import (
 )
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.backup_manager import BackupManager
+from weaviate_cli.managers.export_manager import ExportManager
 from weaviate_cli.utils import get_client_from_context, get_async_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
@@ -22,6 +23,7 @@ from weaviate.exceptions import WeaviateConnectionError
 from weaviate_cli.defaults import (
     CreateBackupDefaults,
     CreateCollectionDefaults,
+    CreateExportCollectionDefaults,
     CreateTenantsDefaults,
     CreateDataDefaults,
     CreateRoleDefaults,
@@ -877,6 +879,91 @@ def create_replication_cli(
     except WeaviateConnectionError as e:
         click.echo(f"Connection error: {e}")
         sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("export-collection")
+@click.option(
+    "--export_id",
+    default=CreateExportCollectionDefaults.export_id,
+    help=f"Identifier for the export (default: {CreateExportCollectionDefaults.export_id}).",
+)
+@click.option(
+    "--backend",
+    default=CreateExportCollectionDefaults.backend,
+    type=click.Choice(["filesystem", "s3", "gcs", "azure"]),
+    help=f"The backend used for storing the export (default: {CreateExportCollectionDefaults.backend}).",
+)
+@click.option(
+    "--file_format",
+    default=CreateExportCollectionDefaults.file_format,
+    type=click.Choice(["parquet"]),
+    help=f"The file format for the export (default: {CreateExportCollectionDefaults.file_format}).",
+)
+@click.option(
+    "--include",
+    default=CreateExportCollectionDefaults.include,
+    help="Comma separated list of collections to include in the export.",
+)
+@click.option(
+    "--exclude",
+    default=CreateExportCollectionDefaults.exclude,
+    help="Comma separated list of collections to exclude from the export.",
+)
+@click.option(
+    "--wait",
+    is_flag=True,
+    help="Wait for the export to complete before returning.",
+)
+@click.option(
+    "--bucket",
+    default=CreateExportCollectionDefaults.bucket,
+    help="Bucket name for cloud storage backends.",
+)
+@click.option(
+    "--path",
+    default=CreateExportCollectionDefaults.path,
+    help="Path within the storage backend.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def create_export_collection_cli(
+    ctx: click.Context,
+    export_id: str,
+    backend: str,
+    file_format: str,
+    include: Optional[str],
+    exclude: Optional[str],
+    wait: bool,
+    bucket: Optional[str],
+    path: Optional[str],
+    json_output: bool,
+) -> None:
+    """Create a collection export in Weaviate."""
+    client: Optional[WeaviateClient] = None
+    try:
+        client = get_client_from_context(ctx)
+        export_manager = ExportManager(client)
+        export_manager.create_export(
+            export_id=export_id,
+            backend=backend,
+            file_format=file_format,
+            include=include,
+            exclude=exclude,
+            wait=wait,
+            bucket=bucket,
+            path=path,
+            json_output=json_output,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
