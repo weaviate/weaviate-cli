@@ -205,7 +205,9 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
     title = fake.catch_phrase()
 
     # Generate blob data to simulate an image
-    cover_image = base64.b64encode(fake.binary(100)).decode("utf-8")
+    cover_image = base64.b64encode(
+            fake.binary(100)
+        ).decode("utf-8")
     
     # Prefix for update operations
     prefix = "updated-" if is_update else ""
