@@ -41,7 +41,7 @@ weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 - `--exclude` -- Comma-separated collections to exclude
 - `--wait` -- Wait for completion
 - `--cpu_for_backup` -- CPU percentage for backup (default: 40)
-- `--incremental_base_backup_id` -- Backup ID of a previous backup to create an incremental backup from. Requires Weaviate 1.25+.
+- `--incremental_base_backup_id` -- Backup ID of a previous backup to create an incremental backup from. Requires Weaviate 1.34+.
 
 **Restore:**
 - `--backend`, `--backup_id` -- Same as create
