@@ -75,7 +75,7 @@ class CreateCollectionDefaults:
     shards: int = 0
     vectorizer: str = "none"
     vectorizer_base_url: Optional[str] = None
-    replication_deletion_strategy: str = "no_automated_resolution"
+    replication_deletion_strategy: Optional[str] = None
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
     object_ttl_type: str = "create"
