@@ -7,6 +7,7 @@ Create, inspect, restore, and cancel Weaviate backups.
 weaviate-cli create backup --backend s3 --backup_id my-backup --wait --json
 weaviate-cli create backup --backend s3 --backup_id my-backup --include "Movies,Books" --wait --json
 weaviate-cli create backup --backend gcs --backup_id my-backup --exclude "TempData" --cpu_for_backup 60 --json
+weaviate-cli create backup --backend s3 --backup_id my-incremental-backup --incremental_base_backup_id my-backup --json
 ```
 
 ## Check Backup Status
@@ -40,6 +41,7 @@ weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 - `--exclude` -- Comma-separated collections to exclude
 - `--wait` -- Wait for completion
 - `--cpu_for_backup` -- CPU percentage for backup (default: 40)
+- `--incremental_base_backup_id` -- Backup ID of a previous backup to create an incremental backup from. Requires Weaviate 1.34+.
 
 **Restore:**
 - `--backend`, `--backup_id` -- Same as create
@@ -59,3 +61,4 @@ weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 - Without `--wait`, the command returns immediately and you must poll with `get backup`
 - `--cpu_for_backup` controls backup speed vs. resource consumption tradeoff
 - `--include` and `--exclude` are mutually exclusive
+- Incremental backups require Weaviate 1.34+ and can only include collections that were part of the base backup
