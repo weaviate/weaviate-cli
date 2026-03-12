@@ -156,7 +156,7 @@ def create() -> None:
     type=click.Choice(
         ["delete_on_conflict", "no_automated_resolution", "time_based_resolution"]
     ),
-    help=f"Replication deletion strategy (default: '{CreateCollectionDefaults.replication_deletion_strategy}').",
+    help="Replication deletion strategy. If not specified, uses the Weaviate server default (time_based_resolution).",
 )
 @click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
@@ -200,7 +200,7 @@ def create_collection_cli(
     shards: int,
     vectorizer: Optional[str],
     vectorizer_base_url: Optional[str],
-    replication_deletion_strategy: str,
+    replication_deletion_strategy: Optional[str],
     named_vector: bool,
     named_vector_name: Optional[str],
     json_output: bool,
