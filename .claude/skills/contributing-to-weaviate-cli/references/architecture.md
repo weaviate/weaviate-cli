@@ -81,6 +81,8 @@ class CollectionManager:
         self.client.collections.create(name=collection, ...)
 ```
 
+Manager files: `collection_manager.py`, `tenant_manager.py`, `data_manager.py`, `backup_manager.py`, `export_manager.py`, `role_manager.py`, `user_manager.py`, `node_manager.py`, `shard_manager.py`, `cluster_manager.py`, `alias_manager.py`, `benchmark_manager.py`, `config_manager.py`
+
 Managers handle:
 - Input validation and error messages
 - Weaviate client API calls
