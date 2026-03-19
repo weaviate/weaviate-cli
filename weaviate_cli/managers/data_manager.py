@@ -226,7 +226,7 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
         "status": random.choice(STATUSES),
         "spokenLanguages": spoken_languages,
         "productionCountries": production_countries,
-        "coverImage": cover_image,
+        "coverimage": cover_image,
     }
 
 
@@ -1083,6 +1083,8 @@ class DataManager:
                             obj.properties[property] += 1.0
                         elif isinstance(value, datetime):
                             obj.properties[property] = value + timedelta(days=1)
+                        elif isinstance(value, bytes):
+                            obj.properties[property] = value << 1
 
                     cl_collection.data.update(
                         uuid=obj.uuid,
