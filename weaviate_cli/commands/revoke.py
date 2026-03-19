@@ -33,9 +33,16 @@ def revoke() -> None:
     default="db",
     help="The type of user to revoke the role from.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def revoke_role_cli(
-    ctx: click.Context, role_name: tuple[str], user_name: str, user_type: str
+    ctx: click.Context,
+    role_name: tuple[str],
+    user_name: str,
+    user_type: str,
+    json_output: bool,
 ) -> None:
     """Revoke a role from a user."""
     client = None
@@ -43,7 +50,10 @@ def revoke_role_cli(
         client = get_client_from_context(ctx)
         user_manager = UserManager(client)
         user_manager.revoke_role(
-            role_name=role_name, user_name=user_name, user_type=user_type
+            role_name=role_name,
+            user_name=user_name,
+            user_type=user_type,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -68,16 +78,21 @@ def revoke_role_cli(
     required=True,
     help="The role to revoke the permission from.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def revoke_permission_cli(
-    ctx: click.Context, permission: tuple[str], role_name: str
+    ctx: click.Context, permission: tuple[str], role_name: str, json_output: bool
 ) -> None:
     """Revoke a permission from a role."""
     client = None
     try:
         client = get_client_from_context(ctx)
         role_manager = RoleManager(client)
-        role_manager.revoke_permission(permission=permission, role_name=role_name)
+        role_manager.revoke_permission(
+            permission=permission, role_name=role_name, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

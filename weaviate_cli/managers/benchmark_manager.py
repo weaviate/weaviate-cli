@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import json
 from io import TextIOWrapper
 import random
 import time
@@ -427,6 +428,7 @@ class BenchmarkQPSManager(BenchmarkManager):
         fail_on_timeout: bool = CreateBenchmarkDefaults.fail_on_timeout,
         file_alias: Optional[str] = CreateBenchmarkDefaults.file_alias,
         tenant: Optional[str] = CreateBenchmarkDefaults.tenant,
+        json_output: bool = False,
     ) -> None:
         consistency_map = {
             "ONE": wvc.ConsistencyLevel.ONE,
@@ -481,7 +483,21 @@ class BenchmarkQPSManager(BenchmarkManager):
                 fail_on_timeout=fail_on_timeout,
             )
             if not qps:
-                click.echo(f"\nThe maximum sustainable QPS is approximately {max_qps}.")
+                if json_output:
+                    click.echo(
+                        json.dumps(
+                            {
+                                "status": "success",
+                                "collection": collection,
+                                "max_qps": max_qps,
+                            },
+                            indent=2,
+                        )
+                    )
+                else:
+                    click.echo(
+                        f"\nThe maximum sustainable QPS is approximately {max_qps}."
+                    )
         finally:
             if csv_file:
                 csv_file.close()

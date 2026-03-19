@@ -75,7 +75,7 @@ class CreateCollectionDefaults:
     shards: int = 0
     vectorizer: str = "none"
     vectorizer_base_url: Optional[str] = None
-    replication_deletion_strategy: str = "no_automated_resolution"
+    replication_deletion_strategy: Optional[str] = None
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
     hfresh_max_posting_size_kb: Optional[int] = None
@@ -83,6 +83,10 @@ class CreateCollectionDefaults:
     hfresh_search_probe: Optional[int] = None
     distance_metric: Optional[str] = "cosine"
     rescore_limit: Optional[int] = None
+    object_ttl_type: str = "create"
+    object_ttl_time: Optional[int] = None
+    object_ttl_filter_expired: Optional[bool] = None
+    object_ttl_property_name: str = "releaseDate"
 
 
 @dataclass
@@ -92,6 +96,7 @@ class CreateTenantsDefaults:
     number_tenants: int = 100
     tenant_batch_size: Optional[int] = None
     state: str = "active"
+    tenants: Optional[List[str]] = None
 
 
 @dataclass
@@ -125,7 +130,6 @@ class CreateBenchmarkDefaults:
     fail_on_timeout: bool = False
     max_duration: int = 300
     collection: str = "Movies"
-    term: str = "Action movies"
     certainty: bool = False
     output: str = "stdout"
     query_type: str = "hybrid"
@@ -238,6 +242,7 @@ class RestoreBackupDefaults:
     wait: bool = False
     include: Optional[str] = None
     exclude: Optional[str] = None
+    override_alias: bool = False
 
 
 @dataclass
@@ -251,6 +256,10 @@ class UpdateCollectionDefaults:
     auto_tenant_creation: Optional[bool] = None
     auto_tenant_activation: Optional[bool] = None
     replication_deletion_strategy: Optional[str] = None
+    object_ttl_type: str = "create"
+    object_ttl_time: Optional[int] = None
+    object_ttl_filter_expired: Optional[bool] = None
+    object_ttl_property_name: str = "releaseDate"
 
 
 @dataclass

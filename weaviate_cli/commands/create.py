@@ -114,7 +114,7 @@ def create() -> None:
 @click.option(
     "--shards",
     default=CreateCollectionDefaults.shards,
-    help="Number of shards (default: 1).",
+    help=f"Number of shards (default: {CreateCollectionDefaults.shards}).",
 )
 @click.option(
     "--vectorizer",
@@ -157,7 +157,33 @@ def create() -> None:
     type=click.Choice(
         ["delete_on_conflict", "no_automated_resolution", "time_based_resolution"]
     ),
-    help="Replication deletion strategy (default: 'delete_on_conflict').",
+    help="Replication deletion strategy. If not specified, uses the Weaviate server default (time_based_resolution).",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.option(
+    "--object_ttl_type",
+    default=CreateCollectionDefaults.object_ttl_type,
+    type=click.Choice(["create", "update", "property"]),
+    help="Object TTL type, check https://docs.weaviate.io/weaviate/manage-collections/time-to-live for reference (default: 'create').",
+)
+@click.option(
+    "--object_ttl_time",
+    default=CreateCollectionDefaults.object_ttl_time,
+    type=int,
+    help="Object TTL time in seconds (default: None).",
+)
+@click.option(
+    "--object_ttl_filter_expired",
+    is_flag=True,
+    help="Filter expired objects (default: False).",
+)
+@click.option(
+    "--object_ttl_property_name",
+    default=CreateCollectionDefaults.object_ttl_property_name,
+    type=str,
+    help="Date property name for TTL when object_ttl_type is 'property' (default: 'releaseDate'). Only valid when --object_ttl_type=property.",
 )
 @click.option(
     "--hfresh_max_posting_size_kb",
@@ -205,7 +231,7 @@ def create_collection_cli(
     shards: int,
     vectorizer: Optional[str],
     vectorizer_base_url: Optional[str],
-    replication_deletion_strategy: str,
+    replication_deletion_strategy: Optional[str],
     named_vector: bool,
     named_vector_name: Optional[str],
     hfresh_max_posting_size_kb: Optional[int],
@@ -213,9 +239,24 @@ def create_collection_cli(
     hfresh_search_probe: Optional[int],
     distance_metric: Optional[str],
     rescore_limit: Optional[int],
+    json_output: bool,
+    object_ttl_type: str,
+    object_ttl_time: Optional[int],
+    object_ttl_filter_expired: bool,
+    object_ttl_property_name: Optional[str],
 ) -> None:
     """Create a collection in Weaviate."""
 
+    if (
+        object_ttl_type != "property"
+        and object_ttl_property_name
+        != CreateCollectionDefaults.object_ttl_property_name
+    ):
+        click.echo(
+            "Error: object_ttl_property_name is only valid when object_ttl_type is 'property'.",
+            err=True,
+        )
+        sys.exit(1)
     client = None
     try:
         client = get_client_from_context(ctx)
@@ -243,6 +284,11 @@ def create_collection_cli(
             hfresh_search_probe=hfresh_search_probe,
             distance_metric=distance_metric,
             rescore_limit=rescore_limit,
+            json_output=json_output,
+            object_ttl_type=object_ttl_type,
+            object_ttl_time=object_ttl_time,
+            object_ttl_filter_expired=object_ttl_filter_expired,
+            object_ttl_property_name=object_ttl_property_name,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -265,12 +311,17 @@ def create_collection_cli(
 @click.option(
     "--tenant_suffix",
     default=CreateTenantsDefaults.tenant_suffix,
-    help="The suffix to add to the tenant name (default: 'Tenant-').",
+    help="The prefix for auto-generated tenant names (default: 'Tenant'). Ignored if --tenants is provided.",
 )
 @click.option(
     "--number_tenants",
     default=CreateTenantsDefaults.number_tenants,
-    help=f"Number of tenants to create (default: {CreateTenantsDefaults.number_tenants}).",
+    help=f"Number of tenants to auto-generate (default: {CreateTenantsDefaults.number_tenants}). Ignored if --tenants is provided.",
+)
+@click.option(
+    "--tenants",
+    default=None,
+    help="Comma separated list of tenant names to create. Overrides --tenant_suffix and --number_tenants.",
 )
 @click.option(
     "--tenant_batch_size",
@@ -283,23 +334,37 @@ def create_collection_cli(
     default=CreateTenantsDefaults.state,
     type=click.Choice(["hot", "active", "cold", "inactive", "frozen", "offloaded"]),
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def create_tenants_cli(
-    ctx, collection, tenant_suffix, number_tenants, tenant_batch_size, state
+    ctx,
+    collection,
+    tenant_suffix,
+    number_tenants,
+    tenants,
+    tenant_batch_size,
+    state,
+    json_output,
 ):
     """Create tenants in Weaviate."""
 
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
-        # Call the function from create_tenants.py with general and specific arguments
         tenant_manager = TenantManager(client)
+        tenants_list = (
+            [t.strip() for t in tenants.split(",") if t.strip()] if tenants else None
+        )
         tenant_manager.create_tenants(
             collection=collection,
             tenant_suffix=tenant_suffix,
             number_tenants=number_tenants,
             tenant_batch_size=tenant_batch_size,
             state=state,
+            tenants_list=tenants_list,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -341,8 +406,13 @@ def create_tenants_cli(
     default=CreateBackupDefaults.cpu_for_backup,
     help="The percentage of CPU to use for the backup (default: 40). The larger, the faster it will occur, but it will also consume more memory.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_backup):
+def create_backup_cli(
+    ctx, backend, backup_id, include, exclude, wait, cpu_for_backup, json_output
+):
     """Create a backup in Weaviate."""
 
     client: Optional[WeaviateClient] = None
@@ -356,6 +426,7 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
             exclude=exclude,
             wait=wait,
             cpu_for_backup=cpu_for_backup,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -450,6 +521,9 @@ def create_backup_cli(ctx, backend, backup_id, include, exclude, wait, cpu_for_b
     type=int,
     help=f"Number of concurrent requests to send to the server (default: {MAX_WORKERS}).",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def create_data_cli(
     ctx,
@@ -469,6 +543,7 @@ def create_data_cli(
     dynamic_batch,
     batch_size,
     concurrent_requests,
+    json_output,
 ):
     """Ingest data into a collection in Weaviate."""
 
@@ -504,7 +579,11 @@ def create_data_cli(
             randomize=randomize,
             skip_seed=skip_seed,
             auto_tenants=auto_tenants,
-            tenants_list=tenants.split(",") if tenants else None,
+            tenants_list=(
+                [t.strip() for t in tenants.split(",") if t.strip()]
+                if tenants
+                else None
+            ),
             vector_dimensions=vector_dimensions,
             uuid=uuid,
             tenant_suffix=tenant_suffix,
@@ -514,6 +593,7 @@ def create_data_cli(
             dynamic_batch=dynamic_batch,
             batch_size=batch_size,
             concurrent_requests=concurrent_requests,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -539,15 +619,21 @@ def create_data_cli(
     required=True,
     help=PERMISSION_HELP_STRING,
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def create_role_cli(ctx: click.Context, role_name: str, permission: tuple[str]) -> None:
+def create_role_cli(
+    ctx: click.Context, role_name: str, permission: tuple[str], json_output: bool
+) -> None:
     """Create a role in Weaviate."""
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         role_man = RoleManager(client)
-        role_man.create_role(role_name=role_name, permissions=permission)
-        click.echo(f"Role '{role_name}' created successfully in Weaviate.")
+        role_man.create_role(
+            role_name=role_name, permissions=permission, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -569,8 +655,13 @@ def create_role_cli(ctx: click.Context, role_name: str, permission: tuple[str]) 
     is_flag=True,
     help="Store the API key in the config file. Only works when auth type is 'user'.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def create_user_cli(ctx: click.Context, user_name: str, store: bool) -> None:
+def create_user_cli(
+    ctx: click.Context, user_name: str, store: bool, json_output: bool
+) -> None:
     """Create a user in Weaviate."""
     client = None
     try:
@@ -607,13 +698,38 @@ def create_user_cli(ctx: click.Context, user_name: str, store: bool) -> None:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
 
-            click.echo(
-                f"User '{user_name}' created and API key stored in config file at {config_path}"
-            )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "user_name": user_name,
+                            "api_key": api_key,
+                            "stored_at": str(config_path),
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"User '{user_name}' created and API key stored in config file at {config_path}"
+                )
         else:
-            click.echo(
-                f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
-            )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "user_name": user_name,
+                            "api_key": api_key,
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
+                )
 
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -628,14 +744,21 @@ def create_user_cli(ctx: click.Context, user_name: str, store: bool) -> None:
 @create.command("alias")
 @click.argument("alias_name")
 @click.argument("collection")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
-def create_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> None:
+def create_alias_cli(
+    ctx: click.Context, alias_name: str, collection: str, json_output: bool
+) -> None:
     """Create an alias for a collection in Weaviate."""
     client = None
     try:
         client = get_client_from_context(ctx)
         alias_man = AliasManager(client)
-        alias_man.create_alias(alias_name=alias_name, collection=collection)
+        alias_man.create_alias(
+            alias_name=alias_name, collection=collection, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -673,6 +796,9 @@ def create_alias_cli(ctx: click.Context, alias_name: str, collection: str) -> No
     type=click.Choice(["COPY", "MOVE"]),
     help="The type of replication to perform.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def create_replication_cli(
     ctx: click.Context,
@@ -681,6 +807,7 @@ def create_replication_cli(
     source_node: Optional[str],
     target_node: Optional[str],
     type_: str,
+    json_output: bool,
 ) -> None:
     """Create and start a replication operation in Weaviate."""
     client: Optional[WeaviateClient] = None
@@ -712,7 +839,19 @@ def create_replication_cli(
             target_node=target_node,
             type_=type_,
         )
-        click.echo(f"Replication successfully started with UUID: {uuid}.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "uuid": str(uuid),
+                        "message": f"Replication successfully started with UUID: {uuid}.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"Replication successfully started with UUID: {uuid}.")
     except WeaviateConnectionError as e:
         click.echo(f"Connection error: {e}")
         sys.exit(1)

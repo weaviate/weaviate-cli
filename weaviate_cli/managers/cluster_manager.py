@@ -1,3 +1,4 @@
+import json
 from typing import Callable, Optional
 
 from prettytable import PrettyTable
@@ -113,8 +114,33 @@ class ClusterManager:
         except Exception as e:
             raise Exception(f"Error getting replications: {e}")
 
-    def print_replication(self, replication: wvor.ReplicateOperation) -> None:
+    def print_replication(
+        self, replication: wvor.ReplicateOperation, json_output: bool = False
+    ) -> None:
         """Print replication in a human-readable format."""
+        if json_output:
+            data = {
+                "uuid": str(replication.uuid),
+                "type": replication.transfer_type.value,
+                "collection": replication.collection,
+                "shard": replication.shard,
+                "source_node": replication.source_node,
+                "target_node": replication.target_node,
+                "status": replication.status.state.value,
+                "errors": (
+                    list(replication.status.errors) if replication.status.errors else []
+                ),
+            }
+            if replication.status_history is not None:
+                data["status_history"] = [
+                    {
+                        "state": s.state.value,
+                        "errors": list(s.errors) if s.errors else [],
+                    }
+                    for s in replication.status_history
+                ]
+            self.printer(json.dumps(data, indent=2, default=str))
+            return
 
         self.printer(f"{'-' * 6} {replication.uuid} {'-' * 6}")  # uuid is 36 chars long
         self.printer(f"Type: {replication.transfer_type.value}")
@@ -145,8 +171,29 @@ class ClusterManager:
                         self.printer(f"      - {error}")
                     self.printer("-" * 50)
 
-    def print_replications(self, replications: wvor.ReplicateOperations) -> None:
+    def print_replications(
+        self, replications: wvor.ReplicateOperations, json_output: bool = False
+    ) -> None:
         """Print a list of replications in a human-readable format."""
+        if json_output:
+            if not replications:
+                self.printer(json.dumps({"replications": []}, indent=2))
+                return
+            reps = []
+            for r in replications:
+                rep_data = {
+                    "uuid": str(r.uuid),
+                    "status": r.status.state.value,
+                    "collection": r.collection,
+                    "shard": r.shard,
+                    "source_node": r.source_node,
+                    "target_node": r.target_node,
+                    "type": r.transfer_type.value,
+                }
+                reps.append(rep_data)
+            self.printer(json.dumps({"replications": reps}, indent=2, default=str))
+            return
+
         if not replications:
             self.printer("No replications found.")
             return
@@ -208,8 +255,22 @@ class ClusterManager:
                 f"Error querying sharding state for collection '{collection}' and shard '{shard}': {e}"
             )
 
-    def print_sharding_state(self, sharding_state: wvoc.ShardingState) -> None:
+    def print_sharding_state(
+        self, sharding_state: wvoc.ShardingState, json_output: bool = False
+    ) -> None:
         """Print the sharding state in a human-readable format."""
+        if json_output:
+            shards_data = []
+            for shard in sharding_state.shards:
+                shards_data.append(
+                    {
+                        "name": shard.name,
+                        "replicas": list(shard.replicas) if shard.replicas else [],
+                    }
+                )
+            self.printer(json.dumps({"shards": shards_data}, indent=2, default=str))
+            return
+
         table = PrettyTable()
 
         table.field_names = ["Shard", "Replicas"]

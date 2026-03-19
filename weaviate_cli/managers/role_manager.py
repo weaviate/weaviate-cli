@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict
 import json
+import click
 from weaviate_cli.utils import older_than_version, parse_permission
 from weaviate import WeaviateClient
 from weaviate.rbac.models import Role, RoleBase
@@ -18,6 +19,7 @@ class RoleManager:
         self,
         role_name: str = CreateRoleDefaults.role_name,
         permissions: tuple = CreateRoleDefaults.permission,
+        json_output: bool = False,
     ) -> None:
         try:
             rbac_permissions = []
@@ -29,7 +31,18 @@ class RoleManager:
                     rbac_permissions.append(parsed)
 
             self.client.roles.create(role_name=role_name, permissions=rbac_permissions)
-
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Role '{role_name}' created successfully in Weaviate.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(f"Role '{role_name}' created successfully in Weaviate.")
         except Exception as e:
             raise Exception(f"Error creating role '{role_name}': {e}")
 
@@ -58,12 +71,26 @@ class RoleManager:
                 f"Error getting roles from {user_type} user '{user_name}': {e}"
             )
 
-    def delete_role(self, role_name: str = DeleteRoleDefaults.role_name) -> None:
+    def delete_role(
+        self, role_name: str = DeleteRoleDefaults.role_name, json_output: bool = False
+    ) -> None:
         try:
             if not self.client.roles.exists(role_name=role_name):
                 raise Exception(f"Role '{role_name}' does not exist.")
             self.client.roles.delete(role_name=role_name)
             assert not self.client.roles.exists(role_name=role_name)
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Role '{role_name}' deleted successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(f"Role '{role_name}' deleted successfully.")
         except Exception as e:
             raise Exception(f"Error deleting role '{role_name}': {e}")
 
@@ -80,33 +107,153 @@ class RoleManager:
         except Exception as e:
             raise Exception(f"Error getting role of current user: {e}")
 
-    def add_permission(self, permission: str, role_name: str) -> None:
+    def add_permission(
+        self, permission: str, role_name: str, json_output: bool = False
+    ) -> None:
         try:
             rbac_permissions = []
             for perm in permission:
                 parsed = parse_permission(perm)
-                rbac_permissions = rbac_permissions + parsed
+                if isinstance(parsed, list):
+                    rbac_permissions.extend(parsed)
+                else:
+                    rbac_permissions.append(parsed)
             self.client.roles.add_permissions(
                 permissions=rbac_permissions, role_name=role_name
             )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Permission(s) added to role '{role_name}' successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(f"Permission(s) added to role '{role_name}' successfully.")
         except Exception as e:
             raise Exception(
                 f"Error adding permission '{permission}' to role '{role_name}': {e}"
             )
 
-    def revoke_permission(self, permission: str, role_name: str) -> None:
+    def revoke_permission(
+        self, permission: str, role_name: str, json_output: bool = False
+    ) -> None:
         try:
             rbac_permissions = []
             for perm in permission:
                 parsed = parse_permission(perm)
-                rbac_permissions = rbac_permissions + parsed
+                if isinstance(parsed, list):
+                    rbac_permissions.extend(parsed)
+                else:
+                    rbac_permissions.append(parsed)
             self.client.roles.remove_permissions(
                 permissions=rbac_permissions, role_name=role_name
             )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Permission(s) revoked from role '{role_name}' successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"Permission(s) revoked from role '{role_name}' successfully."
+                )
         except Exception as e:
             raise Exception(
                 f"Error revoking permission '{permission}' from role '{role_name}': {e}"
             )
+
+    @staticmethod
+    def role_to_dict(role: Role) -> dict:
+        """Convert a Role to a JSON-serializable dict."""
+        role_data = {"name": role.name, "permissions": {}}
+        if role.cluster_permissions:
+            role_data["permissions"]["cluster"] = [
+                {"actions": [a.value for a in p.actions]}
+                for p in role.cluster_permissions
+            ]
+        if role.nodes_permissions:
+            role_data["permissions"]["nodes"] = [
+                {
+                    "verbosity": str(p.verbosity),
+                    "collection": p.collection if p.collection else "*",
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.nodes_permissions
+            ]
+        if role.backups_permissions:
+            role_data["permissions"]["backups"] = [
+                {
+                    "collection": str(p.collection),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.backups_permissions
+            ]
+        if role.roles_permissions:
+            role_data["permissions"]["roles"] = [
+                {
+                    "role": str(p.role),
+                    "actions": [a.value for a in p.actions],
+                    "scope": str(p.scope),
+                }
+                for p in role.roles_permissions
+            ]
+        if role.users_permissions:
+            role_data["permissions"]["users"] = [
+                {"users": str(p.users), "actions": [a.value for a in p.actions]}
+                for p in role.users_permissions
+            ]
+        if role.collections_permissions:
+            role_data["permissions"]["collections"] = [
+                {
+                    "collection": str(p.collection),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.collections_permissions
+            ]
+        if role.tenants_permissions:
+            role_data["permissions"]["tenants"] = [
+                {
+                    "collection": str(p.collection),
+                    "tenant": str(p.tenant),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.tenants_permissions
+            ]
+        if role.data_permissions:
+            role_data["permissions"]["data"] = [
+                {
+                    "collection": str(p.collection),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.data_permissions
+            ]
+        if role.replicate_permissions:
+            role_data["permissions"]["replicate"] = [
+                {
+                    "collection": str(p.collection),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.replicate_permissions
+            ]
+        if role.alias_permissions:
+            role_data["permissions"]["aliases"] = [
+                {
+                    "collection": str(p.collection),
+                    "alias": str(p.alias),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.alias_permissions
+            ]
+        return role_data
 
     def print_role(self, role: Optional[Role] = None) -> None:
         """Print a role and its permissions in a human readable format."""

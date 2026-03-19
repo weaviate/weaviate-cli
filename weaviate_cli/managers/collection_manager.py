@@ -12,6 +12,7 @@ from weaviate_cli.defaults import (
     DeleteCollectionDefaults,
     GetCollectionDefaults,
 )
+from weaviate_cli.utils import print_json_or_text
 import weaviate.classes.config as wvc
 from prettytable import PrettyTable
 
@@ -31,7 +32,9 @@ class CollectionManager:
         return acc
 
     def get_collection(
-        self, collection: Optional[str] = GetCollectionDefaults.collection
+        self,
+        collection: Optional[str] = GetCollectionDefaults.collection,
+        json_output: bool = False,
     ) -> None:
 
         if collection is not None:
@@ -45,22 +48,13 @@ class CollectionManager:
             collections = self.client.collections.list_all()
 
             if not collections:
-                click.echo("No collections found")
+                if json_output:
+                    click.echo(json.dumps({"collections": [], "total": 0}, indent=2))
+                else:
+                    click.echo("No collections found")
                 return
 
-            table = PrettyTable()
-            table.field_names = [
-                "Collection",
-                "Multitenancy",
-                "Tenants",
-                "Objects",
-                "Repl. Factor",
-                "Vector Index",
-                "Named Vectors",
-                "Vectorizer",
-            ]
-            table.align = "l"
-
+            rows = []
             for col_name in collections:
                 col_obj = self.client.collections.get(col_name)
                 schema = col_obj.config.get()
@@ -68,7 +62,6 @@ class CollectionManager:
                 vector_index_type = "None"
                 named_vectors = "False"
                 if schema.vector_config and not schema.vectorizer:
-                    # Named vectors
                     named_vectors = "True"
                     vectorizer = schema.vector_config[
                         list(schema.vector_config.keys())[0]
@@ -89,30 +82,67 @@ class CollectionManager:
                         else "None"
                     )
 
-                table.add_row(
-                    [
-                        col_name,
-                        "True" if schema.multi_tenancy_config.enabled else "False",
-                        (
-                            len(col_obj.tenants.get())
-                            if schema.multi_tenancy_config.enabled
-                            else 0
-                        ),
-                        (
-                            self.__get_total_objects_with_multitenant(col_obj)
-                            if schema.multi_tenancy_config.enabled
-                            else len(col_obj)
-                        ),
-                        schema.replication_config.factor,
-                        (vector_index_type if vector_index_type else "None"),
-                        named_vectors,
-                        vectorizer if vectorizer else "None",
-                    ]
+                tenant_count = (
+                    len(col_obj.tenants.get())
+                    if schema.multi_tenancy_config.enabled
+                    else 0
+                )
+                object_count = (
+                    self.__get_total_objects_with_multitenant(col_obj)
+                    if schema.multi_tenancy_config.enabled
+                    else len(col_obj)
                 )
 
-            print("\nCollections:")
-            print(table)
-            print(f"\nTotal: {len(collections)} collections")
+                rows.append(
+                    {
+                        "name": col_name,
+                        "multitenancy": schema.multi_tenancy_config.enabled,
+                        "tenant_count": tenant_count,
+                        "object_count": object_count,
+                        "replication_factor": schema.replication_config.factor,
+                        "vector_index": (
+                            str(vector_index_type) if vector_index_type else "None"
+                        ),
+                        "named_vectors": named_vectors == "True",
+                        "vectorizer": vectorizer if vectorizer else "None",
+                    }
+                )
+
+            def _print_text():
+                table = PrettyTable()
+                table.field_names = [
+                    "Collection",
+                    "Multitenancy",
+                    "Tenants",
+                    "Objects",
+                    "Repl. Factor",
+                    "Vector Index",
+                    "Named Vectors",
+                    "Vectorizer",
+                ]
+                table.align = "l"
+                for row in rows:
+                    table.add_row(
+                        [
+                            row["name"],
+                            "True" if row["multitenancy"] else "False",
+                            row["tenant_count"],
+                            row["object_count"],
+                            row["replication_factor"],
+                            row["vector_index"],
+                            "True" if row["named_vectors"] else "False",
+                            row["vectorizer"],
+                        ]
+                    )
+                print("\nCollections:")
+                print(table)
+                print(f"\nTotal: {len(collections)} collections")
+
+            print_json_or_text(
+                {"collections": rows, "total": len(rows)},
+                json_output,
+                _print_text,
+            )
 
     def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
         return self.client.collections.list_all()
@@ -188,8 +218,25 @@ class CollectionManager:
         ] = CreateCollectionDefaults.hfresh_search_probe,
         distance_metric: Optional[str] = CreateCollectionDefaults.distance_metric,
         rescore_limit: Optional[int] = CreateCollectionDefaults.rescore_limit,
+        json_output: bool = False,
+        object_ttl_type: str = CreateCollectionDefaults.object_ttl_type,
+        object_ttl_time: Optional[int] = CreateCollectionDefaults.object_ttl_time,
+        object_ttl_filter_expired: Optional[
+            bool
+        ] = CreateCollectionDefaults.object_ttl_filter_expired,
+        object_ttl_property_name: Optional[
+            str
+        ] = CreateCollectionDefaults.object_ttl_property_name,
     ) -> None:
 
+        if (
+            object_ttl_type != "property"
+            and object_ttl_property_name
+            != CreateCollectionDefaults.object_ttl_property_name
+        ):
+            raise Exception(
+                "object_ttl_property_name is only valid when object_ttl_type is 'property'."
+            )
         if self.client.collections.exists(collection):
 
             raise Exception(
@@ -359,6 +406,23 @@ class CollectionManager:
             ),
         }
 
+        object_ttl_type_map: Dict[str, wvc.ObjectTTLType] = {
+            "create": wvc.Configure.ObjectTTL.delete_by_creation_time(
+                time_to_live=object_ttl_time,
+                filter_expired_objects=object_ttl_filter_expired,
+            ),
+            "update": wvc.Configure.ObjectTTL.delete_by_update_time(
+                time_to_live=object_ttl_time,
+                filter_expired_objects=object_ttl_filter_expired,
+            ),
+            "property": wvc.Configure.ObjectTTL.delete_by_date_property(
+                property_name=object_ttl_property_name
+                or CreateCollectionDefaults.object_ttl_property_name,
+                ttl_offset=object_ttl_time,
+                filter_expired_objects=object_ttl_filter_expired,
+            ),
+        }
+
         vectorizer_map: Dict[str, wvc.VectorizerConfig] = {}
         if named_vector:
             # Common arguments for named vectors
@@ -466,6 +530,11 @@ class CollectionManager:
                     if named_vector
                     else vectorizer_map[vectorizer]
                 ),
+                object_ttl_config=(
+                    object_ttl_type_map[object_ttl_type]
+                    if object_ttl_time is not None
+                    else None
+                ),
                 properties=(properties if not force_auto_schema else None),
             )
         except Exception as e:
@@ -474,7 +543,18 @@ class CollectionManager:
 
         assert self.client.collections.exists(collection)
 
-        click.echo(f"Collection '{collection}' created successfully in Weaviate.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Collection '{collection}' created successfully in Weaviate.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"Collection '{collection}' created successfully in Weaviate.")
 
     def update_collection(
         self,
@@ -493,8 +573,25 @@ class CollectionManager:
         replication_deletion_strategy: Optional[
             str
         ] = UpdateCollectionDefaults.replication_deletion_strategy,
+        json_output: bool = False,
+        object_ttl_type: str = UpdateCollectionDefaults.object_ttl_type,
+        object_ttl_time: Optional[int] = UpdateCollectionDefaults.object_ttl_time,
+        object_ttl_filter_expired: Optional[
+            bool
+        ] = UpdateCollectionDefaults.object_ttl_filter_expired,
+        object_ttl_property_name: Optional[
+            str
+        ] = UpdateCollectionDefaults.object_ttl_property_name,
     ) -> None:
 
+        if (
+            object_ttl_type not in ("property", "disable")
+            and object_ttl_property_name
+            != UpdateCollectionDefaults.object_ttl_property_name
+        ):
+            raise Exception(
+                "object_ttl_property_name is only valid when object_ttl_type is 'property'."
+            )
         if not self.client.collections.exists(collection):
 
             raise Exception(
@@ -523,6 +620,24 @@ class CollectionManager:
             "flat_bq": wvc.Reconfigure.VectorIndex.flat(
                 quantizer=wvc.Reconfigure.VectorIndex.Quantizer.bq()
             ),
+        }
+
+        object_ttl_type_map: Dict[str, wvc.ObjectTTLType] = {
+            "create": wvc.Reconfigure.ObjectTTL.delete_by_creation_time(
+                time_to_live=object_ttl_time,
+                filter_expired_objects=object_ttl_filter_expired,
+            ),
+            "update": wvc.Reconfigure.ObjectTTL.delete_by_update_time(
+                time_to_live=object_ttl_time,
+                filter_expired_objects=object_ttl_filter_expired,
+            ),
+            "property": wvc.Reconfigure.ObjectTTL.delete_by_date_property(
+                property_name=object_ttl_property_name
+                or UpdateCollectionDefaults.object_ttl_property_name,
+                ttl_offset=object_ttl_time,
+                filter_expired_objects=object_ttl_filter_expired,
+            ),
+            "disable": wvc.Reconfigure.ObjectTTL.disable(),
         }
 
         col_obj: Collection = self.client.collections.get(collection)
@@ -572,23 +687,52 @@ class CollectionManager:
                 if mt
                 else None
             ),
+            object_ttl_config=(
+                object_ttl_type_map[object_ttl_type]
+                if object_ttl_time is not None or object_ttl_type == "disable"
+                else None
+            ),
         )
 
         assert self.client.collections.exists(collection)
 
-        click.echo(f"Collection '{collection}' modified successfully in Weaviate.")
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Collection '{collection}' modified successfully in Weaviate.",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo(f"Collection '{collection}' modified successfully in Weaviate.")
 
     def delete_collection(
         self,
         collection: str = DeleteCollectionDefaults.collection,
         all: bool = DeleteCollectionDefaults.all,
+        json_output: bool = False,
     ) -> None:
         if all:
             collections: List[str] = self.client.collections.list_all()
             for collection in collections:
-                click.echo(f"Deleting collection '{collection}'")
+                if not json_output:
+                    click.echo(f"Deleting collection '{collection}'")
                 self.client.collections.delete(collection)
-            click.echo("All collections deleted successfully in Weaviate.")
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": "All collections deleted successfully in Weaviate.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo("All collections deleted successfully in Weaviate.")
         else:
             if self.client.collections.exists(collection):
                 try:
@@ -603,4 +747,17 @@ class CollectionManager:
 
             assert not self.client.collections.exists(collection)
 
-            click.echo(f"Collection '{collection}' deleted successfully in Weaviate.")
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Collection '{collection}' deleted successfully in Weaviate.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"Collection '{collection}' deleted successfully in Weaviate."
+                )

@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import Mock, patch
 from weaviate_cli.managers.user_manager import UserManager
@@ -323,3 +324,67 @@ def test_print_user(user_manager, capsys):
     # Assert
     captured = capsys.readouterr()
     assert captured.out == f"User: {user}\n"
+
+
+# ---------------------------------------------------------------------------
+# add_role json_output
+# ---------------------------------------------------------------------------
+
+
+def test_add_role_json_output(user_manager, capsys):
+    role_name = ("admin",)
+    user_name = "test_user"
+    user_manager.client.get_meta.return_value = {"version": "1.30.0"}
+
+    user_manager.add_role(role_name, user_name, "db", json_output=True)
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "success"
+    assert "admin" in data["message"]
+    assert user_name in data["message"]
+
+
+def test_add_role_text_output(user_manager, capsys):
+    role_name = ("admin",)
+    user_name = "test_user"
+    user_manager.client.get_meta.return_value = {"version": "1.30.0"}
+
+    user_manager.add_role(role_name, user_name, "db", json_output=False)
+
+    out = capsys.readouterr().out
+    assert "admin" in out
+    assert user_name in out
+    assert "assigned" in out
+
+
+# ---------------------------------------------------------------------------
+# revoke_role json_output
+# ---------------------------------------------------------------------------
+
+
+def test_revoke_role_json_output(user_manager, capsys):
+    role_name = ("admin",)
+    user_name = "test_user"
+    user_manager.client.get_meta.return_value = {"version": "1.30.0"}
+
+    user_manager.revoke_role(role_name, user_name, "db", json_output=True)
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "success"
+    assert "admin" in data["message"]
+    assert user_name in data["message"]
+
+
+def test_revoke_role_text_output(user_manager, capsys):
+    role_name = ("admin",)
+    user_name = "test_user"
+    user_manager.client.get_meta.return_value = {"version": "1.30.0"}
+
+    user_manager.revoke_role(role_name, user_name, "db", json_output=False)
+
+    out = capsys.readouterr().out
+    assert "admin" in out
+    assert user_name in out
+    assert "revoked" in out

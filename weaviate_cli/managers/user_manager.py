@@ -1,4 +1,6 @@
+import json
 from typing import List, Optional, Dict, Union
+import click
 from weaviate import WeaviateClient
 from weaviate.users.users import OwnUser, UserDB, UserTypes
 from weaviate_cli.defaults import (
@@ -101,20 +103,35 @@ class UserManager:
         role_name: tuple[str],
         user_name: str,
         user_type: str = "db",
+        json_output: bool = False,
     ) -> None:
         """Assign a role to a user."""
         try:
             if older_than_version(self.client, "1.30.0"):
-                return self.client.users.assign_roles(
+                self.client.users.assign_roles(
                     user_id=user_name, role_names=list(role_name)
                 )
-            if user_type == "db":
+            elif user_type == "db":
                 self.client.users.db.assign_roles(
                     user_id=user_name, role_names=list(role_name)
                 )
             elif user_type == "oidc":
                 self.client.users.oidc.assign_roles(
                     user_id=user_name, role_names=list(role_name)
+                )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Role(s) {list(role_name)} assigned to {user_type} user '{user_name}' successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"Role(s) {list(role_name)} assigned to {user_type} user '{user_name}' successfully."
                 )
         except Exception as e:
             raise Exception(
@@ -126,14 +143,15 @@ class UserManager:
         role_name: tuple[str],
         user_name: str,
         user_type: str = "db",
+        json_output: bool = False,
     ) -> None:
         """Revoke a role from a user."""
         try:
             if older_than_version(self.client, "1.30.0"):
-                return self.client.users.revoke_roles(
+                self.client.users.revoke_roles(
                     user_id=user_name, role_names=list(role_name)
                 )
-            if user_type == "db":
+            elif user_type == "db":
                 self.client.users.db.revoke_roles(
                     user_id=user_name, role_names=list(role_name)
                 )
@@ -141,17 +159,42 @@ class UserManager:
                 self.client.users.oidc.revoke_roles(
                     user_id=user_name, role_names=list(role_name)
                 )
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "message": f"Role(s) {list(role_name)} revoked from {user_type} user '{user_name}' successfully.",
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"Role(s) {list(role_name)} revoked from {user_type} user '{user_name}' successfully."
+                )
         except Exception as e:
             raise Exception(
                 f"Error revoking {user_type} role '{role_name}' from user '{user_name}': {e}"
             )
 
-    def print_user(self, user: str) -> None:
+    def print_user(self, user: str, json_output: bool = False) -> None:
         """Print user roles in a human readable format."""
+        if json_output:
+            click.echo(json.dumps({"user_id": user}, indent=2))
+            return
         print(f"User: {user}")
 
-    def print_own_user(self, user: OwnUser) -> None:
+    def print_own_user(self, user: OwnUser, json_output: bool = False) -> None:
         """Print user roles in a human readable format."""
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {"user_id": user.user_id, "roles": list(user.roles.keys())},
+                    indent=2,
+                )
+            )
+            return
         print(f"User: {user.user_id}")
         print(f"Roles:")
         if len(user.roles) == 0:
@@ -160,8 +203,21 @@ class UserManager:
             for role in user.roles.keys():
                 print(f" - Role: {role}")
 
-    def print_db_user(self, user: UserDB) -> None:
+    def print_db_user(self, user: UserDB, json_output: bool = False) -> None:
         """Print user roles in a human readable format."""
+        if json_output:
+            click.echo(
+                json.dumps(
+                    {
+                        "user_id": user.user_id,
+                        "active": user.active,
+                        "user_type": user.user_type.name,
+                        "roles": list(user.role_names),
+                    },
+                    indent=2,
+                )
+            )
+            return
         print(f"User: {user.user_id}")
         print(f"Active: {'Yes' if user.active else 'No'}")
         print(f"Type: {user.user_type.name}")

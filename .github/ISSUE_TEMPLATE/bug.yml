@@ -1,0 +1,86 @@
+name: Bug Report
+description: Report a bug in weaviate-cli
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+        Please fill in the sections below to help us reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+      placeholder: Describe the bug clearly and concisely.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Exact commands or steps to trigger the bug.
+      placeholder: |
+        1. Run `weaviate-cli create collection --collection Test`
+        2. Run `weaviate-cli get collection --collection Test --json`
+        3. Observe error: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error messages or output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: files-involved
+    attributes:
+      label: Files Involved
+      description: Key files and modules related to the bug (if known).
+      placeholder: |
+        - weaviate_cli/managers/collection_manager.py
+        - weaviate_cli/commands/get.py
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this is fixed?
+      placeholder: |
+        - [ ] The command produces correct output
+        - [ ] Unit test added for the edge case
+        - [ ] `make lint` passes
+
+  - type: input
+    id: cli-version
+    attributes:
+      label: CLI Version
+      description: Output of `weaviate-cli --version`
+      placeholder: "1.5.0"
+
+  - type: input
+    id: weaviate-version
+    attributes:
+      label: Weaviate Server Version
+      description: Version of the Weaviate cluster (if relevant)
+      placeholder: "1.28.0"
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Output of `python --version`
+      placeholder: "3.12.0"

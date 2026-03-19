@@ -33,9 +33,16 @@ def assign() -> None:
     default="db",
     help="The type of user to add the role to.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def assign_role_cli(
-    ctx: click.Context, role_name: tuple[str], user_name: str, user_type: str
+    ctx: click.Context,
+    role_name: tuple[str],
+    user_name: str,
+    user_type: str,
+    json_output: bool,
 ) -> None:
     """Assigns a role to a user."""
     client = None
@@ -43,7 +50,10 @@ def assign_role_cli(
         client = get_client_from_context(ctx)
         user_manager = UserManager(client)
         user_manager.add_role(
-            role_name=role_name, user_name=user_name, user_type=user_type
+            role_name=role_name,
+            user_name=user_name,
+            user_type=user_type,
+            json_output=json_output,
         )
     except Exception as e:
         click.echo(f"Error: {e}")
@@ -68,9 +78,12 @@ def assign_role_cli(
     required=True,
     help="The name of the role to add the permission to.",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
 @click.pass_context
 def assign_permission_cli(
-    ctx: click.Context, permission: tuple[str], role_name: str
+    ctx: click.Context, permission: tuple[str], role_name: str, json_output: bool
 ) -> None:
     """Assigns a permission to a role."""
 
@@ -78,7 +91,9 @@ def assign_permission_cli(
     try:
         client = get_client_from_context(ctx)
         role_manager = RoleManager(client)
-        role_manager.add_permission(permission=permission, role_name=role_name)
+        role_manager.add_permission(
+            permission=permission, role_name=role_name, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
