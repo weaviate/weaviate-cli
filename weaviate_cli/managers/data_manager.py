@@ -1,3 +1,4 @@
+import base64
 import importlib.resources as resources
 import json
 import math
@@ -203,6 +204,9 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
     # Generate a movie title with proper capitalization
     title = fake.catch_phrase()
 
+    # Generate blob data to simulate an image
+    cover_image = base64.b64encode(fake.binary(10)).decode("utf-8")
+
     # Prefix for update operations
     prefix = "updated-" if is_update else ""
 
@@ -222,6 +226,7 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
         "status": random.choice(STATUSES),
         "spokenLanguages": spoken_languages,
         "productionCountries": production_countries,
+        "coverImage": cover_image,
     }
 
 
@@ -1078,6 +1083,8 @@ class DataManager:
                             obj.properties[property] += 1.0
                         elif isinstance(value, datetime):
                             obj.properties[property] = value + timedelta(days=1)
+                        elif isinstance(value, bytes):
+                            obj.properties[property] = value << 1
 
                     cl_collection.data.update(
                         uuid=obj.uuid,
