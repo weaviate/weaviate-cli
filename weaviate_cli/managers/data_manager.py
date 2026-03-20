@@ -226,7 +226,7 @@ def generate_movie_object(is_update: bool = False, seed: Optional[int] = None) -
         "status": random.choice(STATUSES),
         "spokenLanguages": spoken_languages,
         "productionCountries": production_countries,
-        "coverimage": cover_image,
+        "coverImage": cover_image,
     }
 
 

@@ -430,7 +430,7 @@ class CollectionManager:
             wvc.Property(name="releaseDate", data_type=wvc.DataType.DATE),
             wvc.Property(name="revenue", data_type=wvc.DataType.NUMBER),
             wvc.Property(name="status", data_type=wvc.DataType.TEXT),
-            wvc.Property(name="coverimage", data_type=wvc.DataType.BLOB),
+            wvc.Property(name="coverImage", data_type=wvc.DataType.BLOB),
         ]
 
         rds_map = {
