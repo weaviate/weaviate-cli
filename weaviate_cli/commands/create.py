@@ -189,31 +189,31 @@ def create() -> None:
     "--hfresh_max_posting_size_kb",
     default=CreateCollectionDefaults.hfresh_max_posting_size_kb,
     type=int,
-    help="hfresh max posting size (default: None).",
+    help="hfresh - max posting size in KB (default: None).",
 )
 @click.option(
     "--hfresh_replicas",
     default=CreateCollectionDefaults.hfresh_replicas,
     type=int,
-    help="hfresh replicas (default: None).",
+    help="hfresh - number of replicas for each element in different posting lists (default: None).",
 )
 @click.option(
     "--hfresh_search_probe",
     default=CreateCollectionDefaults.hfresh_search_probe,
     type=int,
-    help="hfresh search probe (default: None).",
+    help="hfresh - search probe (default: None).",
 )
 @click.option(
     "--distance_metric",
     default=CreateCollectionDefaults.distance_metric,
     type=click.Choice(["cosine", "dot", "l2-squared", "hamming", "manhattan"]),
-    help="Distance metric for hfresh (default: 'cosine').",
+    help="Distance metric (default: None, set by Weaviate server).",
 )
 @click.option(
     "--rescore_limit",
     default=CreateCollectionDefaults.rescore_limit,
     type=int,
-    help="Rescore limit for hfresh (default: None).",
+    help="Rescore limit (default: None, set by Weaviate server).",
 )
 @click.pass_context
 def create_collection_cli(

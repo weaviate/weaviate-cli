@@ -249,40 +249,55 @@ class CollectionManager:
             )
 
         vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
-            "hnsw": wvc.Configure.VectorIndex.hnsw(),
-            "flat": wvc.Configure.VectorIndex.flat(),
+            "hnsw": wvc.Configure.VectorIndex.hnsw(distance_metric=distance_metric),
+            "flat": wvc.Configure.VectorIndex.flat(distance_metric=distance_metric),
             "dynamic": wvc.Configure.VectorIndex.dynamic(),
             "dynamic_flat_bq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(),
+                    distance_metric=distance_metric,
                 )
             ),
             "dynamic_flat_bq_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                         training_limit=training_limit
-                    )
+                    ),
+                    distance_metric=distance_metric,
                 ),
             ),
             "dynamic_flat_bq_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                        training_limit=training_limit
-                    )
+                        rescore_limit=rescore_limit, training_limit=training_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
             ),
             "dynamic_flat_bq_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
             ),
             "dynamic_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
@@ -295,45 +310,68 @@ class CollectionManager:
             "dynamic_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                        training_limit=training_limit
-                    )
+                        rescore_limit=rescore_limit, training_limit=training_limit
+                    ),
+                    distance_metric=distance_metric,
                 )
             ),
             "dynamic_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
                 hnsw=wvc.Configure.VectorIndex.hnsw(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 )
             ),
             "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                     training_limit=training_limit
-                )
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_bq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_bq_cache": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    cache=True, rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_sq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                    training_limit=training_limit
-                )
+                    rescore_limit=rescore_limit, training_limit=training_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_rq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.rq()
+                quantizer=wvc.Configure.VectorIndex.Quantizer.rq(
+                    rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
-                filter_strategy=VectorFilterStrategy.ACORN
+                filter_strategy=VectorFilterStrategy.ACORN,
+                distance_metric=distance_metric,
             ),
             "hnsw_multivector": wvc.Configure.VectorIndex.hnsw(
                 multi_vector=wvc.Configure.VectorIndex.MultiVector.multi_vector(),
+                distance_metric=distance_metric,
             ),
             "flat_bq": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "flat_bq_cache": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    cache=True, rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hfresh": self._build_hfresh_config(
                 max_posting_size_kb=hfresh_max_posting_size_kb,

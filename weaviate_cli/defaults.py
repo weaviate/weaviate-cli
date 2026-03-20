@@ -81,7 +81,7 @@ class CreateCollectionDefaults:
     hfresh_max_posting_size_kb: Optional[int] = None
     hfresh_replicas: Optional[int] = None
     hfresh_search_probe: Optional[int] = None
-    distance_metric: Optional[str] = "cosine"
+    distance_metric: Optional[str] = None
     rescore_limit: Optional[int] = None
     object_ttl_type: str = "create"
     object_ttl_time: Optional[int] = None
