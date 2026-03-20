@@ -78,6 +78,11 @@ class CreateCollectionDefaults:
     replication_deletion_strategy: Optional[str] = None
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
+    hfresh_max_posting_size_kb: Optional[int] = None
+    hfresh_replicas: Optional[int] = None
+    hfresh_search_probe: Optional[int] = None
+    distance_metric: Optional[str] = None
+    rescore_limit: Optional[int] = None
     object_ttl_type: str = "create"
     object_ttl_time: Optional[int] = None
     object_ttl_filter_expired: Optional[bool] = None

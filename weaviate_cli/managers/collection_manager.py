@@ -5,7 +5,7 @@ from weaviate.client import WeaviateClient
 from weaviate.collections import Collection
 from weaviate.collections.classes.config import _CollectionConfigSimple
 from weaviate.collections.classes.tenants import TenantActivityStatus
-from weaviate.classes.config import VectorFilterStrategy
+from weaviate.collections.classes.config_vector_index import VectorFilterStrategy
 from weaviate_cli.defaults import (
     CreateCollectionDefaults,
     UpdateCollectionDefaults,
@@ -147,6 +147,46 @@ class CollectionManager:
     def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
         return self.client.collections.list_all()
 
+    def _build_hfresh_config(
+        self,
+        max_posting_size_kb: Optional[int] = None,
+        distance_metric: Optional[str] = "cosine",
+        rescore_limit: Optional[int] = None,
+        replicas: Optional[int] = None,
+        search_probe: Optional[int] = None,
+    ):
+        """Build hfresh configuration with provided parameters."""
+        # Explicit mapping of distance metric strings to enum values
+        distance_metric_map = {
+            "cosine": wvc.VectorDistances.COSINE,
+            "dot": wvc.VectorDistances.DOT,
+            "l2-squared": wvc.VectorDistances.L2_SQUARED,
+            "hamming": wvc.VectorDistances.HAMMING,
+            "manhattan": wvc.VectorDistances.MANHATTAN,
+        }
+
+        kwargs = {}
+
+        if max_posting_size_kb is not None:
+            kwargs["max_posting_size_kb"] = max_posting_size_kb
+        if distance_metric is not None:
+            if distance_metric not in distance_metric_map:
+                raise ValueError(
+                    f"Invalid distance_metric: '{distance_metric}'. "
+                    f"Must be one of: {list(distance_metric_map.keys())}"
+                )
+            kwargs["distance_metric"] = distance_metric_map[distance_metric]
+        if replicas is not None:
+            kwargs["replicas"] = replicas
+        if search_probe is not None:
+            kwargs["search_probe"] = search_probe
+        if rescore_limit is not None:
+            kwargs["quantizer"] = wvc.Configure.VectorIndex.Quantizer.rq(
+                bits=8, rescore_limit=rescore_limit
+            )
+
+        return wvc.Configure.VectorIndex.hfresh(**kwargs)
+
     def create_collection(
         self,
         collection: str = CreateCollectionDefaults.collection,
@@ -169,6 +209,15 @@ class CollectionManager:
         ] = CreateCollectionDefaults.replication_deletion_strategy,
         named_vector: bool = CreateCollectionDefaults.named_vector,
         named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
+        hfresh_max_posting_size_kb: Optional[
+            int
+        ] = CreateCollectionDefaults.hfresh_max_posting_size_kb,
+        hfresh_replicas: Optional[int] = CreateCollectionDefaults.hfresh_replicas,
+        hfresh_search_probe: Optional[
+            int
+        ] = CreateCollectionDefaults.hfresh_search_probe,
+        distance_metric: Optional[str] = CreateCollectionDefaults.distance_metric,
+        rescore_limit: Optional[int] = CreateCollectionDefaults.rescore_limit,
         json_output: bool = False,
         object_ttl_type: str = CreateCollectionDefaults.object_ttl_type,
         object_ttl_time: Optional[int] = CreateCollectionDefaults.object_ttl_time,
@@ -200,40 +249,55 @@ class CollectionManager:
             )
 
         vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
-            "hnsw": wvc.Configure.VectorIndex.hnsw(),
-            "flat": wvc.Configure.VectorIndex.flat(),
+            "hnsw": wvc.Configure.VectorIndex.hnsw(distance_metric=distance_metric),
+            "flat": wvc.Configure.VectorIndex.flat(distance_metric=distance_metric),
             "dynamic": wvc.Configure.VectorIndex.dynamic(),
             "dynamic_flat_bq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(),
+                    distance_metric=distance_metric,
                 )
             ),
             "dynamic_flat_bq_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                         training_limit=training_limit
-                    )
+                    ),
+                    distance_metric=distance_metric,
                 ),
             ),
             "dynamic_flat_bq_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                        training_limit=training_limit
-                    )
+                        rescore_limit=rescore_limit, training_limit=training_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
             ),
             "dynamic_flat_bq_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 ),
             ),
             "dynamic_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
@@ -246,45 +310,75 @@ class CollectionManager:
             "dynamic_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                        training_limit=training_limit
-                    )
+                        rescore_limit=rescore_limit, training_limit=training_limit
+                    ),
+                    distance_metric=distance_metric,
                 )
             ),
             "dynamic_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
                 hnsw=wvc.Configure.VectorIndex.hnsw(
-                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                    quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                        rescore_limit=rescore_limit
+                    ),
+                    distance_metric=distance_metric,
                 )
             ),
             "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                     training_limit=training_limit
-                )
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_bq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_bq_cache": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    cache=True, rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_sq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                    training_limit=training_limit
-                )
+                    rescore_limit=rescore_limit, training_limit=training_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_rq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.rq()
+                quantizer=wvc.Configure.VectorIndex.Quantizer.rq(
+                    rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
-                filter_strategy=VectorFilterStrategy.ACORN
+                filter_strategy=VectorFilterStrategy.ACORN,
+                distance_metric=distance_metric,
             ),
             "hnsw_multivector": wvc.Configure.VectorIndex.hnsw(
                 multi_vector=wvc.Configure.VectorIndex.MultiVector.multi_vector(),
+                distance_metric=distance_metric,
             ),
             "flat_bq": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
             ),
             "flat_bq_cache": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(cache=True)
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
+                    cache=True, rescore_limit=rescore_limit
+                ),
+                distance_metric=distance_metric,
+            ),
+            "hfresh": self._build_hfresh_config(
+                max_posting_size_kb=hfresh_max_posting_size_kb,
+                distance_metric=distance_metric,
+                rescore_limit=rescore_limit,
+                replicas=hfresh_replicas,
+                search_probe=hfresh_search_probe,
             ),
         }
 

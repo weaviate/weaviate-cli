@@ -77,6 +77,7 @@ def create() -> None:
             "hnsw_acorn",
             "hnsw_multivector",
             "flat_bq",
+            "hfresh",
         ]
     ),
     help="Vector index type (default: 'hnsw').",
@@ -184,6 +185,36 @@ def create() -> None:
     type=str,
     help="Date property name for TTL when object_ttl_type is 'property' (default: 'releaseDate'). Only valid when --object_ttl_type=property.",
 )
+@click.option(
+    "--hfresh_max_posting_size_kb",
+    default=CreateCollectionDefaults.hfresh_max_posting_size_kb,
+    type=int,
+    help="hfresh - max posting size in KB (default: None).",
+)
+@click.option(
+    "--hfresh_replicas",
+    default=CreateCollectionDefaults.hfresh_replicas,
+    type=int,
+    help="hfresh - number of replicas for each element in different posting lists (default: None).",
+)
+@click.option(
+    "--hfresh_search_probe",
+    default=CreateCollectionDefaults.hfresh_search_probe,
+    type=int,
+    help="hfresh - search probe (default: None).",
+)
+@click.option(
+    "--distance_metric",
+    default=CreateCollectionDefaults.distance_metric,
+    type=click.Choice(["cosine", "dot", "l2-squared", "hamming", "manhattan"]),
+    help="Distance metric (default: None, set by Weaviate server).",
+)
+@click.option(
+    "--rescore_limit",
+    default=CreateCollectionDefaults.rescore_limit,
+    type=int,
+    help="Rescore limit (default: None, set by Weaviate server).",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -203,6 +234,11 @@ def create_collection_cli(
     replication_deletion_strategy: Optional[str],
     named_vector: bool,
     named_vector_name: Optional[str],
+    hfresh_max_posting_size_kb: Optional[int],
+    hfresh_replicas: Optional[int],
+    hfresh_search_probe: Optional[int],
+    distance_metric: Optional[str],
+    rescore_limit: Optional[int],
     json_output: bool,
     object_ttl_type: str,
     object_ttl_time: Optional[int],
@@ -243,6 +279,11 @@ def create_collection_cli(
             replication_deletion_strategy=replication_deletion_strategy,
             named_vector=named_vector,
             named_vector_name=named_vector_name,
+            hfresh_max_posting_size_kb=hfresh_max_posting_size_kb,
+            hfresh_replicas=hfresh_replicas,
+            hfresh_search_probe=hfresh_search_probe,
+            distance_metric=distance_metric,
+            rescore_limit=rescore_limit,
             json_output=json_output,
             object_ttl_type=object_ttl_type,
             object_ttl_time=object_ttl_time,
