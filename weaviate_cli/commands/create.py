@@ -15,6 +15,7 @@ from weaviate_cli.utils import (
     get_client_from_context,
     get_async_client_from_context,
     parse_async_replication_config,
+    ASYNC_REPLICATION_CONFIG_HELP,
 )
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
@@ -222,13 +223,7 @@ def create() -> None:
 @click.option(
     "--async_replication_config",
     multiple=True,
-    help=(
-        "Async replication config as key=value pairs. Can be specified multiple times. "
-        "Valid keys: max_workers, hashtree_height, frequency, frequency_while_propagating, "
-        "alive_nodes_checking_frequency, logging_frequency, diff_batch_size, diff_per_node_timeout, "
-        "pre_propagation_timeout, propagation_timeout, propagation_limit, propagation_delay, "
-        "propagation_concurrency, propagation_batch_size. All values must be integers."
-    ),
+    help=ASYNC_REPLICATION_CONFIG_HELP,
 )
 @click.pass_context
 def create_collection_cli(

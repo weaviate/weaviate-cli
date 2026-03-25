@@ -786,6 +786,7 @@ def test_create_collection_with_async_replication_config(
     mock_collections = MagicMock()
     mock_client.collections = mock_collections
     mock_collections.exists.side_effect = [False, True]
+    mock_client.get_meta.return_value = {"version": "1.36.0"}
 
     manager = CollectionManager(mock_client)
 
@@ -833,6 +834,28 @@ def test_create_collection_without_async_replication_config(
     assert repl_config.asyncConfig is None
 
 
+def test_create_collection_async_replication_config_requires_async_enabled(
+    mock_client,
+):
+    """Test that async_replication_config is rejected when async_enabled is False."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = False
+
+    manager = CollectionManager(mock_client)
+
+    with pytest.raises(Exception, match="requires --async_enabled"):
+        manager.create_collection(
+            collection="TestCollection",
+            replication_factor=3,
+            vector_index="hnsw",
+            async_enabled=False,
+            async_replication_config={"max_workers": 10},
+        )
+
+    mock_collections.create.assert_not_called()
+
+
 def test_update_collection_with_async_replication_config(
     mock_client, mock_wvc_object_ttl
 ):
@@ -840,6 +863,7 @@ def test_update_collection_with_async_replication_config(
     mock_collections = MagicMock()
     mock_client.collections = mock_collections
     mock_client.collections.exists.side_effect = [True, True]
+    mock_client.get_meta.return_value = {"version": "1.36.0"}
 
     mock_collection = MagicMock()
     mock_client.collections.get.return_value = mock_collection
@@ -893,3 +917,23 @@ def test_update_collection_without_async_replication_config(
     mock_collection.config.update.assert_called_once()
     repl_config = mock_collection.config.update.call_args.kwargs["replication_config"]
     assert repl_config.asyncConfig is None
+
+
+def test_update_collection_async_replication_config_rejected_when_async_false(
+    mock_client,
+):
+    """Test that async_replication_config is rejected when async_enabled is explicitly False."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.return_value = True
+
+    manager = CollectionManager(mock_client)
+
+    with pytest.raises(Exception, match="cannot be used when --async_enabled is False"):
+        manager.update_collection(
+            collection="TestCollection",
+            async_enabled=False,
+            async_replication_config={"max_workers": 10},
+        )
+
+    mock_collections.get.return_value.config.update.assert_not_called()
