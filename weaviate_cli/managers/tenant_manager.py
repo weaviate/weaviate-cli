@@ -479,6 +479,10 @@ class TenantManager:
             )
             for name, tenant in existing_tenants.items()
         ]
+        if not tenants_to_update:
+            raise Exception(
+                f"No matching tenants found in collection '{collection.name}' to update."
+            )
         collection.tenants.update(tenants_to_update)
 
         # get_by_names is only available after 1.25.0

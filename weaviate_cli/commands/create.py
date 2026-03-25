@@ -524,7 +524,7 @@ def create_backup_cli(
 @click.option(
     "--parallel_workers",
     default=CreateDataDefaults.parallel_workers,
-    type=int,
+    type=click.IntRange(min=1),
     help=f"Number of tenants to process in parallel (default: {CreateDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
 )
 @click.option(

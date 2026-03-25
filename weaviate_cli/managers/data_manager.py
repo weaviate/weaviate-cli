@@ -958,7 +958,7 @@ class DataManager:
                 for future in as_completed(future_to_tenant):
                     t = future_to_tenant[future]
                     try:
-                        inserted, collection = future.result()
+                        inserted, _coll = future.result()
                         with _lock:
                             total_inserted += inserted
                     except Exception as exc:

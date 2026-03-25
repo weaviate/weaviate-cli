@@ -486,7 +486,7 @@ class TestDeleteTenants:
         # get() should NOT be called when tenants_list is provided
         mock_collection.tenants.get.assert_not_called()
         assert mock_collection.tenants.get_by_names.call_count == 2
-        mock_collection.tenants.remove.assert_called_once_with(specific_tenant)
+        mock_collection.tenants.remove.assert_called_once_with([specific_tenant])
 
     def test_delete_all_with_wildcard_suffix(
         self, mock_client: MagicMock, capsys

@@ -162,7 +162,7 @@ def delete_tenants_cli(
 @click.option(
     "--parallel_workers",
     default=DeleteDataDefaults.parallel_workers,
-    type=int,
+    type=click.IntRange(min=1),
     help=f"Number of tenants to process in parallel (default: {DeleteDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
 )
 @click.option(
