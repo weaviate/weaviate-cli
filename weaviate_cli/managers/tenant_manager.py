@@ -266,9 +266,8 @@ class TenantManager:
 
             if not deleting_tenants:
                 raise Exception(f"No tenants present in class {collection.name}.")
-
-            for tenant in deleting_tenants.values():
-                collection.tenants.remove(tenant)
+            else:
+                collection.tenants.remove(list(deleting_tenants.values()))
 
         except Exception as e:
             raise Exception(f"Failed to delete tenants: {e}")
@@ -472,12 +471,19 @@ class TenantManager:
         else:
             existing_tenants = dict(list(tenants_with_suffix.items())[:number_tenants])
 
-        for name, tenant in existing_tenants.items():
-            collection.tenants.update(
+        tenants_to_update = [
+            (
                 Tenant(name=name, activity_status=tenant_state_map[state])
                 if tenant.activity_status != tenant_state_map[state]
                 else tenant
             )
+            for name, tenant in existing_tenants.items()
+        ]
+        if not tenants_to_update:
+            raise Exception(
+                f"No matching tenants found in collection '{collection.name}' to update."
+            )
+        collection.tenants.update(tenants_to_update)
 
         # get_by_names is only available after 1.25.0
         if version.compare(semver.Version.parse("1.25.0")) < 0:

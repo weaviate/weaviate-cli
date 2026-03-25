@@ -123,6 +123,7 @@ class CreateDataDefaults:
     multi_vector: bool = False
     batch_size: int = 1000
     dynamic_batch: bool = False
+    parallel_workers: int = MAX_WORKERS
 
 
 @dataclass
@@ -179,6 +180,7 @@ class DeleteDataDefaults:
     consistency_level: str = "quorum"
     uuid: Optional[str] = None
     verbose: bool = False
+    parallel_workers: int = MAX_WORKERS
 
 
 @dataclass
@@ -287,6 +289,7 @@ class UpdateDataDefaults:
     randomize: bool = False
     skip_seed: bool = False
     verbose: bool = False
+    parallel_workers: int = MAX_WORKERS
 
 
 @dataclass
