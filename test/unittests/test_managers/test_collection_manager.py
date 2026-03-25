@@ -777,3 +777,119 @@ def test_update_collection_with_ttl_disable_type(mock_client, mock_wvc_object_tt
     assert update_call_kwargs["object_ttl_config"] is not None
     # Verify the disable method was called
     mock_wvc_object_ttl["reconfigure"].disable.assert_called_once()
+
+
+def test_create_collection_with_async_replication_config(
+    mock_client, mock_wvc_object_ttl
+):
+    """Test creating a collection with async replication config parameters."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+
+    async_config = {"max_workers": 10, "frequency": 60, "propagation_concurrency": 4}
+
+    manager.create_collection(
+        collection="TestCollection",
+        replication_factor=3,
+        vector_index="hnsw",
+        async_enabled=True,
+        async_replication_config=async_config,
+    )
+
+    mock_collections.create.assert_called_once()
+    create_call_kwargs = mock_collections.create.call_args.kwargs
+    assert create_call_kwargs["name"] == "TestCollection"
+    assert create_call_kwargs["replication_config"].asyncEnabled is True
+    # Verify async_config is set on the replication config
+    repl_config = create_call_kwargs["replication_config"]
+    assert repl_config.asyncConfig is not None
+    assert repl_config.asyncConfig.maxWorkers == 10
+    assert repl_config.asyncConfig.frequency == 60
+    assert repl_config.asyncConfig.propagationConcurrency == 4
+
+
+def test_create_collection_without_async_replication_config(
+    mock_client, mock_wvc_object_ttl
+):
+    """Test creating a collection without async replication config passes None."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        replication_factor=3,
+        vector_index="hnsw",
+        async_enabled=True,
+    )
+
+    mock_collections.create.assert_called_once()
+    repl_config = mock_collections.create.call_args.kwargs["replication_config"]
+    assert repl_config.asyncConfig is None
+
+
+def test_update_collection_with_async_replication_config(
+    mock_client, mock_wvc_object_ttl
+):
+    """Test updating a collection with async replication config parameters."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.side_effect = [True, True]
+
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+    mock_collection.config.get.return_value = MagicMock(
+        replication_config=MagicMock(factor=3),
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+
+    manager = CollectionManager(mock_client)
+
+    async_config = {"max_workers": 20, "propagation_batch_size": 100}
+
+    manager.update_collection(
+        collection="TestCollection",
+        async_replication_config=async_config,
+    )
+
+    mock_collection.config.update.assert_called_once()
+    repl_config = mock_collection.config.update.call_args.kwargs["replication_config"]
+    assert repl_config.asyncConfig is not None
+    assert repl_config.asyncConfig.maxWorkers == 20
+    assert repl_config.asyncConfig.propagationBatchSize == 100
+
+
+def test_update_collection_without_async_replication_config(
+    mock_client, mock_wvc_object_ttl
+):
+    """Test updating a collection without async replication config passes None."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.side_effect = [True, True]
+
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+    mock_collection.config.get.return_value = MagicMock(
+        replication_config=MagicMock(factor=3),
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+
+    manager = CollectionManager(mock_client)
+
+    manager.update_collection(
+        collection="TestCollection",
+        description="Updated",
+    )
+
+    mock_collection.config.update.assert_called_once()
+    repl_config = mock_collection.config.update.call_args.kwargs["replication_config"]
+    assert repl_config.asyncConfig is None

@@ -5,6 +5,7 @@ from weaviate_cli.utils import (
     get_random_string,
     pp_objects,
     parse_permission,
+    parse_async_replication_config,
 )
 from weaviate.collections import Collection
 from io import StringIO
@@ -386,3 +387,61 @@ def test_parse_permission_invalid():
 
     with pytest.raises(ValueError, match="Invalid permission action: update_nodes"):
         parse_permission("update_nodes")
+
+
+def test_parse_async_replication_config_none():
+    assert parse_async_replication_config(None) is None
+
+
+def test_parse_async_replication_config_empty():
+    assert parse_async_replication_config(()) is None
+
+
+def test_parse_async_replication_config_single_key():
+    result = parse_async_replication_config(("max_workers=10",))
+    assert result == {"max_workers": 10}
+
+
+def test_parse_async_replication_config_multiple_keys():
+    result = parse_async_replication_config(
+        ("max_workers=10", "frequency=60", "propagation_concurrency=4")
+    )
+    assert result == {"max_workers": 10, "frequency": 60, "propagation_concurrency": 4}
+
+
+def test_parse_async_replication_config_all_keys():
+    all_keys = (
+        "max_workers=1",
+        "hashtree_height=2",
+        "frequency=3",
+        "frequency_while_propagating=4",
+        "alive_nodes_checking_frequency=5",
+        "logging_frequency=6",
+        "diff_batch_size=7",
+        "diff_per_node_timeout=8",
+        "pre_propagation_timeout=9",
+        "propagation_timeout=10",
+        "propagation_limit=11",
+        "propagation_delay=12",
+        "propagation_concurrency=13",
+        "propagation_batch_size=14",
+    )
+    result = parse_async_replication_config(all_keys)
+    assert len(result) == 14
+    assert result["max_workers"] == 1
+    assert result["propagation_batch_size"] == 14
+
+
+def test_parse_async_replication_config_invalid_key():
+    with pytest.raises(ValueError, match="Unknown async replication config key"):
+        parse_async_replication_config(("invalid_key=10",))
+
+
+def test_parse_async_replication_config_invalid_value():
+    with pytest.raises(ValueError, match="Must be an integer"):
+        parse_async_replication_config(("max_workers=abc",))
+
+
+def test_parse_async_replication_config_missing_equals():
+    with pytest.raises(ValueError, match="Expected key=value"):
+        parse_async_replication_config(("max_workers",))
