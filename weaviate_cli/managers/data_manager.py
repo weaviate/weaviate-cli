@@ -1228,9 +1228,10 @@ class DataManager:
             )
 
         if len(tenants) > 1 and parallel_workers > 1:
+            actual_workers = min(parallel_workers, len(tenants))
             _lock = threading.Lock()
             _errors: List[str] = []
-            with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            with ThreadPoolExecutor(max_workers=actual_workers) as executor:
                 future_to_tenant = {
                     executor.submit(_update_one_tenant, t): t for t in tenants
                 }
@@ -1409,9 +1410,10 @@ class DataManager:
             )
 
         if len(tenants) > 1 and parallel_workers > 1:
+            actual_workers = min(parallel_workers, len(tenants))
             _lock = threading.Lock()
             _errors: List[str] = []
-            with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            with ThreadPoolExecutor(max_workers=actual_workers) as executor:
                 future_to_tenant = {
                     executor.submit(_delete_one_tenant, t): t for t in tenants
                 }
