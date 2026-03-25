@@ -12,7 +12,11 @@ from weaviate_cli.completion.complete import (
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.managers.export_manager import ExportManager
-from weaviate_cli.utils import get_client_from_context, get_async_client_from_context
+from weaviate_cli.utils import (
+    get_client_from_context,
+    get_async_client_from_context,
+    parse_async_replication_config,
+)
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
@@ -217,6 +221,17 @@ def create() -> None:
     type=int,
     help="Rescore limit (default: None, set by Weaviate server).",
 )
+@click.option(
+    "--async_replication_config",
+    multiple=True,
+    help=(
+        "Async replication config as key=value pairs. Can be specified multiple times. "
+        "Valid keys: max_workers, hashtree_height, frequency, frequency_while_propagating, "
+        "alive_nodes_checking_frequency, logging_frequency, diff_batch_size, diff_per_node_timeout, "
+        "pre_propagation_timeout, propagation_timeout, propagation_limit, propagation_delay, "
+        "propagation_concurrency, propagation_batch_size. All values must be integers."
+    ),
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -246,6 +261,7 @@ def create_collection_cli(
     object_ttl_time: Optional[int],
     object_ttl_filter_expired: bool,
     object_ttl_property_name: Optional[str],
+    async_replication_config: tuple,
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -291,6 +307,9 @@ def create_collection_cli(
             object_ttl_time=object_ttl_time,
             object_ttl_filter_expired=object_ttl_filter_expired,
             object_ttl_property_name=object_ttl_property_name,
+            async_replication_config=parse_async_replication_config(
+                async_replication_config
+            ),
         )
     except Exception as e:
         click.echo(f"Error: {e}")

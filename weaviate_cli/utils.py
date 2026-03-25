@@ -116,6 +116,67 @@ def pp_objects(response, main_properties, json_output: bool = False):
     print(f"Total: {len(objects)} objects")
 
 
+ASYNC_REPLICATION_CONFIG_KEYS = {
+    "max_workers",
+    "hashtree_height",
+    "frequency",
+    "frequency_while_propagating",
+    "alive_nodes_checking_frequency",
+    "logging_frequency",
+    "diff_batch_size",
+    "diff_per_node_timeout",
+    "pre_propagation_timeout",
+    "propagation_timeout",
+    "propagation_limit",
+    "propagation_delay",
+    "propagation_concurrency",
+    "propagation_batch_size",
+}
+
+
+def parse_async_replication_config(
+    config_tuples: Optional[tuple],
+) -> Optional[dict]:
+    """Parse async replication config key=value tuples into a dict.
+
+    Args:
+        config_tuples: Tuple of "key=value" strings, e.g. ("max_workers=10", "frequency=60")
+
+    Returns:
+        Dict mapping parameter names to integer values, or None if empty/None.
+
+    Raises:
+        ValueError: If a key is unknown or a value is not a valid integer.
+    """
+    if not config_tuples:
+        return None
+
+    result = {}
+    for item in config_tuples:
+        if "=" not in item:
+            raise ValueError(
+                f"Invalid async replication config format: '{item}'. Expected key=value."
+            )
+        key, value = item.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+
+        if key not in ASYNC_REPLICATION_CONFIG_KEYS:
+            raise ValueError(
+                f"Unknown async replication config key: '{key}'. "
+                f"Valid keys: {', '.join(sorted(ASYNC_REPLICATION_CONFIG_KEYS))}"
+            )
+
+        try:
+            result[key] = int(value)
+        except ValueError:
+            raise ValueError(
+                f"Invalid value for '{key}': '{value}'. Must be an integer."
+            )
+
+    return result if result else None
+
+
 def parse_permission(perm: str) -> PermissionsCreateType:
     """
     Convert a permission string to RBAC permission object(s).

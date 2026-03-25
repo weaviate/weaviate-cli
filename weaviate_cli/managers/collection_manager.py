@@ -234,6 +234,7 @@ class CollectionManager:
         object_ttl_property_name: Optional[
             str
         ] = CreateCollectionDefaults.object_ttl_property_name,
+        async_replication_config: Optional[Dict[str, int]] = None,
     ) -> None:
 
         if (
@@ -568,6 +569,13 @@ class CollectionManager:
                         if replication_deletion_strategy
                         else None
                     ),
+                    async_config=(
+                        wvc.Configure.Replication.async_config(
+                            **async_replication_config
+                        )
+                        if async_replication_config
+                        else None
+                    ),
                 ),
                 sharding_config=(
                     wvc.Configure.sharding(desired_count=shards) if shards > 0 else None
@@ -634,6 +642,7 @@ class CollectionManager:
         object_ttl_property_name: Optional[
             str
         ] = UpdateCollectionDefaults.object_ttl_property_name,
+        async_replication_config: Optional[Dict[str, int]] = None,
     ) -> None:
 
         if (
@@ -727,6 +736,13 @@ class CollectionManager:
                     deletion_strategy=(
                         rds_map[replication_deletion_strategy]
                         if replication_deletion_strategy
+                        else None
+                    ),
+                    async_config=(
+                        wvc.Reconfigure.Replication.async_config(
+                            **async_replication_config
+                        )
+                        if async_replication_config
                         else None
                     ),
                 )
