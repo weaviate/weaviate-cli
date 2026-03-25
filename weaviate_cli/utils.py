@@ -134,6 +134,13 @@ ASYNC_REPLICATION_CONFIG_KEYS = {
 }
 
 
+ASYNC_REPLICATION_CONFIG_HELP = (
+    "Async replication config as key=value pairs. Can be specified multiple times. "
+    "Valid keys: " + ", ".join(sorted(ASYNC_REPLICATION_CONFIG_KEYS)) + ". "
+    "All values must be integers."
+)
+
+
 def parse_async_replication_config(
     config_tuples: Optional[tuple],
 ) -> Optional[dict]:
