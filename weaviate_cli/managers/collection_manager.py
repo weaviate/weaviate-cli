@@ -249,9 +249,9 @@ class CollectionManager:
                 "Error: --async_replication_config requires --async_enabled to be set."
             )
 
-        if async_replication_config and older_than_version(self.client, "1.36.0"):
+        if async_replication_config and older_than_version(self.client, "1.34.18"):
             click.echo(
-                "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
+                "Warning: --async_replication_config requires Weaviate >= v1.34.18. "
                 "The server may ignore or reject these settings."
             )
 
@@ -655,9 +655,9 @@ class CollectionManager:
                 "Error: --async_replication_config cannot be used when --async_enabled is False."
             )
 
-        if async_replication_config and older_than_version(self.client, "1.36.0"):
+        if async_replication_config and older_than_version(self.client, "1.34.18"):
             click.echo(
-                "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
+                "Warning: --async_replication_config requires Weaviate >= v1.34.18. "
                 "The server may ignore or reject these settings."
             )
 
