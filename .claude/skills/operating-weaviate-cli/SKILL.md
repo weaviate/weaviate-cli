@@ -139,7 +139,7 @@ weaviate-cli delete collection --collection MyCollection --json
 weaviate-cli delete collection --all --json
 ```
 
-Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable, requires Weaviate >= v1.36.0), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable; requires `--async_enabled` and Weaviate >= v1.36.0), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
 
 Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
 
