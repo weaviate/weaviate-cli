@@ -445,3 +445,19 @@ def test_parse_async_replication_config_invalid_value():
 def test_parse_async_replication_config_missing_equals():
     with pytest.raises(ValueError, match="Expected key=value"):
         parse_async_replication_config(("max_workers",))
+
+
+def test_parse_async_replication_config_reset():
+    result = parse_async_replication_config(("reset",))
+    assert result == {}
+
+
+def test_parse_async_replication_config_reset_case_insensitive():
+    assert parse_async_replication_config(("Reset",)) == {}
+    assert parse_async_replication_config(("RESET",)) == {}
+    assert parse_async_replication_config((" reset ",)) == {}
+
+
+def test_parse_async_replication_config_reset_with_other_keys():
+    with pytest.raises(ValueError, match="Expected key=value"):
+        parse_async_replication_config(("reset", "max_workers=10"))
