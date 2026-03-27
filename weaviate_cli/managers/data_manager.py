@@ -961,6 +961,7 @@ class DataManager:
                         inserted, _coll = future.result()
                         with _lock:
                             total_inserted += inserted
+                            collection = _coll
                     except Exception as exc:
                         _errors.append(f"Tenant '{t}': {exc}")
             if _errors:
