@@ -779,6 +779,81 @@ class TestCreateDataParallel:
         # Single "None" pseudo-tenant processed
         assert len(processed) == 1
 
+    def test_parallel_returns_tenant_scoped_collection(self, mock_client):
+        """Parallel mode must return a tenant-scoped collection, not the base one.
+
+        Regression test: parallel ingestion discarded the tenant-scoped collection
+        returned by __ingest_data, causing callers to get back the base collection
+        which fails with 'multi-tenancy enabled, but request was without tenant'.
+        """
+        manager = DataManager(mock_client)
+        tenants = ["Tenant-0", "Tenant-1", "Tenant-2"]
+        col = self._make_col(tenants)
+        _setup_mock_client_with_col(mock_client, col)
+
+        def fake_ingest(collection, **kwargs):
+            return collection
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            result = manager.create_data(
+                collection="TestCollection",
+                limit=5,
+                parallel_workers=4,
+            )
+
+        # The returned collection must NOT be the base col (which has no tenant)
+        assert (
+            result is not col
+        ), "Parallel mode returned the base collection instead of a tenant-scoped one"
+        # It should be one of the tenant-scoped collections
+        col.with_tenant.assert_called()
+
+    def test_sequential_returns_tenant_scoped_collection(self, mock_client):
+        """Sequential mode must also return a tenant-scoped collection."""
+        manager = DataManager(mock_client)
+        tenants = ["Tenant-0", "Tenant-1"]
+        col = self._make_col(tenants)
+        _setup_mock_client_with_col(mock_client, col)
+
+        def fake_ingest(collection, **kwargs):
+            return collection
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            result = manager.create_data(
+                collection="TestCollection",
+                limit=5,
+                parallel_workers=1,
+            )
+
+        assert (
+            result is not col
+        ), "Sequential mode returned the base collection instead of a tenant-scoped one"
+
+    def test_non_mt_returns_base_collection(self, mock_client):
+        """Non-MT collections should return the base collection (no tenant context)."""
+        manager = DataManager(mock_client)
+        col = _make_non_mt_col()
+        _setup_mock_client_with_col(mock_client, col)
+
+        def fake_ingest(collection, **kwargs):
+            return collection
+
+        with patch.object(
+            manager, "_DataManager__ingest_data", side_effect=fake_ingest
+        ):
+            result = manager.create_data(
+                collection="TestCollection",
+                limit=5,
+                parallel_workers=4,
+            )
+
+        # For non-MT, the base collection IS the correct return value
+        assert result is col
+
 
 # ---------------------------------------------------------------------------
 # create_data – concurrent_requests scaling with parallel_workers
