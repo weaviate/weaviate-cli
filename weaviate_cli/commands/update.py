@@ -7,7 +7,11 @@ from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
-from weaviate_cli.utils import get_client_from_context
+from weaviate_cli.utils import (
+    get_client_from_context,
+    parse_async_replication_config,
+    ASYNC_REPLICATION_CONFIG_HELP,
+)
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate_cli.managers.data_manager import DataManager
@@ -110,6 +114,11 @@ def update() -> None:
     type=str,
     help="Date property name for TTL when object_ttl_type is 'property' (default: 'releaseDate'). Only valid when --object_ttl_type=property.",
 )
+@click.option(
+    "--async_replication_config",
+    multiple=True,
+    help=ASYNC_REPLICATION_CONFIG_HELP,
+)
 @click.pass_context
 def update_collection_cli(
     ctx: click.Context,
@@ -127,6 +136,7 @@ def update_collection_cli(
     object_ttl_time: Optional[int],
     object_ttl_filter_expired: bool,
     object_ttl_property_name: Optional[str],
+    async_replication_config: tuple,
 ) -> None:
     """Update a collection in Weaviate."""
 
@@ -160,6 +170,9 @@ def update_collection_cli(
             object_ttl_time=object_ttl_time,
             object_ttl_filter_expired=object_ttl_filter_expired,
             object_ttl_property_name=object_ttl_property_name,
+            async_replication_config=parse_async_replication_config(
+                async_replication_config
+            ),
         )
     except Exception as e:
         click.echo(f"Error: {e}")

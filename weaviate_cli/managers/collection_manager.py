@@ -12,7 +12,7 @@ from weaviate_cli.defaults import (
     DeleteCollectionDefaults,
     GetCollectionDefaults,
 )
-from weaviate_cli.utils import print_json_or_text
+from weaviate_cli.utils import print_json_or_text, older_than_version
 import weaviate.classes.config as wvc
 from prettytable import PrettyTable
 
@@ -227,6 +227,7 @@ class CollectionManager:
         object_ttl_property_name: Optional[
             str
         ] = CreateCollectionDefaults.object_ttl_property_name,
+        async_replication_config: Optional[Dict[str, int]] = None,
     ) -> None:
 
         if (
@@ -241,6 +242,19 @@ class CollectionManager:
 
             raise Exception(
                 f"Error: Collection '{collection}' already exists in Weaviate. Delete using <delete collection> command."
+            )
+
+        if async_replication_config is not None and not async_enabled:
+            raise Exception(
+                "Error: --async_replication_config requires --async_enabled to be set."
+            )
+
+        if async_replication_config is not None and older_than_version(
+            self.client, "1.34.18"
+        ):
+            click.echo(
+                "Warning: --async_replication_config requires Weaviate >= v1.34.18. "
+                "The server may ignore or reject these settings."
             )
 
         if named_vector_name != "default" and not named_vector:
@@ -554,6 +568,13 @@ class CollectionManager:
                         if replication_deletion_strategy
                         else None
                     ),
+                    async_config=(
+                        wvc.Configure.Replication.async_config(
+                            **async_replication_config
+                        )
+                        if async_replication_config is not None
+                        else None
+                    ),
                 ),
                 sharding_config=(
                     wvc.Configure.sharding(desired_count=shards) if shards > 0 else None
@@ -620,6 +641,7 @@ class CollectionManager:
         object_ttl_property_name: Optional[
             str
         ] = UpdateCollectionDefaults.object_ttl_property_name,
+        async_replication_config: Optional[Dict[str, int]] = None,
     ) -> None:
 
         if (
@@ -630,6 +652,19 @@ class CollectionManager:
             raise Exception(
                 "object_ttl_property_name is only valid when object_ttl_type is 'property'."
             )
+        if async_replication_config is not None and async_enabled is False:
+            raise Exception(
+                "Error: --async_replication_config cannot be used when --async_enabled is False."
+            )
+
+        if async_replication_config is not None and older_than_version(
+            self.client, "1.34.18"
+        ):
+            click.echo(
+                "Warning: --async_replication_config requires Weaviate >= v1.34.18. "
+                "The server may ignore or reject these settings."
+            )
+
         if not self.client.collections.exists(collection):
 
             raise Exception(
@@ -713,6 +748,13 @@ class CollectionManager:
                     deletion_strategy=(
                         rds_map[replication_deletion_strategy]
                         if replication_deletion_strategy
+                        else None
+                    ),
+                    async_config=(
+                        wvc.Reconfigure.Replication.async_config(
+                            **async_replication_config
+                        )
+                        if async_replication_config is not None
                         else None
                     ),
                 )
