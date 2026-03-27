@@ -134,6 +134,8 @@ ASYNC_REPLICATION_CONFIG_KEYS = {
 }
 
 
+ASYNC_REPLICATION_CONFIG_RESET = "reset"
+
 ASYNC_REPLICATION_CONFIG_HELP = (
     "Async replication config as key=value pairs. Can be specified multiple times. "
     "Valid keys: " + ", ".join(sorted(ASYNC_REPLICATION_CONFIG_KEYS)) + ". "
@@ -149,16 +151,21 @@ def parse_async_replication_config(
     """Parse async replication config key=value tuples into a dict.
 
     Args:
-        config_tuples: Tuple of "key=value" strings, e.g. ("max_workers=10", "frequency=60")
+        config_tuples: Tuple of "key=value" strings, e.g. ("max_workers=10", "frequency=60"),
+            or a single "reset" to revert all settings to server defaults.
 
     Returns:
-        Dict mapping parameter names to integer values, or None if empty/None.
+        Dict mapping parameter names to integer values, empty dict for "reset",
+        or None if empty/None.
 
     Raises:
         ValueError: If a key is unknown or a value is not a valid integer.
     """
     if not config_tuples:
         return None
+
+    if len(config_tuples) == 1 and config_tuples[0].strip().lower() == "reset":
+        return {}
 
     result = {}
     for item in config_tuples:
