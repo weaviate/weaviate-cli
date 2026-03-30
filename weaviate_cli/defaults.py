@@ -75,9 +75,14 @@ class CreateCollectionDefaults:
     shards: int = 0
     vectorizer: str = "none"
     vectorizer_base_url: Optional[str] = None
-    replication_deletion_strategy: str = "no_automated_resolution"
+    replication_deletion_strategy: Optional[str] = None
     named_vector: bool = False
     named_vector_name: Optional[str] = "default"
+    hfresh_max_posting_size_kb: Optional[int] = None
+    hfresh_replicas: Optional[int] = None
+    hfresh_search_probe: Optional[int] = None
+    distance_metric: Optional[str] = None
+    rescore_limit: Optional[int] = None
     object_ttl_type: str = "create"
     object_ttl_time: Optional[int] = None
     object_ttl_filter_expired: Optional[bool] = None
@@ -119,6 +124,7 @@ class CreateDataDefaults:
     multi_vector: bool = False
     batch_size: int = 1000
     dynamic_batch: bool = False
+    parallel_workers: int = MAX_WORKERS
 
 
 @dataclass
@@ -175,6 +181,7 @@ class DeleteDataDefaults:
     consistency_level: str = "quorum"
     uuid: Optional[str] = None
     verbose: bool = False
+    parallel_workers: int = MAX_WORKERS
 
 
 @dataclass
@@ -283,6 +290,7 @@ class UpdateDataDefaults:
     randomize: bool = False
     skip_seed: bool = False
     verbose: bool = False
+    parallel_workers: int = MAX_WORKERS
 
 
 @dataclass

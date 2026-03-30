@@ -314,6 +314,12 @@ def update_shards_cli(
     help="Show detailed progress information (default: True).",
 )
 @click.option(
+    "--parallel_workers",
+    default=UpdateDataDefaults.parallel_workers,
+    type=click.IntRange(min=1),
+    help=f"Number of tenants to process in parallel (default: {UpdateDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -325,6 +331,7 @@ def update_data_cli(
     randomize,
     skip_seed,
     verbose,
+    parallel_workers,
     json_output,
 ):
     """Update data in a collection in Weaviate."""
@@ -341,6 +348,7 @@ def update_data_cli(
             randomize=randomize,
             skip_seed=skip_seed,
             verbose=verbose,
+            parallel_workers=parallel_workers,
             json_output=json_output,
         )
     except Exception as e:

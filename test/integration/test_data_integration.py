@@ -93,7 +93,7 @@ def test_data_creation_with_different_configs(
             assert obj.vector is not None
 
             vector_dimensions = {
-                "transformers": 384,
+                "transformers": 256,
                 "contextionary": 300,
             }
 
@@ -193,11 +193,12 @@ def test_data_creation_with_named_vectors(
             named_vector = obj.vector[named_vector_name]
             assert named_vector is not None
 
-            # Check vector dimensions (should be 768 for transformers)
-            assert len(named_vector) == 384
+            # Check vector dimensions (256 for model2vec transformers, 384 for none/custom)
+            expected_dim = 256 if vectorizer == "transformers" else 384
+            assert len(named_vector) == expected_dim
 
             # Verify vector is not all zeros
-            assert not np.allclose(named_vector, np.zeros(384))
+            assert not np.allclose(named_vector, np.zeros(expected_dim))
 
             # Verify vector has finite values
             assert np.all(np.isfinite(named_vector))

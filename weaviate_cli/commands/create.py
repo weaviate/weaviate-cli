@@ -77,6 +77,7 @@ def create() -> None:
             "hnsw_acorn",
             "hnsw_multivector",
             "flat_bq",
+            "hfresh",
         ]
     ),
     help="Vector index type (default: 'hnsw').",
@@ -156,7 +157,7 @@ def create() -> None:
     type=click.Choice(
         ["delete_on_conflict", "no_automated_resolution", "time_based_resolution"]
     ),
-    help=f"Replication deletion strategy (default: '{CreateCollectionDefaults.replication_deletion_strategy}').",
+    help="Replication deletion strategy. If not specified, uses the Weaviate server default (time_based_resolution).",
 )
 @click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
@@ -184,6 +185,36 @@ def create() -> None:
     type=str,
     help="Date property name for TTL when object_ttl_type is 'property' (default: 'releaseDate'). Only valid when --object_ttl_type=property.",
 )
+@click.option(
+    "--hfresh_max_posting_size_kb",
+    default=CreateCollectionDefaults.hfresh_max_posting_size_kb,
+    type=int,
+    help="hfresh - max posting size in KB (default: None).",
+)
+@click.option(
+    "--hfresh_replicas",
+    default=CreateCollectionDefaults.hfresh_replicas,
+    type=int,
+    help="hfresh - number of replicas for each element in different posting lists (default: None).",
+)
+@click.option(
+    "--hfresh_search_probe",
+    default=CreateCollectionDefaults.hfresh_search_probe,
+    type=int,
+    help="hfresh - search probe (default: None).",
+)
+@click.option(
+    "--distance_metric",
+    default=CreateCollectionDefaults.distance_metric,
+    type=click.Choice(["cosine", "dot", "l2-squared", "hamming", "manhattan"]),
+    help="Distance metric (default: None, set by Weaviate server).",
+)
+@click.option(
+    "--rescore_limit",
+    default=CreateCollectionDefaults.rescore_limit,
+    type=int,
+    help="Rescore limit (default: None, set by Weaviate server).",
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -200,9 +231,14 @@ def create_collection_cli(
     shards: int,
     vectorizer: Optional[str],
     vectorizer_base_url: Optional[str],
-    replication_deletion_strategy: str,
+    replication_deletion_strategy: Optional[str],
     named_vector: bool,
     named_vector_name: Optional[str],
+    hfresh_max_posting_size_kb: Optional[int],
+    hfresh_replicas: Optional[int],
+    hfresh_search_probe: Optional[int],
+    distance_metric: Optional[str],
+    rescore_limit: Optional[int],
     json_output: bool,
     object_ttl_type: str,
     object_ttl_time: Optional[int],
@@ -243,6 +279,11 @@ def create_collection_cli(
             replication_deletion_strategy=replication_deletion_strategy,
             named_vector=named_vector,
             named_vector_name=named_vector_name,
+            hfresh_max_posting_size_kb=hfresh_max_posting_size_kb,
+            hfresh_replicas=hfresh_replicas,
+            hfresh_search_probe=hfresh_search_probe,
+            distance_metric=distance_metric,
+            rescore_limit=rescore_limit,
             json_output=json_output,
             object_ttl_type=object_ttl_type,
             object_ttl_time=object_ttl_time,
@@ -495,6 +536,12 @@ def create_backup_cli(
     help=f"Number of concurrent requests to send to the server (default: {MAX_WORKERS}).",
 )
 @click.option(
+    "--parallel_workers",
+    default=CreateDataDefaults.parallel_workers,
+    type=click.IntRange(min=1),
+    help=f"Number of tenants to process in parallel (default: {CreateDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -516,6 +563,7 @@ def create_data_cli(
     dynamic_batch,
     batch_size,
     concurrent_requests,
+    parallel_workers,
     json_output,
 ):
     """Ingest data into a collection in Weaviate."""
@@ -566,6 +614,7 @@ def create_data_cli(
             dynamic_batch=dynamic_batch,
             batch_size=batch_size,
             concurrent_requests=concurrent_requests,
+            parallel_workers=parallel_workers,
             json_output=json_output,
         )
     except Exception as e:
