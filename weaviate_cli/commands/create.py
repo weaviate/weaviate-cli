@@ -407,11 +407,24 @@ def create_tenants_cli(
     help="The percentage of CPU to use for the backup (default: 40). The larger, the faster it will occur, but it will also consume more memory.",
 )
 @click.option(
+    "--incremental_base_backup_id",
+    default=CreateBackupDefaults.incremental_base_backup_id,
+    help="The backup_id of the previous backup to create an incremental backup from.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
 def create_backup_cli(
-    ctx, backend, backup_id, include, exclude, wait, cpu_for_backup, json_output
+    ctx,
+    backend,
+    backup_id,
+    include,
+    exclude,
+    wait,
+    cpu_for_backup,
+    incremental_base_backup_id,
+    json_output,
 ):
     """Create a backup in Weaviate."""
 
@@ -426,6 +439,7 @@ def create_backup_cli(
             exclude=exclude,
             wait=wait,
             cpu_for_backup=cpu_for_backup,
+            incremental_base_backup_id=incremental_base_backup_id,
             json_output=json_output,
         )
     except Exception as e:
