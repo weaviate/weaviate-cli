@@ -1,4 +1,4 @@
-weaviate-client>=4.20.4
+weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@jose/fix-async-repl-config-get
 click==8.1.7
 twine
 pytest

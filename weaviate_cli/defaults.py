@@ -87,6 +87,7 @@ class CreateCollectionDefaults:
     object_ttl_time: Optional[int] = None
     object_ttl_filter_expired: Optional[bool] = None
     object_ttl_property_name: str = "releaseDate"
+    async_replication_config: Optional[tuple] = None
 
 
 @dataclass
@@ -263,6 +264,7 @@ class UpdateCollectionDefaults:
     object_ttl_time: Optional[int] = None
     object_ttl_filter_expired: Optional[bool] = None
     object_ttl_property_name: str = "releaseDate"
+    async_replication_config: Optional[tuple] = None
 
 
 @dataclass

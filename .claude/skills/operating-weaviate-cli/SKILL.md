@@ -139,9 +139,26 @@ weaviate-cli delete collection --collection MyCollection --json
 weaviate-cli delete collection --all --json
 ```
 
-Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable; requires `--async_enabled` and Weaviate >= v1.34.18), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
 
-Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+
+#### Async Replication Config
+
+```bash
+# Create with async replication tuning (requires --async_enabled and Weaviate >= v1.34.18)
+weaviate-cli create collection --collection MyCol --async_enabled \
+  --async_replication_config max_workers=10 \
+  --async_replication_config frequency=60 \
+  --async_replication_config propagation_concurrency=4 --json
+
+# Update async replication config on existing collection
+weaviate-cli update collection --collection MyCol \
+  --async_replication_config max_workers=20 \
+  --async_replication_config propagation_batch_size=100 --json
+```
+
+Valid keys (all integers): `max_workers`, `hashtree_height`, `frequency`, `frequency_while_propagating`, `alive_nodes_checking_frequency`, `logging_frequency`, `diff_batch_size`, `diff_per_node_timeout`, `pre_propagation_timeout`, `propagation_timeout`, `propagation_limit`, `propagation_delay`, `propagation_concurrency`, `propagation_batch_size`
 
 #### Object TTL
 

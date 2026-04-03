@@ -43,6 +43,20 @@ weaviate-cli create collection \
 - `--object_ttl_time` -- Time to live in seconds (default: None, TTL disabled when omitted)
 - `--object_ttl_filter_expired` -- Filter expired-but-not-yet-deleted objects from queries
 - `--object_ttl_property_name` -- Date property name for TTL when `object_ttl_type=property` (default: "releaseDate"). **Only valid when `--object_ttl_type=property`**; rejected otherwise.
+- `--async_replication_config` -- Async replication tuning as `key=value` pairs (repeatable). Valid keys: `max_workers`, `hashtree_height`, `frequency`, `frequency_while_propagating`, `alive_nodes_checking_frequency`, `logging_frequency`, `diff_batch_size`, `diff_per_node_timeout`, `pre_propagation_timeout`, `propagation_timeout`, `propagation_limit`, `propagation_delay`, `propagation_concurrency`, `propagation_batch_size`. All values must be integers. Use `reset` to revert all to server defaults. Requires `--async_enabled` on create and Weaviate >= v1.34.18.
+
+**Async replication config examples:**
+```bash
+# Create with custom async replication tuning
+weaviate-cli create collection --collection MyCol --async_enabled \
+  --async_replication_config max_workers=10 \
+  --async_replication_config frequency=60 \
+  --async_replication_config propagation_concurrency=4
+
+# Set a single parameter
+weaviate-cli create collection --collection MyCol --async_enabled \
+  --async_replication_config propagation_batch_size=200
+```
 
 **Object TTL examples:**
 ```bash
@@ -68,9 +82,17 @@ weaviate-cli update collection \
   --json
 ```
 
-Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
 
 **Immutable (cannot change after creation):** multitenant, vectorizer, named_vector, shards
+
+**Async replication config examples (update):**
+```bash
+# Update async replication tuning on existing collection
+weaviate-cli update collection --collection MyCol \
+  --async_replication_config max_workers=20 \
+  --async_replication_config propagation_batch_size=100
+```
 
 **Object TTL options for update:**
 - `--object_ttl_type` -- TTL event type: create, update, property, **disable** (default: "create")
