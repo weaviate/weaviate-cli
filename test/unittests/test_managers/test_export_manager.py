@@ -157,29 +157,27 @@ def test_create_export_passes_none_collections_when_not_specified(
     assert call_kwargs["exclude_collections"] is None
 
 
-def test_create_export_passes_config_with_bucket_and_path(
+def test_create_export_passes_config_with_path(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """create_export passes ExportConfig when bucket/path are set."""
+    """create_export passes ExportConfig when path is set."""
     export_manager.create_export(
         export_id="my-export",
         backend="s3",
         file_format="parquet",
-        bucket="my-bucket",
         path="/my/path",
     )
 
     call_kwargs = mock_client_with_export.export.create.call_args.kwargs
     config = call_kwargs["config"]
     assert config is not None
-    assert config.bucket == "my-bucket"
     assert config.path == "/my/path"
 
 
-def test_create_export_no_config_when_bucket_and_path_none(
+def test_create_export_no_config_when_path_none(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """create_export passes config=None when bucket and path are not set."""
+    """create_export passes config=None when path is not set."""
     export_manager.create_export(
         export_id="my-export",
         backend="filesystem",
@@ -242,19 +240,31 @@ def test_get_export_status_json_output(export_manager: ExportManager, capsys) ->
 def test_get_export_status_passes_correct_args(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """get_export_status passes correct args to client."""
+    """get_export_status passes correct args to client, wrapping path in ExportConfig."""
     export_manager.get_export_status(
         export_id="my-export",
         backend="s3",
-        bucket="my-bucket",
         path="/my/path",
     )
 
     mock_client_with_export.export.get_status.assert_called_once()
     call_kwargs = mock_client_with_export.export.get_status.call_args.kwargs
     assert call_kwargs["export_id"] == "my-export"
-    assert call_kwargs["bucket"] == "my-bucket"
-    assert call_kwargs["path"] == "/my/path"
+    assert call_kwargs["config"] is not None
+    assert call_kwargs["config"].path == "/my/path"
+
+
+def test_get_export_status_no_config_when_path_none(
+    export_manager: ExportManager, mock_client_with_export: MagicMock
+) -> None:
+    """get_export_status passes config=None when path is not set."""
+    export_manager.get_export_status(
+        export_id="my-export",
+        backend="filesystem",
+    )
+
+    call_kwargs = mock_client_with_export.export.get_status.call_args.kwargs
+    assert call_kwargs["config"] is None
 
 
 def test_get_export_status_with_shard_status_json(
@@ -342,19 +352,31 @@ def test_cancel_export_success_json_output(
 def test_cancel_export_passes_correct_args(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """cancel_export passes correct args to client."""
+    """cancel_export passes correct args to client, wrapping path in ExportConfig."""
     export_manager.cancel_export(
         export_id="my-export",
         backend="gcs",
-        bucket="my-bucket",
         path="/my/path",
     )
 
     mock_client_with_export.export.cancel.assert_called_once()
     call_kwargs = mock_client_with_export.export.cancel.call_args.kwargs
     assert call_kwargs["export_id"] == "my-export"
-    assert call_kwargs["bucket"] == "my-bucket"
-    assert call_kwargs["path"] == "/my/path"
+    assert call_kwargs["config"] is not None
+    assert call_kwargs["config"].path == "/my/path"
+
+
+def test_cancel_export_no_config_when_path_none(
+    export_manager: ExportManager, mock_client_with_export: MagicMock
+) -> None:
+    """cancel_export passes config=None when path is not set."""
+    export_manager.cancel_export(
+        export_id="my-export",
+        backend="filesystem",
+    )
+
+    call_kwargs = mock_client_with_export.export.cancel.call_args.kwargs
+    assert call_kwargs["config"] is None
 
 
 # ---------------------------------------------------------------------------

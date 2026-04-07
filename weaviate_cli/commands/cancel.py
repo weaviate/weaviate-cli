@@ -102,11 +102,6 @@ def cancel_replication_cli(ctx: click.Context, op_id: str, json_output: bool) ->
     help=f"The backend used for storing the export (default: {CancelExportCollectionDefaults.backend}).",
 )
 @click.option(
-    "--bucket",
-    default=CancelExportCollectionDefaults.bucket,
-    help="Bucket name for cloud storage backends.",
-)
-@click.option(
     "--path",
     default=CancelExportCollectionDefaults.path,
     help="Path within the storage backend.",
@@ -119,7 +114,6 @@ def cancel_export_collection_cli(
     ctx: click.Context,
     export_id: str,
     backend: str,
-    bucket: Optional[str],
     path: Optional[str],
     json_output: bool,
 ) -> None:
@@ -131,7 +125,6 @@ def cancel_export_collection_cli(
         export_manager.cancel_export(
             export_id=export_id,
             backend=backend,
-            bucket=bucket,
             path=path,
             json_output=json_output,
         )

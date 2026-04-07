@@ -39,7 +39,6 @@ class ExportManager:
         include: Optional[str] = CreateExportCollectionDefaults.include,
         exclude: Optional[str] = CreateExportCollectionDefaults.exclude,
         wait: bool = CreateExportCollectionDefaults.wait,
-        bucket: Optional[str] = CreateExportCollectionDefaults.bucket,
         path: Optional[str] = CreateExportCollectionDefaults.path,
         json_output: bool = False,
     ) -> None:
@@ -51,9 +50,7 @@ class ExportManager:
         backend_enum = BACKEND_MAP[backend]
         file_format_enum = FILE_FORMAT_MAP[file_format]
 
-        config = None
-        if bucket or path:
-            config = ExportConfig(bucket=bucket, path=path)
+        config = ExportConfig(path=path) if path else None
 
         include_collections = (
             [c.strip() for c in include.split(",") if c.strip()] if include else None
@@ -95,17 +92,16 @@ class ExportManager:
         self,
         export_id: str = GetExportCollectionDefaults.export_id,
         backend: str = GetExportCollectionDefaults.backend,
-        bucket: Optional[str] = GetExportCollectionDefaults.bucket,
         path: Optional[str] = GetExportCollectionDefaults.path,
         json_output: bool = False,
     ) -> None:
         backend_enum = BACKEND_MAP[backend]
 
+        config = ExportConfig(path=path) if path else None
         result = self.client.export.get_status(
             export_id=export_id,
             backend=backend_enum,
-            bucket=bucket,
-            path=path,
+            config=config,
         )
 
         self._print_export_status(result, json_output=json_output)
@@ -114,17 +110,16 @@ class ExportManager:
         self,
         export_id: str = CancelExportCollectionDefaults.export_id,
         backend: str = CancelExportCollectionDefaults.backend,
-        bucket: Optional[str] = CancelExportCollectionDefaults.bucket,
         path: Optional[str] = CancelExportCollectionDefaults.path,
         json_output: bool = False,
     ) -> None:
         backend_enum = BACKEND_MAP[backend]
 
+        config = ExportConfig(path=path) if path else None
         success = self.client.export.cancel(
             export_id=export_id,
             backend=backend_enum,
-            bucket=bucket,
-            path=path,
+            config=config,
         )
 
         if success:
