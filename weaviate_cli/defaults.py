@@ -321,7 +321,6 @@ class CreateExportCollectionDefaults:
     include: Optional[str] = None
     exclude: Optional[str] = None
     wait: bool = False
-    bucket: Optional[str] = None
     path: Optional[str] = None
 
 
@@ -329,7 +328,6 @@ class CreateExportCollectionDefaults:
 class GetExportCollectionDefaults:
     export_id: str = "test-export"
     backend: str = "filesystem"
-    bucket: Optional[str] = None
     path: Optional[str] = None
 
 
@@ -337,5 +335,4 @@ class GetExportCollectionDefaults:
 class CancelExportCollectionDefaults:
     export_id: str = "test-export"
     backend: str = "filesystem"
-    bucket: Optional[str] = None
     path: Optional[str] = None

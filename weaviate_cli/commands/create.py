@@ -923,11 +923,6 @@ def create_replication_cli(
     help="Wait for the export to complete before returning.",
 )
 @click.option(
-    "--bucket",
-    default=CreateExportCollectionDefaults.bucket,
-    help="Bucket name for cloud storage backends.",
-)
-@click.option(
     "--path",
     default=CreateExportCollectionDefaults.path,
     help="Path within the storage backend.",
@@ -944,7 +939,6 @@ def create_export_collection_cli(
     include: Optional[str],
     exclude: Optional[str],
     wait: bool,
-    bucket: Optional[str],
     path: Optional[str],
     json_output: bool,
 ) -> None:
@@ -960,7 +954,6 @@ def create_export_collection_cli(
             include=include,
             exclude=exclude,
             wait=wait,
-            bucket=bucket,
             path=path,
             json_output=json_output,
         )
