@@ -777,3 +777,86 @@ def test_update_collection_with_ttl_disable_type(mock_client, mock_wvc_object_tt
     assert update_call_kwargs["object_ttl_config"] is not None
     # Verify the disable method was called
     mock_wvc_object_ttl["reconfigure"].disable.assert_called_once()
+
+
+def test_create_collection_with_hfresh_defaults(mock_client, mock_wvc_object_ttl):
+    """Test creating a collection with hfresh vector index using default parameters."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        vector_index="hfresh",
+    )
+
+    mock_collections.create.assert_called_once()
+    create_call_kwargs = mock_collections.create.call_args.kwargs
+    assert create_call_kwargs["name"] == "TestCollection"
+    assert create_call_kwargs["vector_index_config"] is not None
+
+
+def test_create_collection_with_hfresh_all_params(mock_client, mock_wvc_object_ttl):
+    """Test creating a collection with hfresh vector index with all parameters set."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        vector_index="hfresh",
+        hfresh_max_posting_size_kb=64,
+        hfresh_replicas=2,
+        hfresh_search_probe=100,
+        distance_metric="cosine",
+        rescore_limit=200,
+    )
+
+    mock_collections.create.assert_called_once()
+    create_call_kwargs = mock_collections.create.call_args.kwargs
+    assert create_call_kwargs["name"] == "TestCollection"
+    assert create_call_kwargs["vector_index_config"] is not None
+
+
+def test_create_collection_with_hfresh_valid_distance_metrics(
+    mock_client, mock_wvc_object_ttl
+):
+    """Test creating an hfresh collection with each valid distance metric."""
+    valid_metrics = ["cosine", "dot", "l2-squared", "hamming", "manhattan"]
+    for metric in valid_metrics:
+        mock_collections = MagicMock()
+        mock_client.collections = mock_collections
+        mock_collections.exists.side_effect = [False, True]
+
+        manager = CollectionManager(mock_client)
+        manager.create_collection(
+            collection="TestCollection",
+            vector_index="hfresh",
+            distance_metric=metric,
+        )
+        mock_collections.create.assert_called_once()
+
+
+def test_create_collection_with_hfresh_invalid_distance_metric(
+    mock_client, mock_wvc_object_ttl
+):
+    """Test that an unsupported distance metric raises ValueError."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = False
+
+    manager = CollectionManager(mock_client)
+
+    with pytest.raises(ValueError) as exc_info:
+        manager.create_collection(
+            collection="TestCollection",
+            vector_index="hfresh",
+            distance_metric="invalid_metric",
+        )
+
+    assert "Invalid distance_metric: 'invalid_metric'" in str(exc_info.value)
+    mock_collections.create.assert_not_called()

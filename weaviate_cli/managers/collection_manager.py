@@ -147,35 +147,42 @@ class CollectionManager:
     def get_all_collections(self) -> dict[str, _CollectionConfigSimple]:
         return self.client.collections.list_all()
 
+    _DISTANCE_METRIC_MAP = {
+        "cosine": wvc.VectorDistances.COSINE,
+        "dot": wvc.VectorDistances.DOT,
+        "l2-squared": wvc.VectorDistances.L2_SQUARED,
+        "hamming": wvc.VectorDistances.HAMMING,
+        "manhattan": wvc.VectorDistances.MANHATTAN,
+    }
+
+    def _resolve_distance_metric(
+        self, distance_metric: Optional[str]
+    ) -> Optional[wvc.VectorDistances]:
+        """Convert a distance metric string to its VectorDistances enum value."""
+        if distance_metric is None:
+            return None
+        if distance_metric not in self._DISTANCE_METRIC_MAP:
+            raise ValueError(
+                f"Invalid distance_metric: '{distance_metric}'. "
+                f"Must be one of: {list(self._DISTANCE_METRIC_MAP.keys())}"
+            )
+        return self._DISTANCE_METRIC_MAP[distance_metric]
+
     def _build_hfresh_config(
         self,
         max_posting_size_kb: Optional[int] = None,
-        distance_metric: Optional[str] = "cosine",
+        distance_metric: Optional[wvc.VectorDistances] = None,
         rescore_limit: Optional[int] = None,
         replicas: Optional[int] = None,
         search_probe: Optional[int] = None,
     ):
         """Build hfresh configuration with provided parameters."""
-        # Explicit mapping of distance metric strings to enum values
-        distance_metric_map = {
-            "cosine": wvc.VectorDistances.COSINE,
-            "dot": wvc.VectorDistances.DOT,
-            "l2-squared": wvc.VectorDistances.L2_SQUARED,
-            "hamming": wvc.VectorDistances.HAMMING,
-            "manhattan": wvc.VectorDistances.MANHATTAN,
-        }
-
         kwargs = {}
 
         if max_posting_size_kb is not None:
             kwargs["max_posting_size_kb"] = max_posting_size_kb
         if distance_metric is not None:
-            if distance_metric not in distance_metric_map:
-                raise ValueError(
-                    f"Invalid distance_metric: '{distance_metric}'. "
-                    f"Must be one of: {list(distance_metric_map.keys())}"
-                )
-            kwargs["distance_metric"] = distance_metric_map[distance_metric]
+            kwargs["distance_metric"] = distance_metric
         if replicas is not None:
             kwargs["replicas"] = replicas
         if search_probe is not None:
@@ -248,14 +255,20 @@ class CollectionManager:
                 "Error: Named vector name is only supported with named vectors. Please use --named_vector to enable named vectors."
             )
 
+        distance_metric_enum = self._resolve_distance_metric(distance_metric)
+
         vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
-            "hnsw": wvc.Configure.VectorIndex.hnsw(distance_metric=distance_metric),
-            "flat": wvc.Configure.VectorIndex.flat(distance_metric=distance_metric),
+            "hnsw": wvc.Configure.VectorIndex.hnsw(
+                distance_metric=distance_metric_enum
+            ),
+            "flat": wvc.Configure.VectorIndex.flat(
+                distance_metric=distance_metric_enum
+            ),
             "dynamic": wvc.Configure.VectorIndex.dynamic(),
             "dynamic_flat_bq": wvc.Configure.VectorIndex.dynamic(
                 flat=wvc.Configure.VectorIndex.flat(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.bq(),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 )
             ),
             "dynamic_flat_bq_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
@@ -263,13 +276,13 @@ class CollectionManager:
                     quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                         rescore_limit=rescore_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                         training_limit=training_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 ),
             ),
             "dynamic_flat_bq_hnsw_sq": wvc.Configure.VectorIndex.dynamic(
@@ -277,13 +290,13 @@ class CollectionManager:
                     quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                         rescore_limit=rescore_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
                         rescore_limit=rescore_limit, training_limit=training_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 ),
             ),
             "dynamic_flat_bq_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
@@ -291,13 +304,13 @@ class CollectionManager:
                     quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                         rescore_limit=rescore_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 ),
                 hnsw=wvc.Configure.VectorIndex.hnsw(
                     quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                         rescore_limit=rescore_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 ),
             ),
             "dynamic_hnsw_pq": wvc.Configure.VectorIndex.dynamic(
@@ -312,7 +325,7 @@ class CollectionManager:
                     quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
                         rescore_limit=rescore_limit, training_limit=training_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 )
             ),
             "dynamic_hnsw_bq": wvc.Configure.VectorIndex.dynamic(
@@ -320,62 +333,62 @@ class CollectionManager:
                     quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                         rescore_limit=rescore_limit
                     ),
-                    distance_metric=distance_metric,
+                    distance_metric=distance_metric_enum,
                 )
             ),
             "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
                     training_limit=training_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hnsw_bq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                     rescore_limit=rescore_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hnsw_bq_cache": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                     cache=True, rescore_limit=rescore_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hnsw_sq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
                     rescore_limit=rescore_limit, training_limit=training_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hnsw_rq": wvc.Configure.VectorIndex.hnsw(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.rq(
                     rescore_limit=rescore_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
                 filter_strategy=VectorFilterStrategy.ACORN,
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hnsw_multivector": wvc.Configure.VectorIndex.hnsw(
                 multi_vector=wvc.Configure.VectorIndex.MultiVector.multi_vector(),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "flat_bq": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                     rescore_limit=rescore_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "flat_bq_cache": wvc.Configure.VectorIndex.flat(
                 quantizer=wvc.Configure.VectorIndex.Quantizer.bq(
                     cache=True, rescore_limit=rescore_limit
                 ),
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
             ),
             "hfresh": self._build_hfresh_config(
                 max_posting_size_kb=hfresh_max_posting_size_kb,
-                distance_metric=distance_metric,
+                distance_metric=distance_metric_enum,
                 rescore_limit=rescore_limit,
                 replicas=hfresh_replicas,
                 search_probe=hfresh_search_probe,
