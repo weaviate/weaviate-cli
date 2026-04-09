@@ -26,7 +26,7 @@ weaviate-cli create collection \
 - `--collection` -- Name (default: "Movies")
 - `--replication_factor` -- Number of replicas (default: 3)
 - `--async_enabled` -- Enable async replication
-- `--vector_index` -- Index type: hnsw, flat, dynamic, hnsw_pq, hnsw_bq, hnsw_sq, hnsw_rq, hnsw_acorn, hnsw_multivector, flat_bq, dynamic_*
+- `--vector_index` -- Index type: hnsw, flat, dynamic, hnsw_pq, hnsw_bq, hnsw_sq, hnsw_rq, hnsw_acorn, hnsw_multivector, flat_bq, dynamic_*, hfresh
 - `--inverted_index` -- Inverted index: timestamp, null, length
 - `--training_limit` -- PQ/SQ training limit (default: 10000)
 - `--multitenant` -- Enable multi-tenancy
@@ -43,6 +43,28 @@ weaviate-cli create collection \
 - `--object_ttl_time` -- Time to live in seconds (default: None, TTL disabled when omitted)
 - `--object_ttl_filter_expired` -- Filter expired-but-not-yet-deleted objects from queries
 - `--object_ttl_property_name` -- Date property name for TTL when `object_ttl_type=property` (default: "releaseDate"). **Only valid when `--object_ttl_type=property`**; rejected otherwise.
+- `--hfresh_max_posting_size_kb` -- (hfresh only) Max posting list size in KB (default: None, uses server default)
+- `--hfresh_replicas` -- (hfresh only) Number of replicas per element across posting lists (default: None, uses server default)
+- `--hfresh_search_probe` -- (hfresh only) Search probe size (default: None, uses server default)
+- `--distance_metric` -- Distance metric: cosine, dot, l2-squared, hamming, manhattan (default: None, uses server default). Applies to all vector index types.
+- `--rescore_limit` -- Rescore limit for quantized indexes (default: None, uses server default)
+
+**hfresh examples:**
+```bash
+# Basic hfresh collection
+weaviate-cli create collection --collection Movies --vector_index hfresh --json
+
+# hfresh with all tuning parameters
+weaviate-cli create collection \
+  --collection Movies \
+  --vector_index hfresh \
+  --hfresh_max_posting_size_kb 64 \
+  --hfresh_replicas 2 \
+  --hfresh_search_probe 100 \
+  --distance_metric cosine \
+  --rescore_limit 200 \
+  --json
+```
 
 **Object TTL examples:**
 ```bash
