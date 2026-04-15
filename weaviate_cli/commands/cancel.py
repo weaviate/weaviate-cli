@@ -1,10 +1,12 @@
 import json
 import click
 import sys
+from typing import Optional
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.managers.cluster_manager import ClusterManager
-from weaviate_cli.defaults import CancelBackupDefaults
+from weaviate_cli.managers.export_manager import ExportManager
+from weaviate_cli.defaults import CancelBackupDefaults, CancelExportCollectionDefaults
 
 
 # Create Group
@@ -77,6 +79,55 @@ def cancel_replication_cli(ctx: click.Context, op_id: str, json_output: bool) ->
             )
         else:
             click.echo(f"Replication with UUID '{op_id}' cancelled successfully.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@cancel.command("export-collection")
+@click.option(
+    "--export_id",
+    default=CancelExportCollectionDefaults.export_id,
+    help=f"Identifier for the export (default: {CancelExportCollectionDefaults.export_id}).",
+)
+@click.option(
+    "--backend",
+    default=CancelExportCollectionDefaults.backend,
+    type=click.Choice(["filesystem", "s3", "gcs", "azure"]),
+    help=f"The backend used for storing the export (default: {CancelExportCollectionDefaults.backend}).",
+)
+@click.option(
+    "--path",
+    default=CancelExportCollectionDefaults.path,
+    help="Path within the storage backend.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def cancel_export_collection_cli(
+    ctx: click.Context,
+    export_id: str,
+    backend: str,
+    path: Optional[str],
+    json_output: bool,
+) -> None:
+    """Cancel a collection export in Weaviate."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        export_manager = ExportManager(client)
+        export_manager.cancel_export(
+            export_id=export_id,
+            backend=backend,
+            path=path,
+            json_output=json_output,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
