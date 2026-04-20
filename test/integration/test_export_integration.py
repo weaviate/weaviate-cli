@@ -1,4 +1,5 @@
 import json
+import click
 import pytest
 import weaviate
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -57,36 +58,31 @@ def test_create_export_and_get_status(
     export_manager: ExportManager, setup_collection, capsys
 ):
     """Test creating an export and getting its status."""
-    try:
-        # Create export with wait
-        export_manager.create_export(
-            export_id="integration-test-export",
-            backend="s3",
-            file_format="parquet",
-            include=EXPORT_COLLECTION,
-            wait=True,
-            json_output=False,
-        )
+    export_manager.create_export(
+        export_id="integration-test-export",
+        backend="s3",
+        file_format="parquet",
+        include=EXPORT_COLLECTION,
+        wait=True,
+        json_output=False,
+    )
 
-        out = capsys.readouterr().out
-        assert "integration-test-export" in out
-        assert "created successfully" in out
+    out = capsys.readouterr().out
+    assert "integration-test-export" in out
+    assert "created successfully" in out
 
-        # Get status
-        export_manager.get_export_status(
-            export_id="integration-test-export",
-            backend="s3",
-            json_output=True,
-        )
+    export_manager.get_export_status(
+        export_id="integration-test-export",
+        backend="s3",
+        json_output=True,
+    )
 
-        out = capsys.readouterr().out
-        data = json.loads(out)
-        assert data["export_id"] == "integration-test-export"
-        assert data["status"] == "SUCCESS"
-        assert EXPORT_COLLECTION in data["collections"]
-        assert "shard_status" in data
-    except Exception:
-        raise
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["export_id"] == "integration-test-export"
+    assert data["status"] == "SUCCESS"
+    assert EXPORT_COLLECTION in data["collections"]
+    assert "shard_status" in data
 
 
 def test_create_export_json_output(
@@ -131,7 +127,7 @@ def test_create_export_include_and_exclude_raises(
     export_manager: ExportManager, setup_collection
 ):
     """Test that specifying both include and exclude raises an error."""
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(click.ClickException) as exc_info:
         export_manager.create_export(
             export_id="should-fail",
             backend="s3",
@@ -154,16 +150,19 @@ def test_cancel_export(export_manager: ExportManager, setup_collection, capsys):
     )
     capsys.readouterr()  # Clear output
 
-    # Try to cancel — may succeed or fail depending on timing
+    # Try to cancel — may succeed or fail depending on timing. Only tolerate
+    # the specific "could not be canceled" path (export already finished);
+    # anything else is a real failure.
     try:
         export_manager.cancel_export(
             export_id="integration-cancel-export",
             backend="s3",
             json_output=True,
         )
-        out = capsys.readouterr().out
-        data = json.loads(out)
-        assert data["status"] == "success"
-    except Exception:
-        # Export may have already finished — that's OK
-        pass
+    except click.ClickException as e:
+        assert "could not be canceled" in str(e)
+        return
+
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "success"

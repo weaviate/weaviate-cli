@@ -226,14 +226,13 @@ See [references/backups.md](references/backups.md).
 weaviate-cli create export-collection --export_id my-export --backend s3 --file_format parquet --wait --json
 weaviate-cli create export-collection --export_id my-export --backend s3 --include "Movies,Books" --json
 weaviate-cli create export-collection --export_id my-export --backend s3 --exclude "TempData" --json
-weaviate-cli create export-collection --export_id my-export --backend s3 --bucket my-bucket --path /exports --json
 weaviate-cli get export-collection --export_id my-export --backend s3 --json
 weaviate-cli cancel export-collection --export_id my-export --backend s3 --json
 ```
 
 Backends: `filesystem`, `s3`, `gcs`, `azure`. File formats: `parquet`.
 
-Options: `--include`, `--exclude` (mutually exclusive), `--wait`, `--bucket`, `--path`
+Options: `--include`, `--exclude` (mutually exclusive), `--wait`
 
 **Prerequisite**: The export backend must be configured on the Weaviate cluster (e.g., `ENABLE_BACKUP=true` for S3 via MinIO in local-k8s).
 

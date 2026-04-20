@@ -923,11 +923,6 @@ def create_replication_cli(
     help="Wait for the export to complete before returning.",
 )
 @click.option(
-    "--path",
-    default=CreateExportCollectionDefaults.path,
-    help="Path within the storage backend.",
-)
-@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -939,7 +934,6 @@ def create_export_collection_cli(
     include: Optional[str],
     exclude: Optional[str],
     wait: bool,
-    path: Optional[str],
     json_output: bool,
 ) -> None:
     """Create a collection export in Weaviate."""
@@ -954,7 +948,6 @@ def create_export_collection_cli(
             include=include,
             exclude=exclude,
             wait=wait,
-            path=path,
             json_output=json_output,
         )
     except Exception as e:

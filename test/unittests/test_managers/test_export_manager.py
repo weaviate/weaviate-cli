@@ -1,7 +1,7 @@
 import json
+import click
 import pytest
 from unittest.mock import MagicMock
-from datetime import datetime
 
 from weaviate_cli.managers.export_manager import ExportManager
 
@@ -55,7 +55,7 @@ def test_create_export_include_and_exclude_raises(
     export_manager: ExportManager,
 ) -> None:
     """create_export raises when both include and exclude are specified."""
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(click.ClickException) as exc_info:
         export_manager.create_export(
             export_id="test",
             backend="filesystem",
@@ -157,27 +157,10 @@ def test_create_export_passes_none_collections_when_not_specified(
     assert call_kwargs["exclude_collections"] is None
 
 
-def test_create_export_passes_config_with_path(
+def test_create_export_no_extra_kwargs(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """create_export passes ExportConfig when path is set."""
-    export_manager.create_export(
-        export_id="my-export",
-        backend="s3",
-        file_format="parquet",
-        path="/my/path",
-    )
-
-    call_kwargs = mock_client_with_export.export.create.call_args.kwargs
-    config = call_kwargs["config"]
-    assert config is not None
-    assert config.path == "/my/path"
-
-
-def test_create_export_no_config_when_path_none(
-    export_manager: ExportManager, mock_client_with_export: MagicMock
-) -> None:
-    """create_export passes config=None when path is not set."""
+    """create_export does not pass config or path to the client."""
     export_manager.create_export(
         export_id="my-export",
         backend="filesystem",
@@ -185,7 +168,8 @@ def test_create_export_no_config_when_path_none(
     )
 
     call_kwargs = mock_client_with_export.export.create.call_args.kwargs
-    assert call_kwargs["config"] is None
+    assert "config" not in call_kwargs
+    assert "path" not in call_kwargs
 
 
 def test_create_export_with_wait(
@@ -240,31 +224,17 @@ def test_get_export_status_json_output(export_manager: ExportManager, capsys) ->
 def test_get_export_status_passes_correct_args(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """get_export_status passes correct args to client, wrapping path in ExportConfig."""
+    """get_export_status passes only export_id and backend to client."""
     export_manager.get_export_status(
         export_id="my-export",
         backend="s3",
-        path="/my/path",
     )
 
     mock_client_with_export.export.get_status.assert_called_once()
     call_kwargs = mock_client_with_export.export.get_status.call_args.kwargs
     assert call_kwargs["export_id"] == "my-export"
-    assert call_kwargs["config"] is not None
-    assert call_kwargs["config"].path == "/my/path"
-
-
-def test_get_export_status_no_config_when_path_none(
-    export_manager: ExportManager, mock_client_with_export: MagicMock
-) -> None:
-    """get_export_status passes config=None when path is not set."""
-    export_manager.get_export_status(
-        export_id="my-export",
-        backend="filesystem",
-    )
-
-    call_kwargs = mock_client_with_export.export.get_status.call_args.kwargs
-    assert call_kwargs["config"] is None
+    assert "config" not in call_kwargs
+    assert "path" not in call_kwargs
 
 
 def test_get_export_status_with_shard_status_json(
@@ -352,31 +322,17 @@ def test_cancel_export_success_json_output(
 def test_cancel_export_passes_correct_args(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
-    """cancel_export passes correct args to client, wrapping path in ExportConfig."""
+    """cancel_export passes only export_id and backend to client."""
     export_manager.cancel_export(
         export_id="my-export",
         backend="gcs",
-        path="/my/path",
     )
 
     mock_client_with_export.export.cancel.assert_called_once()
     call_kwargs = mock_client_with_export.export.cancel.call_args.kwargs
     assert call_kwargs["export_id"] == "my-export"
-    assert call_kwargs["config"] is not None
-    assert call_kwargs["config"].path == "/my/path"
-
-
-def test_cancel_export_no_config_when_path_none(
-    export_manager: ExportManager, mock_client_with_export: MagicMock
-) -> None:
-    """cancel_export passes config=None when path is not set."""
-    export_manager.cancel_export(
-        export_id="my-export",
-        backend="filesystem",
-    )
-
-    call_kwargs = mock_client_with_export.export.cancel.call_args.kwargs
-    assert call_kwargs["config"] is None
+    assert "config" not in call_kwargs
+    assert "path" not in call_kwargs
 
 
 # ---------------------------------------------------------------------------
@@ -390,7 +346,7 @@ def test_cancel_export_failure_raises(
     """cancel_export when client returns False raises an exception."""
     mock_client_with_export.export.cancel.return_value = False
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(click.ClickException) as exc_info:
         export_manager.cancel_export(
             export_id="my-export",
             backend="filesystem",

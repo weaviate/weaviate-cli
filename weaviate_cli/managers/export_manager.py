@@ -3,7 +3,6 @@ import click
 from typing import Optional
 from weaviate.client import WeaviateClient
 from weaviate.export.export import (
-    ExportConfig,
     ExportFileFormat,
     ExportStorage,
     ExportStatusReturn,
@@ -39,18 +38,15 @@ class ExportManager:
         include: Optional[str] = CreateExportCollectionDefaults.include,
         exclude: Optional[str] = CreateExportCollectionDefaults.exclude,
         wait: bool = CreateExportCollectionDefaults.wait,
-        path: Optional[str] = CreateExportCollectionDefaults.path,
         json_output: bool = False,
     ) -> None:
         if include and exclude:
-            raise Exception(
+            raise click.ClickException(
                 "Cannot specify both --include and --exclude. Use one or the other."
             )
 
         backend_enum = BACKEND_MAP[backend]
         file_format_enum = FILE_FORMAT_MAP[file_format]
-
-        config = ExportConfig(path=path) if path else None
 
         include_collections = (
             [c.strip() for c in include.split(",") if c.strip()] if include else None
@@ -66,7 +62,6 @@ class ExportManager:
             include_collections=include_collections,
             exclude_collections=exclude_collections,
             wait_for_completion=wait,
-            config=config,
         )
 
         if json_output:
@@ -92,16 +87,13 @@ class ExportManager:
         self,
         export_id: str = GetExportCollectionDefaults.export_id,
         backend: str = GetExportCollectionDefaults.backend,
-        path: Optional[str] = GetExportCollectionDefaults.path,
         json_output: bool = False,
     ) -> None:
         backend_enum = BACKEND_MAP[backend]
 
-        config = ExportConfig(path=path) if path else None
         result = self.client.export.get_status(
             export_id=export_id,
             backend=backend_enum,
-            config=config,
         )
 
         self._print_export_status(result, json_output=json_output)
@@ -110,16 +102,13 @@ class ExportManager:
         self,
         export_id: str = CancelExportCollectionDefaults.export_id,
         backend: str = CancelExportCollectionDefaults.backend,
-        path: Optional[str] = CancelExportCollectionDefaults.path,
         json_output: bool = False,
     ) -> None:
         backend_enum = BACKEND_MAP[backend]
 
-        config = ExportConfig(path=path) if path else None
         success = self.client.export.cancel(
             export_id=export_id,
             backend=backend_enum,
-            config=config,
         )
 
         if success:
@@ -136,7 +125,7 @@ class ExportManager:
             else:
                 click.echo(f"Export '{export_id}' canceled successfully.")
         else:
-            raise Exception(f"Export '{export_id}' could not be canceled.")
+            raise click.ClickException(f"Export '{export_id}' could not be canceled.")
 
     def _print_export_status(
         self, result: ExportStatusReturn, json_output: bool = False

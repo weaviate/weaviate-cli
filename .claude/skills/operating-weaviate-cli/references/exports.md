@@ -7,7 +7,6 @@ Export collections from Weaviate to external storage backends in Parquet format.
 weaviate-cli create export-collection --export_id my-export --backend s3 --file_format parquet --wait --json
 weaviate-cli create export-collection --export_id my-export --backend s3 --include "Movies,Books" --json
 weaviate-cli create export-collection --export_id my-export --backend gcs --exclude "TempData" --json
-weaviate-cli create export-collection --export_id my-export --backend s3 --bucket my-bucket --path /exports --wait --json
 ```
 
 ## Check Export Status
@@ -33,16 +32,12 @@ Only works while the export is in progress. Returns an error if the export has a
 - `--include` -- Comma-separated collections to include
 - `--exclude` -- Comma-separated collections to exclude
 - `--wait` -- Wait for completion
-- `--bucket` -- Bucket name for cloud storage backends
-- `--path` -- Path within the storage backend
 
 **Get Status:**
 - `--export_id`, `--backend` -- Same as create
-- `--bucket`, `--path` -- Optional, for locating the export
 
 **Cancel:**
 - `--export_id`, `--backend` -- Same as create
-- `--bucket`, `--path` -- Optional, for locating the export
 
 ## Prerequisites
 
@@ -56,4 +51,3 @@ Only works while the export is in progress. Returns an error if the export has a
 - Without `--wait`, the command returns immediately with status STARTED
 - Poll progress with `get export-collection` to monitor shard-level status
 - Export uses the same storage backends as backups (S3, GCS, Azure, filesystem)
-- The `--bucket` defaults to the cluster's configured backup bucket if not specified

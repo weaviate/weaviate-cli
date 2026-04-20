@@ -582,11 +582,6 @@ def get_replications_cli(ctx: click.Context, json_output: bool) -> None:
     help=f"The backend used for storing the export (default: {GetExportCollectionDefaults.backend}).",
 )
 @click.option(
-    "--path",
-    default=GetExportCollectionDefaults.path,
-    help="Path within the storage backend.",
-)
-@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -594,7 +589,6 @@ def get_export_collection_cli(
     ctx: click.Context,
     export_id: str,
     backend: str,
-    path: Optional[str],
     json_output: bool,
 ) -> None:
     """Get the status of a collection export in Weaviate."""
@@ -605,7 +599,6 @@ def get_export_collection_cli(
         export_manager.get_export_status(
             export_id=export_id,
             backend=backend,
-            path=path,
             json_output=json_output,
         )
     except Exception as e:

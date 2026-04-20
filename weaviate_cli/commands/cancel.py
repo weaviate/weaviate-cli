@@ -1,7 +1,6 @@
 import json
 import click
 import sys
-from typing import Optional
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.managers.cluster_manager import ClusterManager
@@ -102,11 +101,6 @@ def cancel_replication_cli(ctx: click.Context, op_id: str, json_output: bool) ->
     help=f"The backend used for storing the export (default: {CancelExportCollectionDefaults.backend}).",
 )
 @click.option(
-    "--path",
-    default=CancelExportCollectionDefaults.path,
-    help="Path within the storage backend.",
-)
-@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -114,7 +108,6 @@ def cancel_export_collection_cli(
     ctx: click.Context,
     export_id: str,
     backend: str,
-    path: Optional[str],
     json_output: bool,
 ) -> None:
     """Cancel a collection export in Weaviate."""
@@ -125,7 +118,6 @@ def cancel_export_collection_cli(
         export_manager.cancel_export(
             export_id=export_id,
             backend=backend,
-            path=path,
             json_output=json_output,
         )
     except Exception as e:

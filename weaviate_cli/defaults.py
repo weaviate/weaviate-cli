@@ -321,18 +321,15 @@ class CreateExportCollectionDefaults:
     include: Optional[str] = None
     exclude: Optional[str] = None
     wait: bool = False
-    path: Optional[str] = None
 
 
 @dataclass
 class GetExportCollectionDefaults:
     export_id: str = "test-export"
     backend: str = "filesystem"
-    path: Optional[str] = None
 
 
 @dataclass
 class CancelExportCollectionDefaults:
     export_id: str = "test-export"
     backend: str = "filesystem"
-    path: Optional[str] = None
