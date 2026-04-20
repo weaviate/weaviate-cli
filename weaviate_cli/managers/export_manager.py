@@ -64,6 +64,11 @@ class ExportManager:
             wait_for_completion=wait,
         )
 
+        if wait and result and result.status.value != "SUCCESS":
+            raise click.ClickException(
+                f"Export '{export_id}' finished with status '{result.status.value}'."
+            )
+
         if json_output:
             data = {
                 "status": "success",

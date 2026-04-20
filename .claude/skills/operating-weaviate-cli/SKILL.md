@@ -234,7 +234,7 @@ Backends: `filesystem`, `s3`, `gcs`, `azure`. File formats: `parquet`.
 
 Options: `--include`, `--exclude` (mutually exclusive), `--wait`
 
-**Prerequisite**: The export backend must be configured on the Weaviate cluster (e.g., `ENABLE_BACKUP=true` for S3 via MinIO in local-k8s).
+**Prerequisite**: The export backend must be configured on the Weaviate cluster (e.g., `COLLECTION_EXPORT=true` in local-k8s, which provisions MinIO and the `weaviate-export` bucket automatically).
 
 See [references/exports.md](references/exports.md).
 
@@ -386,7 +386,7 @@ hot/active  <-->  cold/inactive
 2. `get export-collection --backend s3 --export_id my-export` -- check status (includes shard-level progress)
 3. `cancel export-collection --backend s3 --export_id my-export` -- cancel in-progress export
 
-**Prerequisite**: The export backend must be configured on the cluster. For local-k8s, deploy with `ENABLE_BACKUP=true` to enable S3 via MinIO.
+**Prerequisite**: The export backend must be configured on the cluster. For local-k8s, deploy with `COLLECTION_EXPORT=true`, which provisions MinIO, creates the `weaviate-export` bucket, and wires `EXPORT_DEFAULT_BUCKET` automatically.
 
 ### Alias Workflow
 1. `create collection --collection Movies_v1` -- create the target collection

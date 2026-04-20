@@ -42,7 +42,7 @@ Only works while the export is in progress. Returns an error if the export has a
 ## Prerequisites
 
 1. The export backend must be configured on the Weaviate cluster
-2. For local-k8s, deploy with `ENABLE_BACKUP=true` to enable S3 via MinIO
+2. For local-k8s, deploy with `COLLECTION_EXPORT=true` (provisions MinIO, creates the `weaviate-export` bucket, and sets `EXPORT_DEFAULT_BUCKET`)
 3. `--include` and `--exclude` are mutually exclusive
 
 ## Notes

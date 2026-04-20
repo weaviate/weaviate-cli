@@ -176,6 +176,9 @@ def test_create_export_with_wait(
     export_manager: ExportManager, mock_client_with_export: MagicMock
 ) -> None:
     """create_export passes wait_for_completion=True."""
+    mock_client_with_export.export.create.return_value.status = MagicMock(
+        value="SUCCESS"
+    )
     export_manager.create_export(
         export_id="my-export",
         backend="filesystem",
@@ -185,6 +188,41 @@ def test_create_export_with_wait(
 
     call_kwargs = mock_client_with_export.export.create.call_args.kwargs
     assert call_kwargs["wait_for_completion"] is True
+
+
+def test_create_export_with_wait_raises_on_non_success(
+    export_manager: ExportManager, mock_client_with_export: MagicMock
+) -> None:
+    """create_export with wait=True raises when the export finishes non-SUCCESS."""
+    mock_client_with_export.export.create.return_value.status = MagicMock(
+        value="FAILED"
+    )
+
+    with pytest.raises(click.ClickException) as exc_info:
+        export_manager.create_export(
+            export_id="my-export",
+            backend="filesystem",
+            file_format="parquet",
+            wait=True,
+        )
+
+    assert "FAILED" in str(exc_info.value)
+    assert "my-export" in str(exc_info.value)
+
+
+def test_create_export_without_wait_does_not_raise_on_started(
+    export_manager: ExportManager, mock_client_with_export: MagicMock
+) -> None:
+    """create_export with wait=False does not raise even if status is STARTED."""
+    mock_client_with_export.export.create.return_value.status = MagicMock(
+        value="STARTED"
+    )
+    export_manager.create_export(
+        export_id="my-export",
+        backend="filesystem",
+        file_format="parquet",
+        wait=False,
+    )
 
 
 # ---------------------------------------------------------------------------
