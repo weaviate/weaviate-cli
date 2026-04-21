@@ -1,4 +1,4 @@
-weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@dev/1.37
+weaviate-client==4.21.0rc0
 click==8.1.7
 twine
 pytest
