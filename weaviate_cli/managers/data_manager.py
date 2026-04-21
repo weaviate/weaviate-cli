@@ -9,6 +9,7 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union, Any, Tuple
+import grpc
 
 import click
 import numpy as np
@@ -29,6 +30,11 @@ from weaviate_cli.defaults import (
     QueryDataDefaults,
     UpdateDataDefaults,
     DeleteDataDefaults,
+)
+
+RETRY_EXCEPTIONS = (
+    grpc.RpcError,
+    Exception,
 )
 from weaviate_cli.utils import pp_objects
 
@@ -659,13 +665,46 @@ class DataManager:
         batch_size: int = 1000,
         concurrent_requests: int = MAX_WORKERS,
         json_output: bool = False,
+        max_retries: int = CreateDataDefaults.max_retries,
+        retry_initial_delay: float = CreateDataDefaults.retry_initial_delay,
+        retry_max_delay: float = CreateDataDefaults.retry_max_delay,
     ) -> Collection:
+        def _is_retryable_error(e: Exception) -> bool:
+            error_str = str(e).lower()
+            retryable_patterns = [
+                "shard not found",
+                "shard unavailable",
+                "temporarily unavailable",
+                "service unavailable",
+                "connection reset",
+                "connection refused",
+                "deadline exceeded",
+                " UNAVAILABLE",
+                " CANCELLED",
+            ]
+            return any(pattern.lower() in error_str for pattern in retryable_patterns)
+
+        def _do_ingest() -> Tuple[int, List, _ErrorTracker]:
+            return self.__producer_consumer_ingest(
+                collection=cl_collection,
+                num_objects=num_objects,
+                vectorizer=vectorizer,
+                vector_dimensions=vector_dimensions or 1536,
+                named_vectors=named_vectors,
+                uuid=uuid,
+                dynamic_batch=dynamic_batch,
+                batch_size=batch_size,
+                concurrent_requests=concurrent_requests,
+                multi_vector=multi_vector,
+                skip_seed=skip_seed,
+                verbose=verbose,
+            )
+
         if randomize:
             if not json_output:
                 click.echo(f"Generating and ingesting {num_objects} objects")
             start_time = time.time()
 
-            # Determine vector dimensions based on vectorizer
             config = collection.config.get()
 
             if not config.vectorizer and config.vector_config:
@@ -682,21 +721,29 @@ class DataManager:
 
             cl_collection = collection.with_consistency_level(cl)
 
-            # Single consumer that feeds the batcher; batcher does its own HTTP parallelism
-            counter, failed_objects, error_tracker = self.__producer_consumer_ingest(
-                collection=cl_collection,
-                num_objects=num_objects,
-                vectorizer=vectorizer,
-                vector_dimensions=vector_dimensions or 1536,
-                named_vectors=named_vectors,
-                uuid=uuid,
-                dynamic_batch=dynamic_batch,
-                batch_size=batch_size,
-                concurrent_requests=concurrent_requests,
-                multi_vector=multi_vector,
-                skip_seed=skip_seed,
-                verbose=verbose,
-            )
+            delay = retry_initial_delay
+            last_error = None
+            for attempt in range(max_retries + 1):
+                try:
+                    counter, _, error_tracker = _do_ingest()
+                    break
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries and _is_retryable_error(e):
+                        wait_time = min(delay, retry_max_delay)
+                        if verbose:
+                            click.echo(
+                                f"Retryable error encountered (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                                f"Retrying in {wait_time:.1f}s...",
+                                err=True,
+                            )
+                        time.sleep(wait_time)
+                        delay *= 2
+                    else:
+                        raise
+
+            if last_error and "counter" not in locals():
+                raise last_error
 
             # New compact failure summary (replaces old block)
             if error_tracker.total > 0:
@@ -828,6 +875,9 @@ class DataManager:
         concurrent_requests: int = MAX_WORKERS,
         parallel_workers: int = CreateDataDefaults.parallel_workers,
         json_output: bool = False,
+        max_retries: int = CreateDataDefaults.max_retries,
+        retry_initial_delay: float = CreateDataDefaults.retry_initial_delay,
+        retry_max_delay: float = CreateDataDefaults.retry_max_delay,
     ) -> Collection:
 
         if not self.client.collections.exists(collection):
@@ -901,6 +951,9 @@ class DataManager:
                     batch_size=batch_size,
                     concurrent_requests=effective_concurrent,
                     json_output=json_output,
+                    max_retries=max_retries,
+                    retry_initial_delay=retry_initial_delay,
+                    retry_max_delay=retry_max_delay,
                 )
                 _after = len(col)
             else:
@@ -937,6 +990,9 @@ class DataManager:
                     batch_size=batch_size,
                     concurrent_requests=effective_concurrent,
                     json_output=json_output,
+                    max_retries=max_retries,
+                    retry_initial_delay=retry_initial_delay,
+                    retry_max_delay=retry_max_delay,
                 )
                 _after = len(col.with_tenant(tenant))
             if wait_for_indexing:
