@@ -542,6 +542,24 @@ def create_backup_cli(
     help=f"Number of tenants to process in parallel (default: {CreateDataDefaults.parallel_workers}). Set to 1 to disable parallelism.",
 )
 @click.option(
+    "--max_retries",
+    default=CreateDataDefaults.max_retries,
+    type=int,
+    help=f"Maximum number of retries for transient errors like shard not found (default: {CreateDataDefaults.max_retries}).",
+)
+@click.option(
+    "--retry_initial_delay",
+    default=CreateDataDefaults.retry_initial_delay,
+    type=float,
+    help=f"Initial delay between retries in seconds (default: {CreateDataDefaults.retry_initial_delay}).",
+)
+@click.option(
+    "--retry_max_delay",
+    default=CreateDataDefaults.retry_max_delay,
+    type=float,
+    help=f"Maximum delay between retries in seconds (default: {CreateDataDefaults.retry_max_delay}).",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
@@ -557,6 +575,9 @@ def create_data_cli(
     tenant_suffix,
     vector_dimensions,
     uuid,
+    max_retries,
+    retry_initial_delay,
+    retry_max_delay,
     wait_for_indexing,
     verbose,
     multi_vector,
@@ -616,6 +637,9 @@ def create_data_cli(
             concurrent_requests=concurrent_requests,
             parallel_workers=parallel_workers,
             json_output=json_output,
+            max_retries=max_retries,
+            retry_initial_delay=retry_initial_delay,
+            retry_max_delay=retry_max_delay,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

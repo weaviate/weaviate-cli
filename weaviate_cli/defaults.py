@@ -125,6 +125,9 @@ class CreateDataDefaults:
     batch_size: int = 1000
     dynamic_batch: bool = False
     parallel_workers: int = MAX_WORKERS
+    max_retries: int = 3
+    retry_initial_delay: float = 1.0
+    retry_max_delay: float = 30.0
 
 
 @dataclass
