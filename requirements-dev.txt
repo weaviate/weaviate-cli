@@ -9,7 +9,7 @@ wheel
 importlib_metadata==8.5.0
 importlib-resources>=5.0.0
 setuptools_scm
-black==24.3.0
+black==26.3.1
 pre-commit==3.6.2
 prettytable>=3.1.0
 faker>=20.0.0
