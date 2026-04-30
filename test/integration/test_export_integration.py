@@ -105,22 +105,51 @@ def test_create_export_json_output(
 
 
 def test_create_export_with_exclude(
-    export_manager: ExportManager, setup_collection, capsys
+    export_manager: ExportManager,
+    collection_manager: CollectionManager,
+    data_manager: DataManager,
+    setup_collection,
+    capsys,
 ):
-    """Test creating an export with exclude filter."""
-    export_manager.create_export(
-        export_id="integration-exclude-export",
-        backend="s3",
-        file_format="parquet",
-        exclude=EXPORT_COLLECTION,
-        wait=True,
-        json_output=True,
-    )
+    """Test creating an export with exclude filter.
 
-    out = capsys.readouterr().out
-    data = json.loads(out)
-    assert data["status"] == "success"
-    assert EXPORT_COLLECTION not in data.get("collections", [])
+    Creates a second collection so that excluding it still leaves
+    EXPORT_COLLECTION exportable (the server rejects an export with no
+    exportable classes).
+    """
+    second_collection = "ExportTestCollection_Excluded"
+    try:
+        collection_manager.create_collection(
+            collection=second_collection,
+            replication_factor=1,
+            vectorizer="none",
+            force_auto_schema=True,
+        )
+        data_manager.create_data(
+            collection=second_collection,
+            limit=10,
+            randomize=True,
+            consistency_level="one",
+        )
+        capsys.readouterr()  # Clear setup output
+
+        export_manager.create_export(
+            export_id="integration-exclude-export",
+            backend="s3",
+            file_format="parquet",
+            exclude=second_collection,
+            wait=True,
+            json_output=True,
+        )
+
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["status"] == "success"
+        assert second_collection not in data.get("collections", [])
+        assert EXPORT_COLLECTION in data.get("collections", [])
+    finally:
+        if collection_manager.client.collections.exists(second_collection):
+            collection_manager.delete_collection(collection=second_collection)
 
 
 def test_create_export_include_and_exclude_raises(
