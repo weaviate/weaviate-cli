@@ -91,7 +91,7 @@ class ExportManager:
             data = {
                 "status": "success",
                 "export_id": result.export_id,
-                "backend": result.backend.value,
+                "backend": result.backend,
                 "path": result.path,
                 "export_status": result.status.value,
                 "collections": result.collections,
@@ -156,7 +156,7 @@ class ExportManager:
         if json_output:
             data = {
                 "export_id": result.export_id,
-                "backend": result.backend.value,
+                "backend": result.backend,
                 "path": result.path,
                 "status": result.status.value,
                 "collections": result.collections,
@@ -187,7 +187,7 @@ class ExportManager:
             click.echo(json.dumps(data, indent=2, default=str))
         else:
             click.echo(f"Export ID: {result.export_id}")
-            click.echo(f"Backend: {result.backend.value}")
+            click.echo(f"Backend: {result.backend}")
             click.echo(f"Path: {result.path}")
             click.echo(f"Status: {result.status.value}")
             if result.collections:

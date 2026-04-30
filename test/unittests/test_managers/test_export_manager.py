@@ -14,7 +14,7 @@ def mock_client_with_export(mock_client: MagicMock) -> MagicMock:
     # Default create return
     mock_create_return = MagicMock()
     mock_create_return.export_id = "test-export"
-    mock_create_return.backend = MagicMock(value="filesystem")
+    mock_create_return.backend = "filesystem"
     mock_create_return.path = "/exports/test-export"
     mock_create_return.status = MagicMock(value="STARTED")
     mock_create_return.started_at = None
@@ -24,7 +24,7 @@ def mock_client_with_export(mock_client: MagicMock) -> MagicMock:
     # Default get_status return
     mock_status_return = MagicMock()
     mock_status_return.export_id = "test-export"
-    mock_status_return.backend = MagicMock(value="filesystem")
+    mock_status_return.backend = "filesystem"
     mock_status_return.path = "/exports/test-export"
     mock_status_return.status = MagicMock(value="SUCCESS")
     mock_status_return.started_at = None
