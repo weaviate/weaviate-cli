@@ -113,13 +113,13 @@ weaviate-cli [--config-file FILE] [--user USER] <group> <command> [--json] [opti
 
 | Group | Description |
 |-------|-------------|
-| `create` | Create collections, tenants, data, backups, roles, users, aliases, replications |
-| `get` | Inspect collections, tenants, shards, backups, roles, users, nodes, aliases, replications |
+| `create` | Create collections, tenants, data, backups, exports, roles, users, aliases, replications |
+| `get` | Inspect collections, tenants, shards, backups, exports, roles, users, nodes, aliases, replications |
 | `update` | Update collections, tenants, shards, data, users, aliases |
 | `delete` | Delete collections, tenants, data, roles, users, aliases, replications |
 | `query` | Query data (fetch/vector/keyword/hybrid/uuid), replications, sharding state |
 | `restore` | Restore backups |
-| `cancel` | Cancel backups and replications |
+| `cancel` | Cancel backups, exports, and replications |
 | `assign` | Assign roles to users, permissions to roles |
 | `revoke` | Revoke roles from users, permissions from roles |
 | `benchmark` | Run QPS benchmarks |
@@ -219,6 +219,24 @@ weaviate-cli cancel backup --backend s3 --backup_id my-backup --json
 Backends: `s3`, `gcs`, `filesystem`. Options: `--include`, `--exclude`, `--wait`, `--cpu_for_backup N`, `--override-alias`, `--incremental_base_backup_id`
 
 See [references/backups.md](references/backups.md).
+
+### Collection Export
+
+```bash
+weaviate-cli create export-collection --export_id my-export --backend s3 --file_format parquet --wait --json
+weaviate-cli create export-collection --export_id my-export --backend s3 --include "Movies,Books" --json
+weaviate-cli create export-collection --export_id my-export --backend s3 --exclude "TempData" --json
+weaviate-cli get export-collection --export_id my-export --backend s3 --json
+weaviate-cli cancel export-collection --export_id my-export --backend s3 --json
+```
+
+Backends: `filesystem`, `s3`, `gcs`, `azure`. File formats: `parquet`.
+
+Options: `--include`, `--exclude` (mutually exclusive), `--wait`
+
+**Prerequisite**: The export backend must be configured on the Weaviate cluster (e.g., `COLLECTION_EXPORT=true` in local-k8s, which provisions MinIO and the `weaviate-export` bucket automatically).
+
+See [references/exports.md](references/exports.md).
 
 ### RBAC (Roles, Users, Permissions)
 
@@ -363,6 +381,13 @@ hot/active  <-->  cold/inactive
 5. For timestamp-based TTL on existing collections: `--inverted_index timestamp` must be set at creation or already enabled
 6. For property-based TTL: the date property must exist, be `date` type, and have filterable or rangeable index
 
+### Collection Export Workflow
+1. `create export-collection --backend s3 --export_id my-export --wait` -- create and wait for completion
+2. `get export-collection --backend s3 --export_id my-export` -- check status (includes shard-level progress)
+3. `cancel export-collection --backend s3 --export_id my-export` -- cancel in-progress export
+
+**Prerequisite**: The export backend must be configured on the cluster. For local-k8s, deploy with `COLLECTION_EXPORT=true`, which provisions MinIO, creates the `weaviate-export` bucket, and wires `EXPORT_DEFAULT_BUCKET` automatically.
+
 ### Alias Workflow
 1. `create collection --collection Movies_v1` -- create the target collection
 2. `create alias Movies Movies_v1` -- create alias pointing to collection
@@ -417,6 +442,7 @@ When new commands or options are added to `weaviate-cli`:
 - [references/search.md](references/search.md) -- Search types, options, and selection guide
 - [references/tenants.md](references/tenants.md) -- Tenant state machine and management
 - [references/backups.md](references/backups.md) -- Backup/restore options and notes
+- [references/exports.md](references/exports.md) -- Collection export options and notes
 - [references/rbac.md](references/rbac.md) -- Permission format, actions, and examples
 - [references/cluster.md](references/cluster.md) -- Nodes, shards, replication operations
 - [references/benchmark.md](references/benchmark.md) -- Benchmark options and output modes
