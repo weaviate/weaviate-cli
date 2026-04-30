@@ -14,7 +14,7 @@ def mock_client_with_export(mock_client: MagicMock) -> MagicMock:
     # Default create return
     mock_create_return = MagicMock()
     mock_create_return.export_id = "test-export"
-    mock_create_return.backend = "filesystem"
+    mock_create_return.backend = MagicMock(value="filesystem")
     mock_create_return.path = "/exports/test-export"
     mock_create_return.status = MagicMock(value="STARTED")
     mock_create_return.started_at = None
@@ -24,7 +24,7 @@ def mock_client_with_export(mock_client: MagicMock) -> MagicMock:
     # Default get_status return
     mock_status_return = MagicMock()
     mock_status_return.export_id = "test-export"
-    mock_status_return.backend = "filesystem"
+    mock_status_return.backend = MagicMock(value="filesystem")
     mock_status_return.path = "/exports/test-export"
     mock_status_return.status = MagicMock(value="SUCCESS")
     mock_status_return.started_at = None
@@ -137,8 +137,13 @@ def test_create_export_text_output(export_manager: ExportManager, capsys) -> Non
     assert "created successfully" in out
 
 
-def test_create_export_json_output(export_manager: ExportManager, capsys) -> None:
+def test_create_export_json_output(
+    export_manager: ExportManager,
+    mock_client_with_export: MagicMock,
+    capsys,
+) -> None:
     """create_export with json_output=True emits JSON with status=success."""
+    mock_client_with_export.export.create.return_value.export_id = "my-export"
     export_manager.create_export(
         export_id="my-export",
         backend="filesystem",
@@ -149,7 +154,7 @@ def test_create_export_json_output(export_manager: ExportManager, capsys) -> Non
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["status"] == "success"
-    assert data["export_id"] == "test-export"
+    assert data["export_id"] == "my-export"
     assert data["collections"] == ["Movies", "Books"]
 
 
@@ -294,8 +299,13 @@ def test_get_export_status_text_output(export_manager: ExportManager, capsys) ->
     assert "1234" in out
 
 
-def test_get_export_status_json_output(export_manager: ExportManager, capsys) -> None:
+def test_get_export_status_json_output(
+    export_manager: ExportManager,
+    mock_client_with_export: MagicMock,
+    capsys,
+) -> None:
     """get_export_status with json_output=True emits JSON."""
+    mock_client_with_export.export.get_status.return_value.export_id = "my-export"
     export_manager.get_export_status(
         export_id="my-export",
         backend="filesystem",
@@ -304,7 +314,7 @@ def test_get_export_status_json_output(export_manager: ExportManager, capsys) ->
 
     out = capsys.readouterr().out
     data = json.loads(out)
-    assert data["export_id"] == "test-export"
+    assert data["export_id"] == "my-export"
     assert data["status"] == "SUCCESS"
     assert data["took_in_ms"] == 1234
 
