@@ -68,6 +68,56 @@ def test_create_export_include_and_exclude_raises(
     assert "exclude" in str(exc_info.value).lower()
 
 
+def test_create_export_unknown_backend_raises(
+    export_manager: ExportManager,
+) -> None:
+    """create_export raises ClickException with allowed values on unknown backend."""
+    with pytest.raises(click.ClickException) as exc_info:
+        export_manager.create_export(
+            export_id="test",
+            backend="bogus",
+            file_format="parquet",
+        )
+
+    msg = str(exc_info.value)
+    assert "bogus" in msg
+    assert "filesystem" in msg and "s3" in msg
+
+
+def test_create_export_unknown_file_format_raises(
+    export_manager: ExportManager,
+) -> None:
+    """create_export raises ClickException with allowed values on unknown file format."""
+    with pytest.raises(click.ClickException) as exc_info:
+        export_manager.create_export(
+            export_id="test",
+            backend="filesystem",
+            file_format="csv",
+        )
+
+    msg = str(exc_info.value)
+    assert "csv" in msg
+    assert "parquet" in msg
+
+
+def test_get_export_status_unknown_backend_raises(
+    export_manager: ExportManager,
+) -> None:
+    """get_export_status raises ClickException on unknown backend."""
+    with pytest.raises(click.ClickException) as exc_info:
+        export_manager.get_export_status(export_id="test", backend="bogus")
+    assert "bogus" in str(exc_info.value)
+
+
+def test_cancel_export_unknown_backend_raises(
+    export_manager: ExportManager,
+) -> None:
+    """cancel_export raises ClickException on unknown backend."""
+    with pytest.raises(click.ClickException) as exc_info:
+        export_manager.cancel_export(export_id="test", backend="bogus")
+    assert "bogus" in str(exc_info.value)
+
+
 # ---------------------------------------------------------------------------
 # create_export — success
 # ---------------------------------------------------------------------------
