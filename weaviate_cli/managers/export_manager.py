@@ -89,11 +89,10 @@ class ExportManager:
 
         if json_output:
             data = {
-                "status": "success",
                 "export_id": result.export_id,
                 "backend": result.backend,
                 "path": result.path,
-                "export_status": result.status.value,
+                "status": result.status.value,
                 "collections": result.collections,
             }
             if result.started_at:

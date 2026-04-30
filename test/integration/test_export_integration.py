@@ -99,9 +99,8 @@ def test_create_export_json_output(
 
     out = capsys.readouterr().out
     data = json.loads(out)
-    assert data["status"] == "success"
+    assert data["status"] == "SUCCESS"
     assert data["export_id"] == "integration-json-export"
-    assert data["export_status"] == "SUCCESS"
 
 
 def test_create_export_with_exclude(
@@ -144,7 +143,7 @@ def test_create_export_with_exclude(
 
         out = capsys.readouterr().out
         data = json.loads(out)
-        assert data["status"] == "success"
+        assert data["status"] == "SUCCESS"
         assert second_collection not in data.get("collections", [])
         assert EXPORT_COLLECTION in data.get("collections", [])
     finally:
