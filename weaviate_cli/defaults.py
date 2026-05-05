@@ -311,3 +311,25 @@ class GetAliasDefaults:
     alias_name: Optional[str] = None
     collection: Optional[str] = None
     all: bool = False
+
+
+@dataclass
+class CreateExportCollectionDefaults:
+    export_id: str = "test-export"
+    backend: str = "filesystem"
+    file_format: str = "parquet"
+    include: Optional[str] = None
+    exclude: Optional[str] = None
+    wait: bool = False
+
+
+@dataclass
+class GetExportCollectionDefaults:
+    export_id: str = "test-export"
+    backend: str = "filesystem"
+
+
+@dataclass
+class CancelExportCollectionDefaults:
+    export_id: str = "test-export"
+    backend: str = "filesystem"

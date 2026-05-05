@@ -82,11 +82,12 @@ jobs:
         weaviate-version: ${{ env.WEAVIATE_VERSION }}
         modules: ${{ env.MODULES }}
         enable-backup: true
+        collection-export: true
         dynamic-users: true
     - name: Run integration tests with pytest
       run: |
         pip install pytest-html
-        pytest test/integration/test_integration.py test/integration/test_data_integration.py test/integration/test_create_data_return_collection.py --html=test-report-${{ matrix.version }}.html --self-contained-html
+        pytest test/integration/test_integration.py test/integration/test_data_integration.py test/integration/test_create_data_return_collection.py test/integration/test_export_integration.py --html=test-report-${{ matrix.version }}.html --self-contained-html
   integration-auth-tests:
     needs: [unit-tests, get-latest-weaviate-version]
     env:
@@ -111,6 +112,7 @@ jobs:
         weaviate-version: ${{ env.WEAVIATE_VERSION }}
         modules: ${{ env.MODULES }}
         enable-backup: true
+        collection-export: true
         rbac: true
         dynamic-users: true
     - name: Create config directory
