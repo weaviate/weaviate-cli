@@ -82,7 +82,12 @@ class ExportManager:
             wait_for_completion=wait,
         )
 
-        if wait and result and result.status.value != "SUCCESS":
+        if result is None:
+            raise click.ClickException(
+                f"Export '{export_id}' did not return a result from the server."
+            )
+
+        if wait and result.status.value != "SUCCESS":
             raise click.ClickException(
                 f"Export '{export_id}' finished with status '{result.status.value}'."
             )
