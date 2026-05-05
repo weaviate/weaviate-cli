@@ -68,6 +68,29 @@ def test_create_user_no_name(user_manager):
     assert str(exc_info.value) == "User name is required."
 
 
+def test_create_user_with_namespace(user_manager):
+    user_name = "scoped_user"
+    expected_api_key = "ns-key"
+    user_manager.client.users.db.create.return_value = expected_api_key
+
+    result = user_manager.create_user(user_name=user_name, namespace="my_ns")
+
+    assert result == expected_api_key
+    user_manager.client.users.db.create.assert_called_once_with(
+        user_id=user_name, namespace="my_ns"
+    )
+
+
+def test_create_user_without_namespace_omits_kwarg(user_manager):
+    user_manager.client.users.db.create.return_value = "key"
+
+    user_manager.create_user(user_name="bare")
+
+    # When namespace is None it must not be forwarded as a kwarg, so the call
+    # remains compatible with older Weaviate servers that do not understand it.
+    user_manager.client.users.db.create.assert_called_once_with(user_id="bare")
+
+
 def test_create_user_error(user_manager):
     # Arrange
     user_name = "test_user"
@@ -324,6 +347,50 @@ def test_print_user(user_manager, capsys):
     # Assert
     captured = capsys.readouterr()
     assert captured.out == f"User: {user}\n"
+
+
+def test_print_db_user_with_namespace_text(user_manager, capsys):
+    user = Mock()
+    user.user_id = "scoped_user"
+    user.active = True
+    user.user_type = Mock(name="db")
+    user.user_type.name = "db"
+    user.role_names = ["admin"]
+    user.namespace = "tenants_west"
+
+    user_manager.print_db_user(user, json_output=False)
+
+    out = capsys.readouterr().out
+    assert "Namespace: tenants_west" in out
+
+
+def test_print_db_user_with_namespace_json(user_manager, capsys):
+    user = Mock()
+    user.user_id = "scoped_user"
+    user.active = True
+    user.user_type = Mock(name="db")
+    user.user_type.name = "db"
+    user.role_names = ["admin"]
+    user.namespace = "tenants_west"
+
+    user_manager.print_db_user(user, json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["namespace"] == "tenants_west"
+
+
+def test_print_db_user_without_namespace_omits_field(user_manager, capsys):
+    user = Mock(spec=["user_id", "active", "user_type", "role_names"])
+    user.user_id = "u"
+    user.active = True
+    user.user_type = Mock(name="db")
+    user.user_type.name = "db"
+    user.role_names = []
+
+    user_manager.print_db_user(user, json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert "namespace" not in payload
 
 
 # ---------------------------------------------------------------------------

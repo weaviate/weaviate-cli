@@ -18,6 +18,7 @@ from weaviate_cli.utils import (
     parse_async_replication_config,
     ASYNC_REPLICATION_CONFIG_HELP,
 )
+from weaviate_cli.managers.namespace_manager import NamespaceManager
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
@@ -29,9 +30,11 @@ from weaviate_cli.defaults import (
     CreateBackupDefaults,
     CreateCollectionDefaults,
     CreateExportCollectionDefaults,
+    CreateNamespaceDefaults,
     CreateTenantsDefaults,
     CreateDataDefaults,
     CreateRoleDefaults,
+    CreateUserDefaults,
     PERMISSION_HELP_STRING,
     MAX_WORKERS,
 )
@@ -689,8 +692,13 @@ def create_role_cli(
 @create.command("user")
 @click.option(
     "--user_name",
-    default=None,
+    default=CreateUserDefaults.user_name,
     help="The name of the user to create.",
+)
+@click.option(
+    "--namespace",
+    default=CreateUserDefaults.namespace,
+    help="Bind the user to this namespace. Required on namespace-enabled clusters (Weaviate 1.38.0+).",
 )
 @click.option(
     "--store",
@@ -702,14 +710,18 @@ def create_role_cli(
 )
 @click.pass_context
 def create_user_cli(
-    ctx: click.Context, user_name: str, store: bool, json_output: bool
+    ctx: click.Context,
+    user_name: str,
+    namespace: Optional[str],
+    store: bool,
+    json_output: bool,
 ) -> None:
     """Create a user in Weaviate."""
     client = None
     try:
         client = get_client_from_context(ctx)
         user_man = UserManager(client)
-        api_key = user_man.create_user(user_name=user_name)
+        api_key = user_man.create_user(user_name=user_name, namespace=namespace)
 
         if store:
             config_manager = ctx.obj.get("config")
@@ -741,36 +753,34 @@ def create_user_cli(
                 json.dump(config, f, indent=4)
 
             if json_output:
-                click.echo(
-                    json.dumps(
-                        {
-                            "status": "success",
-                            "user_name": user_name,
-                            "api_key": api_key,
-                            "stored_at": str(config_path),
-                        },
-                        indent=2,
-                    )
-                )
+                payload = {
+                    "status": "success",
+                    "user_name": user_name,
+                    "api_key": api_key,
+                    "stored_at": str(config_path),
+                }
+                if namespace is not None:
+                    payload["namespace"] = namespace
+                click.echo(json.dumps(payload, indent=2))
             else:
+                ns_suffix = f" (namespace: {namespace})" if namespace else ""
                 click.echo(
-                    f"User '{user_name}' created and API key stored in config file at {config_path}"
+                    f"User '{user_name}'{ns_suffix} created and API key stored in config file at {config_path}"
                 )
         else:
             if json_output:
-                click.echo(
-                    json.dumps(
-                        {
-                            "status": "success",
-                            "user_name": user_name,
-                            "api_key": api_key,
-                        },
-                        indent=2,
-                    )
-                )
+                payload = {
+                    "status": "success",
+                    "user_name": user_name,
+                    "api_key": api_key,
+                }
+                if namespace is not None:
+                    payload["namespace"] = namespace
+                click.echo(json.dumps(payload, indent=2))
             else:
+                ns_suffix = f" (namespace: {namespace})" if namespace else ""
                 click.echo(
-                    f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
+                    f"User '{user_name}'{ns_suffix} created successfully in Weaviate with api key: \n{api_key}"
                 )
 
     except Exception as e:
@@ -968,6 +978,34 @@ def create_export_collection_cli(
             wait=wait,
             json_output=json_output,
         )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("namespace")
+@click.option(
+    "--name",
+    default=CreateNamespaceDefaults.name,
+    required=True,
+    help="The namespace name. Must be 3-36 lowercase alphanumeric characters starting with a letter.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def create_namespace_cli(ctx: click.Context, name: str, json_output: bool) -> None:
+    """Create a namespace in Weaviate (requires Weaviate 1.38.0+)."""
+    client: Optional[WeaviateClient] = None
+    try:
+        client = get_client_from_context(ctx)
+        namespace_man = NamespaceManager(client)
+        namespace_man.create_namespace(name=name, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

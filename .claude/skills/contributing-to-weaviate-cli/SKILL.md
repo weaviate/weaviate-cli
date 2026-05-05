@@ -44,10 +44,10 @@ weaviate-cli/
     defaults.py                 # Dataclass defaults for all commands
     utils.py                    # Shared helpers: get_client, pp_objects, parse_permission
     commands/                   # Click command definitions (one file per group)
-      create.py                 # create collection, tenants, data, backup, role, user, alias, replication
-      get.py                    # get collection, tenants, shards, backup, role, user, nodes, alias, replication
+      create.py                 # create collection, tenants, data, backup, role, user, alias, namespace, replication
+      get.py                    # get collection, tenants, shards, backup, role, user, nodes, alias, namespace, replication
       update.py                 # update collection, tenants, shards, data, user, alias
-      delete.py                 # delete collection, tenants, data, role, user, alias, replication
+      delete.py                 # delete collection, tenants, data, role, user, alias, namespace, replication
       query.py                  # query data, replications, sharding-state
       restore.py                # restore backup
       cancel.py                 # cancel backup, replication
@@ -61,7 +61,8 @@ weaviate-cli/
       data_manager.py           # DataManager: ingest/update/delete data
       backup_manager.py         # BackupManager: backup/restore operations
       role_manager.py           # RoleManager: RBAC role operations
-      user_manager.py           # UserManager: RBAC user operations
+      user_manager.py           # UserManager: RBAC user operations (supports namespace-scoped users)
+      namespace_manager.py      # NamespaceManager: namespace CRUD (Weaviate 1.38.0+)
       node_manager.py           # NodeManager: node information
       shard_manager.py          # ShardManager: shard operations
       cluster_manager.py        # ClusterManager: replication operations

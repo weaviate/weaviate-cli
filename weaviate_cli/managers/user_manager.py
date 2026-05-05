@@ -46,15 +46,26 @@ class UserManager:
     def create_user(
         self,
         user_name: Optional[str] = None,
+        namespace: Optional[str] = None,
     ) -> str:
         """
         Create a user in Weaviate.
-        Returns the api key for the user.
+
+        Args:
+            user_name: The id of the new user.
+            namespace: Optional namespace to bind the user to. Required on
+                namespace-enabled clusters (Weaviate 1.38.0+).
+
+        Returns:
+            The api key for the user.
         """
         if user_name is None:
             raise Exception("User name is required.")
         try:
-            return self.client.users.db.create(user_id=user_name)
+            kwargs = {"user_id": user_name}
+            if namespace is not None:
+                kwargs["namespace"] = namespace
+            return self.client.users.db.create(**kwargs)
         except Exception as e:
             raise Exception(f"Error creating user '{user_name}': {e}")
 
@@ -205,22 +216,23 @@ class UserManager:
 
     def print_db_user(self, user: UserDB, json_output: bool = False) -> None:
         """Print user roles in a human readable format."""
+        namespace = getattr(user, "namespace", None)
         if json_output:
-            click.echo(
-                json.dumps(
-                    {
-                        "user_id": user.user_id,
-                        "active": user.active,
-                        "user_type": user.user_type.name,
-                        "roles": list(user.role_names),
-                    },
-                    indent=2,
-                )
-            )
+            payload = {
+                "user_id": user.user_id,
+                "active": user.active,
+                "user_type": user.user_type.name,
+                "roles": list(user.role_names),
+            }
+            if namespace is not None:
+                payload["namespace"] = namespace
+            click.echo(json.dumps(payload, indent=2))
             return
         print(f"User: {user.user_id}")
         print(f"Active: {'Yes' if user.active else 'No'}")
         print(f"Type: {user.user_type.name}")
+        if namespace is not None:
+            print(f"Namespace: {namespace}")
         print(f"Roles:")
         if len(user.role_names) == 0:
             print(f" - No roles assigned")

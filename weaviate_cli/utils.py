@@ -229,6 +229,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
         "backups",
         "nodes",
         "aliases",
+        "namespaces",
     ]
     crud_resources = ["collections", "data", "tenants", "roles", "users", "aliases"]
     parts = perm.split(":")
@@ -249,6 +250,9 @@ def parse_permission(perm: str) -> PermissionsCreateType:
     tenant = parts[2].split(",") if len(parts) > 2 and "tenants" in action else None
     alias = parts[2].split(",") if len(parts) > 2 and "aliases" in action else "*"
     user = parts[1].split(",") if len(parts) > 1 and "users" in action else "*"
+    namespace = (
+        parts[1].split(",") if len(parts) > 1 and action == "manage_namespaces" else "*"
+    )
 
     verbosity = "minimal"
     if action == "read_nodes":
@@ -275,6 +279,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
     if action in [
         "read_cluster",
         "manage_backups",
+        "manage_namespaces",
         "read_nodes",
         "assign_and_revoke_users",
     ]:
@@ -287,6 +292,7 @@ def parse_permission(perm: str) -> PermissionsCreateType:
             resource=action.split("_")[-1],
             user=user,
             collection=collection,
+            namespace=namespace,
             verbosity=verbosity,
         )
 
@@ -342,6 +348,7 @@ def _create_permission(
     collection: Union[str, Sequence[str]] = "*",
     tenant: Union[str, Sequence[str]] = "*",
     alias: Union[str, Sequence[str]] = "*",
+    namespace: Union[str, Sequence[str]] = "*",
     verbosity: str = "minimal",
 ) -> PermissionsCreateType:
     """Helper function to create individual RBAC permission objects."""
@@ -353,6 +360,13 @@ def _create_permission(
         return Permissions.cluster(read=True)
     elif resource == "backups":
         return Permissions.backup(manage=True, collection=collection)
+    elif resource == "namespaces":
+        if namespace == "*":
+            raise ValueError(
+                "manage_namespaces requires an explicit namespace name. "
+                "Example: --permission manage_namespaces:my_namespace"
+            )
+        return Permissions.namespaces(namespace=namespace, manage=True)
     elif resource == "nodes":
         if verbosity == "minimal":
             if collection != "*":

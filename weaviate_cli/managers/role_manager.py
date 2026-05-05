@@ -253,6 +253,14 @@ class RoleManager:
                 }
                 for p in role.alias_permissions
             ]
+        if getattr(role, "namespaces_permissions", None):
+            role_data["permissions"]["namespaces"] = [
+                {
+                    "namespace": str(p.namespace),
+                    "actions": [a.value for a in p.actions],
+                }
+                for p in role.namespaces_permissions
+            ]
         return role_data
 
     def print_role(self, role: Optional[Role] = None) -> None:
@@ -330,4 +338,12 @@ class RoleManager:
             for perm in role.alias_permissions:
                 print(
                     f"  - Collection: {perm.collection}, Alias: {perm.alias}, Action: {', '.join([action.value for action in perm.actions])}"
+                )
+
+        namespaces_permissions = getattr(role, "namespaces_permissions", None)
+        if namespaces_permissions:
+            print("\nNamespaces Permissions:")
+            for perm in namespaces_permissions:
+                print(
+                    f"  - Namespace: {perm.namespace}, Action: {', '.join([action.value for action in perm.actions])}"
                 )

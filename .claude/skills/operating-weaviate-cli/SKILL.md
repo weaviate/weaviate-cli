@@ -113,10 +113,10 @@ weaviate-cli [--config-file FILE] [--user USER] <group> <command> [--json] [opti
 
 | Group | Description |
 |-------|-------------|
-| `create` | Create collections, tenants, data, backups, exports, roles, users, aliases, replications |
-| `get` | Inspect collections, tenants, shards, backups, exports, roles, users, nodes, aliases, replications |
+| `create` | Create collections, tenants, data, backups, exports, roles, users, aliases, namespaces, replications |
+| `get` | Inspect collections, tenants, shards, backups, exports, roles, users, nodes, aliases, namespaces, replications |
 | `update` | Update collections, tenants, shards, data, users, aliases |
-| `delete` | Delete collections, tenants, data, roles, users, aliases, replications |
+| `delete` | Delete collections, tenants, data, roles, users, aliases, namespaces, replications |
 | `query` | Query data (fetch/vector/keyword/hybrid/uuid), replications, sharding state |
 | `restore` | Restore backups |
 | `cancel` | Cancel backups, exports, and replications |
@@ -283,6 +283,41 @@ weaviate-cli delete user --user_name test-user --json
 Permission format: `action:target`. See [references/rbac.md](references/rbac.md) for full permission reference.
 
 **Shell quoting**: Permissions with wildcards must be quoted to prevent shell globbing: `-p 'crud_data:*'` (not `-p crud_data:*`, which fails in zsh with `no matches found`).
+
+### Namespaces
+
+```bash
+weaviate-cli create namespace --name tenants_west --json
+weaviate-cli get namespace --name tenants_west --json
+weaviate-cli get namespace --all --json
+weaviate-cli delete namespace --name tenants_west --json
+```
+
+Namespace names must be **3–36 lowercase alphanumeric characters starting with a letter**.
+
+**Prerequisite**: Requires Weaviate 1.38.0+. The CLI defers the version check to the python client.
+
+#### Namespace-scoped DB users
+
+On namespace-enabled clusters, DB users are bound to a namespace at creation time:
+
+```bash
+weaviate-cli create user --user_name scoped-user --namespace tenants_west --json
+weaviate-cli get user --user_name scoped-user --json   # output includes "namespace"
+```
+
+#### Granting namespace permissions
+
+```bash
+weaviate-cli create role --role_name NsAdmin -p manage_namespaces:tenants_west --json
+weaviate-cli assign permission -p manage_namespaces:tenants_east --role_name NsAdmin --json
+```
+
+Multiple namespaces in one permission: `-p manage_namespaces:ns1,ns2`. The wildcard form
+`manage_namespaces` (without a name) is rejected — every grant must name an explicit
+namespace.
+
+See [references/namespaces.md](references/namespaces.md).
 
 ### Cluster & Nodes
 
@@ -461,6 +496,7 @@ When new commands or options are added to `weaviate-cli`:
 - [references/backups.md](references/backups.md) -- Backup/restore options and notes
 - [references/exports.md](references/exports.md) -- Collection export options and notes
 - [references/rbac.md](references/rbac.md) -- Permission format, actions, and examples
+- [references/namespaces.md](references/namespaces.md) -- Namespace CRUD, RBAC, and namespace-scoped users
 - [references/cluster.md](references/cluster.md) -- Nodes, shards, replication operations
 - [references/benchmark.md](references/benchmark.md) -- Benchmark options and output modes
 - [references/config-management.md](references/config-management.md) -- Config patterns and decision tree
