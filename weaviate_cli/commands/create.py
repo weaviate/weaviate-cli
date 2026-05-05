@@ -1,6 +1,6 @@
 import sys
 import click
-from typing import Optional
+from typing import Optional, Tuple
 import json
 
 from weaviate import WeaviateClient
@@ -256,7 +256,7 @@ def create_collection_cli(
     object_ttl_time: Optional[int],
     object_ttl_filter_expired: bool,
     object_ttl_property_name: Optional[str],
-    async_replication_config: tuple,
+    async_replication_config: Tuple[str, ...],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -272,6 +272,11 @@ def create_collection_cli(
         sys.exit(1)
     client = None
     try:
+        parsed_async_config = parse_async_replication_config(async_replication_config)
+        if parsed_async_config == {}:
+            raise click.UsageError(
+                "--async_replication_config 'reset' is only supported on update, not create."
+            )
         client = get_client_from_context(ctx)
         # Call the function from create_collection.py passing both general and specific arguments
         collection_man = CollectionManager(client)
@@ -302,9 +307,7 @@ def create_collection_cli(
             object_ttl_time=object_ttl_time,
             object_ttl_filter_expired=object_ttl_filter_expired,
             object_ttl_property_name=object_ttl_property_name,
-            async_replication_config=parse_async_replication_config(
-                async_replication_config
-            ),
+            async_replication_config=parsed_async_config,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

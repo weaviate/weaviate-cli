@@ -164,7 +164,10 @@ def parse_async_replication_config(
     if not config_tuples:
         return None
 
-    if len(config_tuples) == 1 and config_tuples[0].strip().lower() == "reset":
+    if (
+        len(config_tuples) == 1
+        and config_tuples[0].strip().lower() == ASYNC_REPLICATION_CONFIG_RESET
+    ):
         return {}
 
     result = {}
@@ -190,7 +193,7 @@ def parse_async_replication_config(
                 f"Invalid value for '{key}': '{value}'. Must be an integer."
             )
 
-    return result if result else None
+    return result
 
 
 def parse_permission(perm: str) -> PermissionsCreateType:

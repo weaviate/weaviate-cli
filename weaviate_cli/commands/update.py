@@ -1,7 +1,7 @@
 import sys
 import click
 import json
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.alias_manager import AliasManager
@@ -136,7 +136,7 @@ def update_collection_cli(
     object_ttl_time: Optional[int],
     object_ttl_filter_expired: bool,
     object_ttl_property_name: Optional[str],
-    async_replication_config: tuple,
+    async_replication_config: Tuple[str, ...],
 ) -> None:
     """Update a collection in Weaviate."""
 

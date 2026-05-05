@@ -1020,3 +1020,97 @@ def test_update_collection_async_replication_config_rejected_when_async_false(
         )
 
     mock_collections.get.return_value.config.update.assert_not_called()
+
+
+def test_create_collection_async_replication_config_warns_on_old_version(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Warn when async_replication_config is used against a server older than v1.34.18."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+    mock_client.get_meta.return_value = {"version": "1.34.0"}
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        replication_factor=3,
+        vector_index="hnsw",
+        async_enabled=True,
+        async_replication_config={"max_workers": 10},
+    )
+
+    captured = capsys.readouterr()
+    assert "Warning: --async_replication_config requires Weaviate >= v1.34.18" in (
+        captured.out + captured.err
+    )
+    mock_collections.create.assert_called_once()
+
+
+def test_update_collection_async_replication_config_reset(
+    mock_client, mock_wvc_object_ttl
+):
+    """Reset (empty dict) calls Reconfigure.Replication.async_config() with no kwargs."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.side_effect = [True, True]
+    mock_client.get_meta.return_value = {"version": "1.36.0"}
+
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+    mock_collection.config.get.return_value = MagicMock(
+        replication_config=MagicMock(factor=3),
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+
+    manager = CollectionManager(mock_client)
+
+    with patch.object(
+        wvc.Reconfigure.Replication,
+        "async_config",
+        wraps=wvc.Reconfigure.Replication.async_config,
+    ) as mock_async_config:
+        manager.update_collection(
+            collection="TestCollection",
+            async_replication_config={},
+        )
+
+    mock_async_config.assert_called_once_with()
+    mock_collection.config.update.assert_called_once()
+    repl_config = mock_collection.config.update.call_args.kwargs["replication_config"]
+    assert repl_config.asyncConfig is not None
+
+
+def test_update_collection_async_replication_config_warns_on_old_version(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Warn when async_replication_config is used against a server older than v1.34.18."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.side_effect = [True, True]
+    mock_client.get_meta.return_value = {"version": "1.34.0"}
+
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+    mock_collection.config.get.return_value = MagicMock(
+        replication_config=MagicMock(factor=3),
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+
+    manager = CollectionManager(mock_client)
+
+    manager.update_collection(
+        collection="TestCollection",
+        async_replication_config={"max_workers": 10},
+    )
+
+    captured = capsys.readouterr()
+    assert "Warning: --async_replication_config requires Weaviate >= v1.34.18" in (
+        captured.out + captured.err
+    )
+    mock_collection.config.update.assert_called_once()
