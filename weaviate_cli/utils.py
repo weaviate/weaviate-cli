@@ -141,7 +141,7 @@ ASYNC_REPLICATION_CONFIG_HELP = (
     "Valid keys: " + ", ".join(sorted(ASYNC_REPLICATION_CONFIG_KEYS)) + ". "
     "All values must be integers. "
     'Use "reset" to revert all async replication settings to server defaults (update only). '
-    "Requires --async_enabled on create and Weaviate >= v1.34.18."
+    "Requires --async_enabled on create and Weaviate >= v1.36.0."
 )
 
 

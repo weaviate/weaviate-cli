@@ -1025,7 +1025,7 @@ def test_update_collection_async_replication_config_rejected_when_async_false(
 def test_create_collection_async_replication_config_warns_on_old_version(
     mock_client, mock_wvc_object_ttl, capsys
 ):
-    """Warn when async_replication_config is used against a server older than v1.34.18."""
+    """Warn when async_replication_config is used against a server older than v1.36.0."""
     mock_collections = MagicMock()
     mock_client.collections = mock_collections
     mock_collections.exists.side_effect = [False, True]
@@ -1042,7 +1042,7 @@ def test_create_collection_async_replication_config_warns_on_old_version(
     )
 
     captured = capsys.readouterr()
-    assert "Warning: --async_replication_config requires Weaviate >= v1.34.18" in (
+    assert "Warning: --async_replication_config requires Weaviate >= v1.36.0" in (
         captured.out + captured.err
     )
     mock_collections.create.assert_called_once()
@@ -1087,7 +1087,7 @@ def test_update_collection_async_replication_config_reset(
 def test_update_collection_async_replication_config_warns_on_old_version(
     mock_client, mock_wvc_object_ttl, capsys
 ):
-    """Warn when async_replication_config is used against a server older than v1.34.18."""
+    """Warn when async_replication_config is used against a server older than v1.36.0."""
     mock_collections = MagicMock()
     mock_client.collections = mock_collections
     mock_client.collections.exists.side_effect = [True, True]
@@ -1110,7 +1110,7 @@ def test_update_collection_async_replication_config_warns_on_old_version(
     )
 
     captured = capsys.readouterr()
-    assert "Warning: --async_replication_config requires Weaviate >= v1.34.18" in (
+    assert "Warning: --async_replication_config requires Weaviate >= v1.36.0" in (
         captured.out + captured.err
     )
     mock_collection.config.update.assert_called_once()

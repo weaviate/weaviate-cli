@@ -257,10 +257,10 @@ class CollectionManager:
             )
 
         if async_replication_config is not None and older_than_version(
-            self.client, "1.34.18"
+            self.client, "1.36.0"
         ):
             click.echo(
-                "Warning: --async_replication_config requires Weaviate >= v1.34.18. "
+                "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
                 "The server may ignore or reject these settings."
             )
 
@@ -672,10 +672,10 @@ class CollectionManager:
             )
 
         if async_replication_config is not None and older_than_version(
-            self.client, "1.34.18"
+            self.client, "1.36.0"
         ):
             click.echo(
-                "Warning: --async_replication_config requires Weaviate >= v1.34.18. "
+                "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
                 "The server may ignore or reject these settings."
             )
 

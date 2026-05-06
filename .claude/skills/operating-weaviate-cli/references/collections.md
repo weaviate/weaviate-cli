@@ -48,7 +48,7 @@ weaviate-cli create collection \
 - `--hfresh_search_probe` -- (hfresh only) Search probe size (default: None, uses server default)
 - `--distance_metric` -- Distance metric: cosine, dot, l2-squared, hamming, manhattan (default: None, uses server default). Applies to all vector index types.
 - `--rescore_limit` -- Rescore limit for quantized indexes (default: None, uses server default)
-- `--async_replication_config` -- Async replication tuning as `key=value` pairs (repeatable). Valid keys: `max_workers`, `hashtree_height`, `frequency`, `frequency_while_propagating`, `alive_nodes_checking_frequency`, `logging_frequency`, `diff_batch_size`, `diff_per_node_timeout`, `pre_propagation_timeout`, `propagation_timeout`, `propagation_limit`, `propagation_delay`, `propagation_concurrency`, `propagation_batch_size`. All values must be integers. Use `reset` to revert all to server defaults. Requires `--async_enabled` on create and Weaviate >= v1.34.18.
+- `--async_replication_config` -- Async replication tuning as `key=value` pairs (repeatable). Valid keys: `max_workers`, `hashtree_height`, `frequency`, `frequency_while_propagating`, `alive_nodes_checking_frequency`, `logging_frequency`, `diff_batch_size`, `diff_per_node_timeout`, `pre_propagation_timeout`, `propagation_timeout`, `propagation_limit`, `propagation_delay`, `propagation_concurrency`, `propagation_batch_size`. All values must be integers. Use `reset` to revert all to server defaults. Requires `--async_enabled` on create and Weaviate >= v1.36.0.
 
 **hfresh examples:**
 ```bash
