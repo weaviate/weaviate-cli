@@ -96,8 +96,8 @@ Any combination of `c`, `r`, `u`, `d` prefix letters works (e.g., `cr_collection
 -p read_nodes:minimal
 -p manage_backups:Movies
 -p read_cluster
--p manage_namespaces:tenants_west
--p manage_namespaces:tenants_west,tenants_east
+-p manage_namespaces:tenantswest
+-p manage_namespaces:tenantswest,tenantseast
 ```
 
 `manage_namespaces` requires an explicit namespace name (or comma-separated list of names);

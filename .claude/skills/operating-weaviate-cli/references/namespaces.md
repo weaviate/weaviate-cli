@@ -6,10 +6,10 @@ permissions. **Requires Weaviate 1.38.0+.**
 ## CRUD
 
 ```bash
-weaviate-cli create namespace --name tenants_west --json
-weaviate-cli get namespace --name tenants_west --json
+weaviate-cli create namespace --name tenantswest --json
+weaviate-cli get namespace --name tenantswest --json
 weaviate-cli get namespace --all --json
-weaviate-cli delete namespace --name tenants_west --json
+weaviate-cli delete namespace --name tenantswest --json
 ```
 
 ### Namespace name rules
@@ -17,7 +17,7 @@ weaviate-cli delete namespace --name tenants_west --json
 A namespace name must match the server-side validation:
 
 - 3 to 36 characters long
-- only lowercase letters, digits, and underscores
+- only lowercase letters and digits (regexp: `[a-z][a-z0-9]*`)
 - must start with a letter
 
 The CLI does not pre-validate the name; the server returns an error if it is invalid.
@@ -30,8 +30,8 @@ at creation time. The `--namespace` flag forwards the value to
 
 ```bash
 # Create a user inside a namespace
-weaviate-cli create user --user_name scoped-user --namespace tenants_west --json
-# Output JSON includes "namespace": "tenants_west" alongside user_name and api_key.
+weaviate-cli create user --user_name scoped-user --namespace tenantswest --json
+# Output JSON includes "namespace": "tenantswest" alongside user_name and api_key.
 
 # Inspect — text output adds a "Namespace:" line; JSON adds a "namespace" key
 weaviate-cli get user --user_name scoped-user --json
@@ -45,14 +45,14 @@ where namespaces are not enabled).
 
 ```bash
 # Single namespace
-weaviate-cli create role --role_name NsAdmin -p manage_namespaces:tenants_west --json
+weaviate-cli create role --role_name NsAdmin -p manage_namespaces:tenantswest --json
 
 # Multiple namespaces in a single permission
-weaviate-cli create role --role_name MultiNsAdmin -p manage_namespaces:tenants_west,tenants_east --json
+weaviate-cli create role --role_name MultiNsAdmin -p manage_namespaces:tenantswest,tenantseast --json
 
 # Add or remove a permission on an existing role
-weaviate-cli assign permission -p manage_namespaces:tenants_south --role_name NsAdmin --json
-weaviate-cli revoke permission -p manage_namespaces:tenants_west --role_name NsAdmin --json
+weaviate-cli assign permission -p manage_namespaces:tenantssouth --role_name NsAdmin --json
+weaviate-cli revoke permission -p manage_namespaces:tenantswest --role_name NsAdmin --json
 ```
 
 `get role` includes a `Namespaces Permissions` block in text output and a

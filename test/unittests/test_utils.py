@@ -374,6 +374,14 @@ def test_parse_permission_namespaces_requires_name():
         parse_permission("manage_namespaces")
 
 
+def test_parse_permission_namespaces_empty_name():
+    with pytest.raises(ValueError, match="must be non-empty"):
+        parse_permission("manage_namespaces:")
+
+    with pytest.raises(ValueError, match="must be non-empty"):
+        parse_permission("manage_namespaces:ns1,,ns2")
+
+
 def test_parse_permission_invalid():
     # Test invalid action
     with pytest.raises(ValueError, match="Invalid permission action: invalid_action"):

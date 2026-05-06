@@ -253,6 +253,13 @@ def parse_permission(perm: str) -> PermissionsCreateType:
     namespace = (
         parts[1].split(",") if len(parts) > 1 and action == "manage_namespaces" else "*"
     )
+    if isinstance(namespace, list):
+        if any(not n.strip() for n in namespace):
+            raise ValueError(
+                "manage_namespaces namespace names must be non-empty. "
+                "Example: manage_namespaces:ns1 or manage_namespaces:ns1,ns2"
+            )
+        namespace = [n.strip() for n in namespace]
 
     verbosity = "minimal"
     if action == "read_nodes":

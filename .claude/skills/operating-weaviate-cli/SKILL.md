@@ -287,13 +287,13 @@ Permission format: `action:target`. See [references/rbac.md](references/rbac.md)
 ### Namespaces
 
 ```bash
-weaviate-cli create namespace --name tenants_west --json
-weaviate-cli get namespace --name tenants_west --json
+weaviate-cli create namespace --name tenantswest --json
+weaviate-cli get namespace --name tenantswest --json
 weaviate-cli get namespace --all --json
-weaviate-cli delete namespace --name tenants_west --json
+weaviate-cli delete namespace --name tenantswest --json
 ```
 
-Namespace names must be **3–36 lowercase alphanumeric characters starting with a letter**.
+Namespace names must be **3–36 lowercase alphanumeric characters starting with a letter** (regexp: `[a-z][a-z0-9]{2,35}`).
 
 **Prerequisite**: Requires Weaviate 1.38.0+. The CLI defers the version check to the python client.
 
@@ -302,15 +302,15 @@ Namespace names must be **3–36 lowercase alphanumeric characters starting with
 On namespace-enabled clusters, DB users are bound to a namespace at creation time:
 
 ```bash
-weaviate-cli create user --user_name scoped-user --namespace tenants_west --json
+weaviate-cli create user --user_name scoped-user --namespace tenantswest --json
 weaviate-cli get user --user_name scoped-user --json   # output includes "namespace"
 ```
 
 #### Granting namespace permissions
 
 ```bash
-weaviate-cli create role --role_name NsAdmin -p manage_namespaces:tenants_west --json
-weaviate-cli assign permission -p manage_namespaces:tenants_east --role_name NsAdmin --json
+weaviate-cli create role --role_name NsAdmin -p manage_namespaces:tenantswest --json
+weaviate-cli assign permission -p manage_namespaces:tenantseast --role_name NsAdmin --json
 ```
 
 Multiple namespaces in one permission: `-p manage_namespaces:ns1,ns2`. The wildcard form
