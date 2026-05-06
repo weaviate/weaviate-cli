@@ -3,11 +3,23 @@ from typing import List, Optional
 
 import click
 from weaviate.client import WeaviateClient
-from weaviate.namespaces.models import Namespace
+
+try:
+    from weaviate.namespaces.models import Namespace
+
+    _NAMESPACE_SUPPORT = True
+except ImportError:
+    Namespace = None  # type: ignore[assignment,misc]
+    _NAMESPACE_SUPPORT = False
 
 
 class NamespaceManager:
     def __init__(self, client: WeaviateClient):
+        if not _NAMESPACE_SUPPORT:
+            raise RuntimeError(
+                "Namespace support requires a weaviate-client version that includes "
+                "the namespaces module. Please upgrade your weaviate-client package."
+            )
         self.client = client
 
     def create_namespace(self, name: str, json_output: bool = False) -> Namespace:
