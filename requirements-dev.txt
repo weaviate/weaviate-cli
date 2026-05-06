@@ -1,5 +1,6 @@
 # TODO: revert to a released version pin (e.g. weaviate-client>=4.x.x) once
-# weaviate-python-client PR #2033 merges and a release is cut.
+# weaviate-python-client PR #2033 (https://github.com/weaviate/weaviate-python-client/pull/2033)
+# merges and a release is cut.
 weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@f2babd27670729677c7784a0e30a27d4f8ec7328
 click==8.1.7
 twine
