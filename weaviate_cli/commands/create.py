@@ -278,7 +278,6 @@ def create_collection_cli(
                 "--async_replication_config 'reset' is only supported on update, not create."
             )
         client = get_client_from_context(ctx)
-        # Call the function from create_collection.py passing both general and specific arguments
         collection_man = CollectionManager(client)
         collection_man.create_collection(
             collection=collection,
@@ -309,6 +308,8 @@ def create_collection_cli(
             object_ttl_property_name=object_ttl_property_name,
             async_replication_config=parsed_async_config,
         )
+    except click.UsageError:
+        raise
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
