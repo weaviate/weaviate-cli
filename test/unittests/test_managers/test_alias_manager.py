@@ -58,11 +58,28 @@ def test_update_alias_success(
     """
     alias_name = "test_alias"
     collection_name = "NewTestCollection"
+    mock_client.alias.update.return_value = True
 
     alias_manager.update_alias(alias_name, collection_name)
 
     mock_client.alias.update.assert_called_once_with(
         alias_name=alias_name, new_target_collection=collection_name
+    )
+
+
+def test_update_alias_not_found_raises(
+    alias_manager: AliasManager, mock_client: MagicMock
+) -> None:
+    """The client returns False on 404 instead of raising."""
+    alias_name = "missing_alias"
+    mock_client.alias.update.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        alias_manager.update_alias(alias_name, "TargetCollection")
+
+    assert (
+        f"Error updating alias '{alias_name}': Alias '{alias_name}' not found."
+        in str(exc_info.value)
     )
 
 
@@ -120,10 +137,27 @@ def test_delete_alias_success(
     Test successful alias deletion.
     """
     alias_name = "test_alias"
+    mock_client.alias.delete.return_value = True
 
     alias_manager.delete_alias(alias_name)
 
     mock_client.alias.delete.assert_called_once_with(alias_name=alias_name)
+
+
+def test_delete_alias_not_found_raises(
+    alias_manager: AliasManager, mock_client: MagicMock
+) -> None:
+    """The client returns False on 404 instead of raising."""
+    alias_name = "missing_alias"
+    mock_client.alias.delete.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        alias_manager.delete_alias(alias_name)
+
+    assert (
+        f"Error deleting alias '{alias_name}': Alias '{alias_name}' not found."
+        in str(exc_info.value)
+    )
 
 
 def test_delete_alias_error(
@@ -219,6 +253,7 @@ def test_delete_alias_success_text(
     alias_manager: AliasManager, mock_client: MagicMock, capsys
 ) -> None:
     """Test delete_alias emits a text success message."""
+    mock_client.alias.delete.return_value = True
     alias_manager.delete_alias("my_alias", json_output=False)
 
     mock_client.alias.delete.assert_called_once_with(alias_name="my_alias")
@@ -231,6 +266,7 @@ def test_delete_alias_success_json(
     alias_manager: AliasManager, mock_client: MagicMock, capsys
 ) -> None:
     """Test delete_alias emits a JSON success message."""
+    mock_client.alias.delete.return_value = True
     alias_manager.delete_alias("my_alias", json_output=True)
 
     out = capsys.readouterr().out
@@ -283,6 +319,7 @@ def test_update_alias_json_output(
     alias_manager: AliasManager, mock_client: MagicMock, capsys
 ) -> None:
     """Test update_alias emits JSON when json_output=True."""
+    mock_client.alias.update.return_value = True
     alias_manager.update_alias("my_alias", "NewCollection", json_output=True)
 
     out = capsys.readouterr().out
@@ -295,6 +332,7 @@ def test_update_alias_text_output(
     alias_manager: AliasManager, mock_client: MagicMock, capsys
 ) -> None:
     """Test update_alias emits text when json_output=False."""
+    mock_client.alias.update.return_value = True
     alias_manager.update_alias("my_alias", "NewCollection", json_output=False)
 
     out = capsys.readouterr().out

@@ -119,7 +119,7 @@ def test_update_user_rotate_key_success(user_manager):
 def test_update_user_activate_success(user_manager):
     # Arrange
     user_name = "test_user"
-    user_manager.client.users.db.activate.return_value = None
+    user_manager.client.users.db.activate.return_value = True
 
     # Act
     result = user_manager.update_user(user_name=user_name, activate=True)
@@ -129,10 +129,23 @@ def test_update_user_activate_success(user_manager):
     user_manager.client.users.db.activate.assert_called_once_with(user_id=user_name)
 
 
+def test_update_user_activate_already_active_raises(user_manager):
+    # The client returns False on a 409 (user already active) instead of raising.
+    user_name = "test_user"
+    user_manager.client.users.db.activate.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.update_user(user_name=user_name, activate=True)
+    assert (
+        str(exc_info.value)
+        == f"Error updating user '{user_name}': User '{user_name}' is already active."
+    )
+
+
 def test_update_user_deactivate_success(user_manager):
     # Arrange
     user_name = "test_user"
-    user_manager.client.users.db.deactivate.return_value = None
+    user_manager.client.users.db.deactivate.return_value = True
 
     # Act
     result = user_manager.update_user(user_name=user_name, deactivate=True)
@@ -140,6 +153,19 @@ def test_update_user_deactivate_success(user_manager):
     # Assert
     assert result is None
     user_manager.client.users.db.deactivate.assert_called_once_with(user_id=user_name)
+
+
+def test_update_user_deactivate_already_deactivated_raises(user_manager):
+    # The client returns False on a 409 (already deactivated) instead of raising.
+    user_name = "test_user"
+    user_manager.client.users.db.deactivate.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.update_user(user_name=user_name, deactivate=True)
+    assert (
+        str(exc_info.value)
+        == f"Error updating user '{user_name}': User '{user_name}' is already deactivated."
+    )
 
 
 def test_update_user_invalid_combination(user_manager):
@@ -190,12 +216,23 @@ def test_update_user_error(user_manager):
 def test_delete_user_success(user_manager):
     # Arrange
     user_name = "test_user"
+    user_manager.client.users.db.delete.return_value = True
 
     # Act
     user_manager.delete_user(user_name)
 
     # Assert
     user_manager.client.users.db.delete.assert_called_once_with(user_id=user_name)
+
+
+def test_delete_user_not_found_raises(user_manager):
+    # The client returns False on 404 instead of raising.
+    user_name = "missing_user"
+    user_manager.client.users.db.delete.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.delete_user(user_name)
+    assert str(exc_info.value) == f"User '{user_name}' not found."
 
 
 def test_delete_user_no_name(user_manager):
@@ -214,6 +251,37 @@ def test_delete_user_error(user_manager):
     with pytest.raises(Exception) as exc_info:
         user_manager.delete_user(user_name)
     assert str(exc_info.value) == f"Error deleting user '{user_name}': Test error"
+
+
+def test_get_user_by_name_returns_user(user_manager):
+    user_name = "existing"
+    expected = Mock()
+    user_manager.client.users.db.get.return_value = expected
+
+    result = user_manager.get_user(user_name=user_name)
+
+    assert result is expected
+    user_manager.client.users.db.get.assert_called_once_with(user_id=user_name)
+
+
+def test_get_user_by_name_not_found_raises(user_manager):
+    # The client returns None on 404 instead of raising.
+    user_name = "missing"
+    user_manager.client.users.db.get.return_value = None
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.get_user(user_name=user_name)
+    assert str(exc_info.value) == f"User '{user_name}' not found."
+
+
+def test_get_user_no_name_returns_current_user(user_manager):
+    expected = Mock()
+    user_manager.client.users.get_my_user.return_value = expected
+
+    result = user_manager.get_user()
+
+    assert result is expected
+    user_manager.client.users.get_my_user.assert_called_once_with()
 
 
 def test_add_role_db_success(user_manager):

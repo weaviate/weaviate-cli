@@ -1299,8 +1299,12 @@ class DataManager:
 
         if uuid:
             start_time = time.time()
-            collection.with_consistency_level(cl).data.delete_by_id(uuid=uuid)
+            deleted = collection.with_consistency_level(cl).data.delete_by_id(uuid=uuid)
             elapsed = time.time() - start_time
+            if not deleted:
+                raise Exception(
+                    f"Object '{uuid}' not found in class '{collection.name}'."
+                )
             if not json_output:
                 print(
                     f"Object deleted: {uuid} from class '{collection.name}'"

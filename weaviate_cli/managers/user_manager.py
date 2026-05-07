@@ -26,15 +26,21 @@ class UserManager:
         self,
         user_name: Optional[str] = None,
     ) -> Union[OwnUser, UserDB]:
-        """Get a user in Weaviate. If no user name is provided, the current user is returned."""
+        """Get a user in Weaviate. If no user name is provided, the current user is returned.
+
+        Raises an exception if the requested user does not exist (the underlying
+        client returns ``None`` on a 404 instead of raising).
+        """
 
         try:
             if user_name is None:
                 return self.client.users.get_my_user()
-            else:
-                return self.client.users.db.get(user_id=user_name)
+            user = self.client.users.db.get(user_id=user_name)
         except Exception as e:
             raise Exception(f"Error getting user '{user_name}': {e}")
+        if user is None:
+            raise Exception(f"User '{user_name}' not found.")
+        return user
 
     def get_all_users(self) -> List[UserDB]:
         """Get all users in Weaviate."""
@@ -77,7 +83,11 @@ class UserManager:
         deactivate: bool = False,
     ) -> Optional[str]:
         """Update a user in Weaviate.
-        Returns the api key for the user if the api key was rotated, otherwise returns None.
+
+        Returns the api key for the user if the api key was rotated, otherwise
+        returns ``None``. Raises if ``activate``/``deactivate`` is a no-op
+        because the user is already in the requested state (the underlying
+        client returns ``False`` instead of raising on 409).
         """
         if user_name is None:
             raise Exception("User name is required.")
@@ -91,9 +101,13 @@ class UserManager:
             if rotate_api_key:
                 return self.client.users.db.rotate_key(user_id=user_name)
             if activate:
-                return self.client.users.db.activate(user_id=user_name)
+                if not self.client.users.db.activate(user_id=user_name):
+                    raise Exception(f"User '{user_name}' is already active.")
+                return None
             if deactivate:
-                return self.client.users.db.deactivate(user_id=user_name)
+                if not self.client.users.db.deactivate(user_id=user_name):
+                    raise Exception(f"User '{user_name}' is already deactivated.")
+                return None
         except Exception as e:
             raise Exception(f"Error updating user '{user_name}': {e}")
 
@@ -101,13 +115,19 @@ class UserManager:
         self,
         user_name: Optional[str] = None,
     ) -> None:
-        """Delete a user in Weaviate."""
+        """Delete a user in Weaviate.
+
+        Raises if the user does not exist (the underlying client returns
+        ``False`` on a 404 instead of raising).
+        """
         if user_name is None:
             raise Exception("User name is required.")
         try:
-            self.client.users.db.delete(user_id=user_name)
+            deleted = self.client.users.db.delete(user_id=user_name)
         except Exception as e:
             raise Exception(f"Error deleting user '{user_name}': {e}")
+        if not deleted:
+            raise Exception(f"User '{user_name}' not found.")
 
     def add_role(
         self,

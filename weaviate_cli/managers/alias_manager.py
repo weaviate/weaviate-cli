@@ -37,9 +37,11 @@ class AliasManager:
         self, alias_name: str, collection: str, json_output: bool = False
     ) -> None:
         try:
-            self.client.alias.update(
+            updated = self.client.alias.update(
                 alias_name=alias_name, new_target_collection=collection
             )
+            if not updated:
+                raise Exception(f"Alias '{alias_name}' not found.")
             if json_output:
                 click.echo(
                     json.dumps(
@@ -57,7 +59,8 @@ class AliasManager:
         except Exception as e:
             raise Exception(f"Error updating alias '{alias_name}': {e}")
 
-    def get_alias(self, alias_name: str) -> AliasReturn:
+    def get_alias(self, alias_name: str) -> Optional[AliasReturn]:
+        """Get an alias by name. Returns ``None`` if the alias does not exist."""
         try:
             return self.client.alias.get(alias_name=alias_name)
         except Exception as e:
@@ -65,7 +68,9 @@ class AliasManager:
 
     def delete_alias(self, alias_name: str, json_output: bool = False) -> None:
         try:
-            self.client.alias.delete(alias_name=alias_name)
+            deleted = self.client.alias.delete(alias_name=alias_name)
+            if not deleted:
+                raise Exception(f"Alias '{alias_name}' not found.")
             if json_output:
                 click.echo(
                     json.dumps(
