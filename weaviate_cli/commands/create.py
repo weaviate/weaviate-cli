@@ -1,6 +1,6 @@
 import sys
 import click
-from typing import Optional
+from typing import Optional, Tuple
 import json
 
 from weaviate import WeaviateClient
@@ -12,7 +12,12 @@ from weaviate_cli.completion.complete import (
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.backup_manager import BackupManager
 from weaviate_cli.managers.export_manager import ExportManager
-from weaviate_cli.utils import get_client_from_context, get_async_client_from_context
+from weaviate_cli.utils import (
+    get_client_from_context,
+    get_async_client_from_context,
+    parse_async_replication_config,
+    ASYNC_REPLICATION_CONFIG_HELP,
+)
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
@@ -217,6 +222,11 @@ def create() -> None:
     type=int,
     help="Rescore limit (default: None, set by Weaviate server).",
 )
+@click.option(
+    "--async_replication_config",
+    multiple=True,
+    help=ASYNC_REPLICATION_CONFIG_HELP,
+)
 @click.pass_context
 def create_collection_cli(
     ctx: click.Context,
@@ -246,6 +256,7 @@ def create_collection_cli(
     object_ttl_time: Optional[int],
     object_ttl_filter_expired: bool,
     object_ttl_property_name: Optional[str],
+    async_replication_config: Tuple[str, ...],
 ) -> None:
     """Create a collection in Weaviate."""
 
@@ -261,8 +272,12 @@ def create_collection_cli(
         sys.exit(1)
     client = None
     try:
+        parsed_async_config = parse_async_replication_config(async_replication_config)
+        if parsed_async_config == {}:
+            raise click.UsageError(
+                "--async_replication_config 'reset' is only supported on update, not create."
+            )
         client = get_client_from_context(ctx)
-        # Call the function from create_collection.py passing both general and specific arguments
         collection_man = CollectionManager(client)
         collection_man.create_collection(
             collection=collection,
@@ -291,7 +306,10 @@ def create_collection_cli(
             object_ttl_time=object_ttl_time,
             object_ttl_filter_expired=object_ttl_filter_expired,
             object_ttl_property_name=object_ttl_property_name,
+            async_replication_config=parsed_async_config,
         )
+    except click.UsageError:
+        raise
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
