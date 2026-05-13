@@ -83,3 +83,13 @@ once:
   servers return an error from the client itself.
 - Namespaces are independent of multi-tenancy — they sit at the auth/account layer,
   not the collection/tenant data layer.
+
+## Collections and `get collection --namespace`
+
+Collection API targets differ by credential type on namespace-enabled clusters:
+
+- **Namespace-scoped DB user:** use `get collection` without `--namespace` (the CLI
+  strips `namespace:` from keys returned by `list_all` when loading details).
+- **Global operator:** qualify the collection, e.g. `get collection --collection Movies --namespace myns`, or pass `--collection myns:Movies`. For listing all namespaces at once use **`get collection --list-qualified-keys --json`** (recommended; unquoted `--namespace *` is expanded by the shell to filenames). Equivalent: `get collection --namespace '*' --json`. For one namespace only: `get collection --namespace myns --json`.
+
+See [collections.md](collections.md) for examples.

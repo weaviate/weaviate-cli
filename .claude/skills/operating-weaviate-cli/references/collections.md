@@ -7,6 +7,29 @@ Manage Weaviate collections (schemas).
 weaviate-cli get collection --json
 ```
 
+## Namespaced clusters (namespace-scoped user vs global operator)
+
+With **namespace-scoped** credentials, `list_all` may return keys like `myns:Movies` while the API expects `Movies`. Omit `--namespace` (default): the CLI strips the prefix when fetching each collection.
+
+With **global/operator** credentials, pass the qualified name. Either use a full `--collection myns:Movies`, or combine short name and namespace:
+
+```bash
+weaviate-cli get collection --collection Movies --namespace myns --json
+```
+
+When **listing** all collections as an operator across namespaces, use **`--list-qualified-keys`** so each server key is passed verbatim to `get` (avoids shell globbing on `*`). Alternatively quote: `--namespace '*'`.
+
+```bash
+weaviate-cli get collection --list-qualified-keys --json
+weaviate-cli get collection --namespace '*' --json
+```
+
+To list only collections under one namespace:
+
+```bash
+weaviate-cli get collection --namespace myns --json
+```
+
 ## Get Specific Collection
 ```bash
 weaviate-cli get collection --collection "CollectionName" --json

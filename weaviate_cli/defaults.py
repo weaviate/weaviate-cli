@@ -195,6 +195,12 @@ class DeleteRoleDefaults:
 @dataclass
 class GetCollectionDefaults:
     collection: Optional[str] = None
+    # For global/operator credentials against namespaced clusters: qualify API calls
+    # as namespace:collection. Use "*" when listing all collections to use server keys
+    # verbatim (no namespace prefix stripping). Prefer --list-qualified-keys over
+    # --namespace '*' because shells glob unquoted *.
+    namespace: Optional[str] = None
+    list_qualified_keys: bool = False
 
 
 @dataclass

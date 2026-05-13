@@ -21,6 +21,20 @@ class CollectionManager:
     def __init__(self, client: WeaviateClient) -> None:
         self.client = client
 
+    @staticmethod
+    def _normalize_collection_name(collection: str) -> str:
+        # In namespaced clusters, list_all() may return "namespace:Collection".
+        # Calls like client.collections.get(...) must use only the collection name
+        # for the current namespace-scoped user.
+        return collection.split(":", 1)[1] if ":" in collection else collection
+
+    @staticmethod
+    def _api_name_from_list_key(list_key: str, namespace: Optional[str]) -> str:
+        """Resolve a key from list_all() for client.collections.get (list mode only)."""
+        if namespace is None:
+            return CollectionManager._normalize_collection_name(list_key)
+        return str(list_key)
+
     def __get_total_objects_with_multitenant(self, col_obj: Collection) -> int:
         acc = 0
         for tenant_name, tenant in col_obj.tenants.get().items():
@@ -35,13 +49,42 @@ class CollectionManager:
         self,
         collection: Optional[str] = GetCollectionDefaults.collection,
         json_output: bool = False,
+        namespace: Optional[str] = GetCollectionDefaults.namespace,
+        list_qualified_keys: bool = GetCollectionDefaults.list_qualified_keys,
     ) -> None:
+        if list_qualified_keys and namespace not in (None, "*"):
+            raise Exception(
+                "Use either --list-qualified-keys or --namespace <name>, not both."
+            )
+        effective_namespace = "*" if list_qualified_keys else namespace
 
         if collection is not None:
-            if not self.client.collections.exists(collection):
+            if list_qualified_keys:
+                raise Exception(
+                    "--list-qualified-keys is only for listing collections "
+                    "(omit --collection)."
+                )
+            if effective_namespace == "*":
+                if ":" not in collection:
+                    raise Exception(
+                        "'--namespace *' (quote as '*' in the shell) is only for listing "
+                        "all collections without --collection, or pass a qualified "
+                        "--collection (namespace:collection). "
+                        "You can also use --list-qualified-keys instead of --namespace '*'."
+                    )
+                api_name = collection
+            elif effective_namespace is not None:
+                api_name = (
+                    collection
+                    if ":" in collection
+                    else f"{effective_namespace}:{collection}"
+                )
+            else:
+                api_name = collection
+            if not self.client.collections.exists(api_name):
 
-                raise Exception(f"Collection '{collection}' does not exist")
-            col_obj: Collection = self.client.collections.get(collection)
+                raise Exception(f"Collection '{api_name}' does not exist")
+            col_obj: Collection = self.client.collections.get(api_name)
             # Pretty print the dict structure
             click.echo(json.dumps(col_obj.config.get().to_dict(), indent=4))
         else:
@@ -55,9 +98,44 @@ class CollectionManager:
                 return
 
             rows = []
-            for col_name in collections:
-                col_obj = self.client.collections.get(col_name)
-                schema = col_obj.config.get()
+            for col_name_raw in collections:
+                if effective_namespace not in (None, "*") and not str(
+                    col_name_raw
+                ).startswith(f"{effective_namespace}:"):
+                    continue
+                api_name = self._api_name_from_list_key(
+                    str(col_name_raw), effective_namespace
+                )
+                col_obj = self.client.collections.get(api_name)
+                try:
+                    schema = col_obj.config.get()
+                except Exception as e:
+                    # When a global/operator user runs without --namespace, list_all()
+                    # returns "ns:Collection" keys and the CLI strips the prefix, causing
+                    # a 404 because the server needs the qualified name.
+                    if (
+                        namespace is None
+                        and not list_qualified_keys
+                        and ":" in str(col_name_raw)
+                        and ("404" in str(e) or "status code" in str(e).lower())
+                    ):
+                        namespaces = sorted(
+                            {
+                                str(k).split(":", 1)[0]
+                                for k in collections
+                                if ":" in str(k)
+                            }
+                        )
+                        raise Exception(
+                            f"Failed to retrieve collection '{api_name}' (original key: "
+                            f"'{col_name_raw}'). "
+                            f"If you are using global/operator credentials, pass "
+                            f"'--list-qualified-keys' to list all namespaces, or "
+                            f"'--namespace {namespaces[0]}' to list one. "
+                            f"Available namespaces: {', '.join(namespaces)}. "
+                            f"Original error: {e}"
+                        ) from e
+                    raise
                 vectorizer = "None"
                 vector_index_type = "None"
                 named_vectors = "False"
@@ -95,7 +173,7 @@ class CollectionManager:
 
                 rows.append(
                     {
-                        "name": col_name,
+                        "name": api_name,
                         "multitenancy": schema.multi_tenancy_config.enabled,
                         "tenant_count": tenant_count,
                         "object_count": object_count,
@@ -107,6 +185,17 @@ class CollectionManager:
                         "vectorizer": vectorizer if vectorizer else "None",
                     }
                 )
+
+            if not rows:
+                if json_output:
+                    click.echo(json.dumps({"collections": [], "total": 0}, indent=2))
+                else:
+                    click.echo(
+                        "No collections found in that namespace"
+                        if effective_namespace not in (None, "*")
+                        else "No collections found"
+                    )
+                return
 
             def _print_text():
                 table = PrettyTable()
@@ -136,7 +225,7 @@ class CollectionManager:
                     )
                 print("\nCollections:")
                 print(table)
-                print(f"\nTotal: {len(collections)} collections")
+                print(f"\nTotal: {len(rows)} collections")
 
             print_json_or_text(
                 {"collections": rows, "total": len(rows)},
@@ -812,6 +901,7 @@ class CollectionManager:
         if all:
             collections: List[str] = self.client.collections.list_all()
             for collection in collections:
+                collection = self._normalize_collection_name(collection)
                 if not json_output:
                     click.echo(f"Deleting collection '{collection}'")
                 self.client.collections.delete(collection)

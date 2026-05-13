@@ -134,6 +134,9 @@ weaviate-cli [--config-file FILE] [--user USER] <group> <command> [--json] [opti
 weaviate-cli create collection --collection MyCollection --replication_factor 3 --vector_index hnsw --vectorizer none --json
 weaviate-cli get collection --json                          # List all
 weaviate-cli get collection --collection MyCollection --json # Specific
+weaviate-cli get collection --collection Movies --namespace myns --json  # Operator: qualified target
+weaviate-cli get collection --list-qualified-keys --json           # Operator: list using full keys (no shell glob issue)
+weaviate-cli get collection --namespace '*' --json                 # Same; * must be quoted in the shell
 weaviate-cli update collection --collection MyCollection --description "Updated" --replication_factor 5 --json
 weaviate-cli delete collection --collection MyCollection --json
 weaviate-cli delete collection --all --json

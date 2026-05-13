@@ -12,6 +12,10 @@ class ShardManager:
     def __init__(self, client: WeaviateClient):
         self.client = client
 
+    @staticmethod
+    def _normalize_collection_name(collection: str) -> str:
+        return collection.split(":", 1)[1] if ":" in collection else collection
+
     def get_shards(
         self,
         collection: Optional[str] = GetShardsDefaults.collection,
@@ -61,7 +65,8 @@ class ShardManager:
             if json_output:
                 result = []
                 for single_collection in all_collections:
-                    col_obj = self.client.collections.get(single_collection)
+                    collection_name = self._normalize_collection_name(single_collection)
+                    col_obj = self.client.collections.get(collection_name)
                     shards = col_obj.config.get_shards()
                     shards_data = []
                     for shard in shards:
@@ -76,7 +81,7 @@ class ShardManager:
                         )
                     result.append(
                         {
-                            "collection": single_collection,
+                            "collection": collection_name,
                             "shards": shards_data,
                             "total_shards": len(shards),
                         }
@@ -93,10 +98,11 @@ class ShardManager:
                 )
             else:
                 for single_collection in all_collections:
-                    col_obj = self.client.collections.get(single_collection)
+                    collection_name = self._normalize_collection_name(single_collection)
+                    col_obj = self.client.collections.get(collection_name)
                     shards = col_obj.config.get_shards()
                     click.echo(
-                        f"Collection {single_collection:<29}: Shards {len(shards):<15}"
+                        f"Collection {collection_name:<29}: Shards {len(shards):<15}"
                     )
                     for shard in shards:
                         self._print_echo_shard_info(shard)
@@ -138,16 +144,17 @@ class ShardManager:
             all_collections = self.client.collections.list_all()
             updated = []
             for single_collection in all_collections:
-                col_obj = self.client.collections.get(single_collection)
+                collection_name = self._normalize_collection_name(single_collection)
+                col_obj = self.client.collections.get(collection_name)
                 col_shards = [s.name for s in col_obj.config.get_shards()]
                 col_obj.config.update_shards(status, col_shards)
                 if json_output:
                     updated.append(
-                        {"collection": single_collection, "shards_updated": col_shards}
+                        {"collection": collection_name, "shards_updated": col_shards}
                     )
                 else:
                     click.echo(
-                        f"Shards '{col_shards}' updated to state '{status}' for collection '{single_collection}'"
+                        f"Shards '{col_shards}' updated to state '{status}' for collection '{collection_name}'"
                     )
             if json_output:
                 click.echo(

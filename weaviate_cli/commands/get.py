@@ -49,10 +49,33 @@ def get():
     shell_complete=collection_name_complete,
 )
 @click.option(
+    "--namespace",
+    "namespace",
+    default=GetCollectionDefaults.namespace,
+    help=(
+        "Weaviate namespace for global/operator credentials: with --collection NAME, "
+        "resolves the API target to NAMESPACE:NAME. When listing all collections, "
+        "limits to that namespace. For all namespaces, use --list-qualified-keys "
+        "(recommended) or --namespace '*' — the latter must be quoted in the shell "
+        "because unquoted * is expanded to filenames."
+    ),
+)
+@click.option(
+    "--list-qualified-keys",
+    "list_qualified_keys",
+    is_flag=True,
+    default=GetCollectionDefaults.list_qualified_keys,
+    help=(
+        "When listing collections (no --collection), pass each server key verbatim "
+        "to the API (namespace:collection). Use this for global operator credentials "
+        "instead of --namespace '*', which breaks when * is not quoted."
+    ),
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
-def get_collection_cli(ctx, collection, json_output):
+def get_collection_cli(ctx, collection, namespace, list_qualified_keys, json_output):
     """Get all collections in Weaviate. If --collection is provided, get the specific collection."""
 
     client = None
@@ -60,7 +83,12 @@ def get_collection_cli(ctx, collection, json_output):
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
         # Call the function from get_collections.py with general arguments
-        collection_man.get_collection(collection=collection, json_output=json_output)
+        collection_man.get_collection(
+            collection=collection,
+            json_output=json_output,
+            namespace=namespace,
+            list_qualified_keys=list_qualified_keys,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
