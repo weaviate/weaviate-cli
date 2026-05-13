@@ -265,13 +265,19 @@ def test_get_user_by_name_returns_user(user_manager):
 
 
 def test_get_user_by_name_not_found_raises(user_manager):
-    # The client returns None on 404 instead of raising.
+    # The client returns None on 404 instead of raising. When the DB lookup
+    # comes up empty we hint that the user might be OIDC, since the Python
+    # client cannot fetch OIDC users by name and a bare "not found" would be
+    # misleading in that case.
     user_name = "missing"
     user_manager.client.users.db.get.return_value = None
 
     with pytest.raises(Exception) as exc_info:
         user_manager.get_user(user_name=user_name)
-    assert str(exc_info.value) == f"User '{user_name}' not found."
+    msg = str(exc_info.value)
+    assert f"User '{user_name}' not found as a DB user." in msg
+    assert "OIDC user" in msg
+    assert f"get role --user_name {user_name} --user_type oidc" in msg
 
 
 def test_get_user_no_name_returns_current_user(user_manager):

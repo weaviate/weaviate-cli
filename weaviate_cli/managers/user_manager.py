@@ -28,8 +28,12 @@ class UserManager:
     ) -> Union[OwnUser, UserDB]:
         """Get a user in Weaviate. If no user name is provided, the current user is returned.
 
-        Raises an exception if the requested user does not exist (the underlying
-        client returns ``None`` on a 404 instead of raising).
+        Only DB users can be looked up by name: the Weaviate Python client
+        exposes ``users.db.get(...)`` but no equivalent ``users.oidc.get(...)``.
+        When the DB lookup returns ``None`` (404), the user may still exist
+        as an OIDC user — surface that possibility in the error message so
+        callers don't waste time chasing a "not found" that is in fact a DB
+        vs OIDC mismatch.
         """
 
         try:
@@ -39,7 +43,13 @@ class UserManager:
         except Exception as e:
             raise Exception(f"Error getting user '{user_name}': {e}")
         if user is None:
-            raise Exception(f"User '{user_name}' not found.")
+            raise Exception(
+                f"User '{user_name}' not found as a DB user. "
+                f"If '{user_name}' is an OIDC user, the Weaviate Python "
+                "client does not support fetching OIDC users directly — use "
+                f"`get role --user_name {user_name} --user_type oidc` to "
+                "list their assigned roles instead."
+            )
         return user
 
     def get_all_users(self) -> List[UserDB]:

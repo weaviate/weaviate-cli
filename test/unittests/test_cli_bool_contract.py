@@ -160,7 +160,12 @@ def test_cli_get_user_not_found_exits_nonzero(cli_runner, fake_client):
     )
 
     assert result.exit_code == 1, result.output
-    assert "User 'ghost' not found." in result.output
+    assert "User 'ghost' not found as a DB user." in result.output
+    # The Python client cannot fetch OIDC users by name, so the error must
+    # nudge callers toward `get role --user_type oidc` instead of leaving
+    # them stuck on a bare "not found".
+    assert "OIDC user" in result.output
+    assert "get role --user_name ghost --user_type oidc" in result.output
 
 
 # ---------------------------------------------------------------------------
