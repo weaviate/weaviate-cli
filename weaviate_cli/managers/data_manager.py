@@ -1484,7 +1484,6 @@ class DataManager:
         elif search_type == "keyword":
             response = collection.with_consistency_level(cl).query.bm25(
                 query=query,
-                return_objects=True,
                 return_metadata=MetadataQuery(score=True, explain_score=True),
                 limit=num_objects,
             )
