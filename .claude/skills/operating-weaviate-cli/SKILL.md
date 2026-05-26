@@ -115,7 +115,7 @@ weaviate-cli [--config-file FILE] [--user USER] <group> <command> [--json] [opti
 |-------|-------------|
 | `create` | Create collections, tenants, data, backups, exports, roles, users, aliases, namespaces, replications |
 | `get` | Inspect collections, tenants, shards, backups, exports, roles, users, nodes, aliases, namespaces, replications |
-| `update` | Update collections, tenants, shards, data, users, aliases |
+| `update` | Update collections, tenants, shards, data, users, aliases, namespaces |
 | `delete` | Delete collections, tenants, data, roles, users, aliases, namespaces, replications |
 | `query` | Query data (fetch/vector/keyword/hybrid/uuid), replications, sharding state |
 | `restore` | Restore backups |
@@ -291,12 +291,16 @@ Permission format: `action:target`. See [references/rbac.md](references/rbac.md)
 
 ```bash
 weaviate-cli create namespace --name tenantswest --json
-weaviate-cli get namespace --name tenantswest --json
+weaviate-cli create namespace --name tenantswest --home_node node1 --json   # pin shards to a node
+weaviate-cli get namespace --name tenantswest --json   # shows home_node + read-only state
 weaviate-cli get namespace --all --json
+weaviate-cli update namespace --name tenantswest --home_node node2 --json   # change home node only
 weaviate-cli delete namespace --name tenantswest --json
 ```
 
 Namespace names must be **3–36 lowercase alphanumeric characters starting with a letter** (regexp: `[a-z][a-z0-9]{2,35}`).
+
+`--home_node` pins which cluster node holds the namespace's shards (optional on create, required on update). `update namespace` only changes the home node; existing live shards are not moved. `get namespace` surfaces the read-only `state` (`active`/`deleting`) and `home_node` when the server returns them.
 
 **Prerequisite**: Requires Weaviate 1.38.0+. The CLI defers the version check to the python client.
 

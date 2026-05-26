@@ -7,8 +7,10 @@ permissions. **Requires Weaviate 1.38.0+.**
 
 ```bash
 weaviate-cli create namespace --name tenantswest --json
+weaviate-cli create namespace --name tenantswest --home_node node1 --json
 weaviate-cli get namespace --name tenantswest --json
 weaviate-cli get namespace --all --json
+weaviate-cli update namespace --name tenantswest --home_node node2 --json
 weaviate-cli delete namespace --name tenantswest --json
 ```
 
@@ -21,6 +23,30 @@ A namespace name must match the server-side validation:
 - must start with a letter
 
 The CLI does not pre-validate the name; the server returns an error if it is invalid.
+
+### Home node
+
+`--home_node` (optional on `create`, required on `update`) pins which cluster node
+holds the namespace's shards. It must be a current storage candidate; when omitted on
+`create`, the cluster picks one automatically.
+
+```bash
+# Pin a home node at creation time
+weaviate-cli create namespace --name tenantswest --home_node node1 --json
+
+# Move future placements to a different node (existing live shards are NOT moved)
+weaviate-cli update namespace --name tenantswest --home_node node2 --json
+```
+
+`update namespace` is backed by the `PUT /namespaces/{name}` endpoint and only changes
+the home node — it is the single mutable field on a namespace.
+
+### State
+
+Namespaces carry a read-only `state` field (`active` or `deleting`). When the server
+reports it, `get namespace` surfaces it: a `State:` line in text output and a `"state"`
+key in JSON. `home_node` is shown the same way (a `Home node:` line / `"home_node"`
+key). Both keys are omitted when the server does not return them (e.g. older clusters).
 
 ## Namespace-scoped DB users
 

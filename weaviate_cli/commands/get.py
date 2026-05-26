@@ -641,7 +641,9 @@ def get_namespace_cli(
                 click.echo(
                     json.dumps(
                         {
-                            "namespaces": [{"name": ns.name} for ns in namespaces],
+                            "namespaces": [
+                                namespace_man.namespace_to_dict(ns) for ns in namespaces
+                            ],
                             "total": len(namespaces),
                         },
                         indent=2,

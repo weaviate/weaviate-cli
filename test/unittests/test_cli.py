@@ -50,3 +50,50 @@ def test_main_commands_registered():
     assert "update" in main.commands
     assert "restore" in main.commands
     assert "query" in main.commands
+
+
+def test_update_namespace_registered():
+    assert "namespace" in main.commands["update"].commands
+
+
+def test_create_namespace_forwards_home_node(cli_runner):
+    with (
+        patch(
+            "weaviate_cli.commands.create.get_client_from_context",
+            return_value=MagicMock(),
+        ),
+        patch("weaviate_cli.commands.create.NamespaceManager") as mock_manager_cls,
+    ):
+        result = cli_runner.invoke(
+            main,
+            ["create", "namespace", "--name", "tenantswest", "--home_node", "node1"],
+        )
+    assert result.exit_code == 0
+    mock_manager_cls.return_value.create_namespace.assert_called_once_with(
+        name="tenantswest", home_node="node1", json_output=False
+    )
+
+
+def test_update_namespace_forwards_home_node(cli_runner):
+    with (
+        patch(
+            "weaviate_cli.commands.update.get_client_from_context",
+            return_value=MagicMock(),
+        ),
+        patch("weaviate_cli.commands.update.NamespaceManager") as mock_manager_cls,
+    ):
+        result = cli_runner.invoke(
+            main,
+            ["update", "namespace", "--name", "tenantswest", "--home_node", "node2"],
+        )
+    assert result.exit_code == 0
+    mock_manager_cls.return_value.update_namespace.assert_called_once_with(
+        name="tenantswest", home_node="node2", json_output=False
+    )
+
+
+def test_update_namespace_requires_home_node(cli_runner):
+    result = cli_runner.invoke(main, ["update", "namespace", "--name", "tenantswest"])
+    # Missing required --home_node is a usage error.
+    assert result.exit_code == 2
+    assert "--home_node" in result.output

@@ -347,12 +347,19 @@ class CancelExportCollectionDefaults:
 @dataclass
 class CreateNamespaceDefaults:
     name: Optional[str] = None
+    home_node: Optional[str] = None
 
 
 @dataclass
 class GetNamespaceDefaults:
     name: Optional[str] = None
     all: bool = False
+
+
+@dataclass
+class UpdateNamespaceDefaults:
+    name: Optional[str] = None
+    home_node: Optional[str] = None
 
 
 @dataclass

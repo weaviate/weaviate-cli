@@ -22,27 +22,83 @@ class NamespaceManager:
             )
         self.client = client
 
-    def create_namespace(self, name: str, json_output: bool = False) -> Namespace:
+    @staticmethod
+    def namespace_to_dict(namespace: Namespace) -> dict:
+        """Serialize a Namespace to a JSON-friendly dict.
+
+        ``home_node`` and ``state`` are only present on clusters/clients that
+        support them (Weaviate 1.38.0+), so they are included only when set.
+        """
+        payload: dict = {"name": namespace.name}
+        home_node = getattr(namespace, "home_node", None)
+        if home_node is not None:
+            payload["home_node"] = home_node
+        state = getattr(namespace, "state", None)
+        if state is not None:
+            payload["state"] = state
+        return payload
+
+    def create_namespace(
+        self, name: str, home_node: Optional[str] = None, json_output: bool = False
+    ) -> Namespace:
         if not name:
             raise Exception("Namespace name is required.")
         try:
-            namespace = self.client.namespaces.create(name=name)
+            kwargs: dict = {"name": name}
+            if home_node is not None:
+                kwargs["home_node"] = home_node
+            namespace = self.client.namespaces.create(**kwargs)
             if json_output:
-                click.echo(
-                    json.dumps(
-                        {
-                            "status": "success",
-                            "message": f"Namespace '{namespace.name}' created successfully.",
-                            "namespace": namespace.name,
-                        },
-                        indent=2,
-                    )
+                payload = {
+                    "status": "success",
+                    "message": f"Namespace '{namespace.name}' created successfully.",
+                    "namespace": namespace.name,
+                }
+                payload.update(
+                    {
+                        k: v
+                        for k, v in self.namespace_to_dict(namespace).items()
+                        if k != "name"
+                    }
                 )
+                click.echo(json.dumps(payload, indent=2))
             else:
                 click.echo(f"Namespace '{namespace.name}' created successfully.")
             return namespace
         except Exception as e:
             raise Exception(f"Error creating namespace '{name}': {e}")
+
+    def update_namespace(
+        self, name: str, home_node: str, json_output: bool = False
+    ) -> Namespace:
+        if not name:
+            raise Exception("Namespace name is required.")
+        if not home_node:
+            raise Exception("Home node is required.")
+        try:
+            namespace = self.client.namespaces.update(name=name, home_node=home_node)
+            if json_output:
+                payload = {
+                    "status": "success",
+                    "message": f"Namespace '{namespace.name}' updated successfully.",
+                    "namespace": namespace.name,
+                }
+                payload.update(
+                    {
+                        k: v
+                        for k, v in self.namespace_to_dict(namespace).items()
+                        if k != "name"
+                    }
+                )
+                click.echo(json.dumps(payload, indent=2))
+            else:
+                click.echo(
+                    f"Namespace '{namespace.name}' updated successfully "
+                    f"(home node: {home_node})."
+                )
+            return namespace
+        except Exception as e:
+            raise Exception(f"Error updating namespace '{name}': {e}")
 
     def get_namespace(self, name: str) -> Optional[Namespace]:
         if not name:
@@ -80,6 +136,12 @@ class NamespaceManager:
 
     def print_namespace(self, namespace: Namespace, json_output: bool = False) -> None:
         if json_output:
-            click.echo(json.dumps({"name": namespace.name}, indent=2))
+            click.echo(json.dumps(self.namespace_to_dict(namespace), indent=2))
         else:
             click.echo(f"Namespace: {namespace.name}")
+            home_node = getattr(namespace, "home_node", None)
+            if home_node is not None:
+                click.echo(f"  Home node: {home_node}")
+            state = getattr(namespace, "state", None)
+            if state is not None:
+                click.echo(f"  State: {state}")

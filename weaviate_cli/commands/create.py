@@ -996,16 +996,25 @@ def create_export_collection_cli(
     help="The namespace name. Must be 3-36 lowercase alphanumeric characters starting with a letter.",
 )
 @click.option(
+    "--home_node",
+    default=CreateNamespaceDefaults.home_node,
+    help="Cluster node to place this namespace's shards on. Must be a current storage candidate. When omitted, the cluster picks one automatically.",
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
-def create_namespace_cli(ctx: click.Context, name: str, json_output: bool) -> None:
+def create_namespace_cli(
+    ctx: click.Context, name: str, home_node: Optional[str], json_output: bool
+) -> None:
     """Create a namespace in Weaviate (requires Weaviate 1.38.0+)."""
     client: Optional[WeaviateClient] = None
     try:
         client = get_client_from_context(ctx)
         namespace_man = NamespaceManager(client)
-        namespace_man.create_namespace(name=name, json_output=json_output)
+        namespace_man.create_namespace(
+            name=name, home_node=home_node, json_output=json_output
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
