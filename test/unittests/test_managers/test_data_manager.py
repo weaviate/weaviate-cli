@@ -448,6 +448,31 @@ def test_delete_data(mock_client):
     mock_client.collections.get.assert_called_once_with("TestCollection")
 
 
+def test_delete_data_by_uuid_not_found_raises(mock_client):
+    """delete_by_id returns False on a 404; the manager must surface that as an error."""
+    manager = DataManager(mock_client)
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = True
+
+    mock_collection = MagicMock()
+    mock_collection.name = "TestCollection"
+    mock_collection.config.get.return_value.multi_tenancy_config.enabled = False
+    mock_collection.with_consistency_level.return_value.data.delete_by_id.return_value = (
+        False
+    )
+    mock_client.collections.get.return_value = mock_collection
+
+    with pytest.raises(
+        Exception, match="Object '00000000-0000-0000-0000-000000000000' not found"
+    ):
+        manager.delete_data(
+            collection="TestCollection",
+            limit=1,
+            uuid="00000000-0000-0000-0000-000000000000",
+        )
+
+
 # ---------------------------------------------------------------------------
 # update_data – parallel tenant processing
 # ---------------------------------------------------------------------------

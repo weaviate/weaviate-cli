@@ -80,6 +80,7 @@ Permissions use the format `action:target`. Multiple permissions can be specifie
 | Cluster | `read_cluster` |
 | Nodes | `read_nodes` |
 | Backups | `manage_backups` |
+| Namespaces | `manage_namespaces` (Weaviate 1.38.0+) |
 
 **CRUD shorthands:** `crud_collections`, `crud_data`, `crud_tenants`, `crud_roles`, `crud_users`, `crud_aliases`, `cud_data`, `rd_data`, `cud_tenants`, `rd_tenants`, `rd_collections`, `cud_aliases`, `rd_aliases`
 
@@ -95,7 +96,12 @@ Any combination of `c`, `r`, `u`, `d` prefix letters works (e.g., `cr_collection
 -p read_nodes:minimal
 -p manage_backups:Movies
 -p read_cluster
+-p manage_namespaces:tenantswest
+-p manage_namespaces:tenantswest,tenantseast
 ```
+
+`manage_namespaces` requires an explicit namespace name (or comma-separated list of names);
+the wildcard form `manage_namespaces` alone is rejected.
 
 ## Prerequisites
 

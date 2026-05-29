@@ -68,6 +68,20 @@ def test_create_user_no_name(user_manager):
     assert str(exc_info.value) == "User name is required."
 
 
+def test_create_user_qualified_id_forwarded_as_user_id(user_manager):
+    # The server derives the namespace from a namespace-qualified id of the
+    # form "<namespace>:<user>"; the CLI must forward it verbatim as user_id
+    # without a separate namespace kwarg.
+    qualified_id = "my_ns:scoped_user"
+    expected_api_key = "ns-key"
+    user_manager.client.users.db.create.return_value = expected_api_key
+
+    result = user_manager.create_user(user_name=qualified_id)
+
+    assert result == expected_api_key
+    user_manager.client.users.db.create.assert_called_once_with(user_id=qualified_id)
+
+
 def test_create_user_error(user_manager):
     # Arrange
     user_name = "test_user"
@@ -96,7 +110,7 @@ def test_update_user_rotate_key_success(user_manager):
 def test_update_user_activate_success(user_manager):
     # Arrange
     user_name = "test_user"
-    user_manager.client.users.db.activate.return_value = None
+    user_manager.client.users.db.activate.return_value = True
 
     # Act
     result = user_manager.update_user(user_name=user_name, activate=True)
@@ -106,10 +120,23 @@ def test_update_user_activate_success(user_manager):
     user_manager.client.users.db.activate.assert_called_once_with(user_id=user_name)
 
 
+def test_update_user_activate_already_active_raises(user_manager):
+    # The client returns False on a 409 (user already active) instead of raising.
+    user_name = "test_user"
+    user_manager.client.users.db.activate.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.update_user(user_name=user_name, activate=True)
+    assert (
+        str(exc_info.value)
+        == f"Error updating user '{user_name}': User '{user_name}' is already active."
+    )
+
+
 def test_update_user_deactivate_success(user_manager):
     # Arrange
     user_name = "test_user"
-    user_manager.client.users.db.deactivate.return_value = None
+    user_manager.client.users.db.deactivate.return_value = True
 
     # Act
     result = user_manager.update_user(user_name=user_name, deactivate=True)
@@ -117,6 +144,19 @@ def test_update_user_deactivate_success(user_manager):
     # Assert
     assert result is None
     user_manager.client.users.db.deactivate.assert_called_once_with(user_id=user_name)
+
+
+def test_update_user_deactivate_already_deactivated_raises(user_manager):
+    # The client returns False on a 409 (already deactivated) instead of raising.
+    user_name = "test_user"
+    user_manager.client.users.db.deactivate.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.update_user(user_name=user_name, deactivate=True)
+    assert (
+        str(exc_info.value)
+        == f"Error updating user '{user_name}': User '{user_name}' is already deactivated."
+    )
 
 
 def test_update_user_invalid_combination(user_manager):
@@ -167,12 +207,23 @@ def test_update_user_error(user_manager):
 def test_delete_user_success(user_manager):
     # Arrange
     user_name = "test_user"
+    user_manager.client.users.db.delete.return_value = True
 
     # Act
     user_manager.delete_user(user_name)
 
     # Assert
     user_manager.client.users.db.delete.assert_called_once_with(user_id=user_name)
+
+
+def test_delete_user_not_found_raises(user_manager):
+    # The client returns False on 404 instead of raising.
+    user_name = "missing_user"
+    user_manager.client.users.db.delete.return_value = False
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.delete_user(user_name)
+    assert str(exc_info.value) == f"User '{user_name}' not found."
 
 
 def test_delete_user_no_name(user_manager):
@@ -191,6 +242,43 @@ def test_delete_user_error(user_manager):
     with pytest.raises(Exception) as exc_info:
         user_manager.delete_user(user_name)
     assert str(exc_info.value) == f"Error deleting user '{user_name}': Test error"
+
+
+def test_get_user_by_name_returns_user(user_manager):
+    user_name = "existing"
+    expected = Mock()
+    user_manager.client.users.db.get.return_value = expected
+
+    result = user_manager.get_user(user_name=user_name)
+
+    assert result is expected
+    user_manager.client.users.db.get.assert_called_once_with(user_id=user_name)
+
+
+def test_get_user_by_name_not_found_raises(user_manager):
+    # The client returns None on 404 instead of raising. When the DB lookup
+    # comes up empty we hint that the user might be OIDC, since the Python
+    # client cannot fetch OIDC users by name and a bare "not found" would be
+    # misleading in that case.
+    user_name = "missing"
+    user_manager.client.users.db.get.return_value = None
+
+    with pytest.raises(Exception) as exc_info:
+        user_manager.get_user(user_name=user_name)
+    msg = str(exc_info.value)
+    assert f"User '{user_name}' not found as a DB user." in msg
+    assert "OIDC user" in msg
+    assert f"get role --user_name {user_name} --user_type oidc" in msg
+
+
+def test_get_user_no_name_returns_current_user(user_manager):
+    expected = Mock()
+    user_manager.client.users.get_my_user.return_value = expected
+
+    result = user_manager.get_user()
+
+    assert result is expected
+    user_manager.client.users.get_my_user.assert_called_once_with()
 
 
 def test_add_role_db_success(user_manager):
@@ -324,6 +412,50 @@ def test_print_user(user_manager, capsys):
     # Assert
     captured = capsys.readouterr()
     assert captured.out == f"User: {user}\n"
+
+
+def test_print_db_user_with_namespace_text(user_manager, capsys):
+    user = Mock()
+    user.user_id = "scoped_user"
+    user.active = True
+    user.user_type = Mock(name="db")
+    user.user_type.name = "db"
+    user.role_names = ["admin"]
+    user.namespace = "tenants_west"
+
+    user_manager.print_db_user(user, json_output=False)
+
+    out = capsys.readouterr().out
+    assert "Namespace: tenants_west" in out
+
+
+def test_print_db_user_with_namespace_json(user_manager, capsys):
+    user = Mock()
+    user.user_id = "scoped_user"
+    user.active = True
+    user.user_type = Mock(name="db")
+    user.user_type.name = "db"
+    user.role_names = ["admin"]
+    user.namespace = "tenants_west"
+
+    user_manager.print_db_user(user, json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["namespace"] == "tenants_west"
+
+
+def test_print_db_user_without_namespace_omits_field(user_manager, capsys):
+    user = Mock(spec=["user_id", "active", "user_type", "role_names"])
+    user.user_id = "u"
+    user.active = True
+    user.user_type = Mock(name="db")
+    user.user_type.name = "db"
+    user.role_names = []
+
+    user_manager.print_db_user(user, json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert "namespace" not in payload
 
 
 # ---------------------------------------------------------------------------

@@ -357,6 +357,31 @@ def test_parse_permission_cluster():
     assert parse_permission("read_cluster") == Permissions.cluster(read=True)
 
 
+def test_parse_permission_namespaces():
+    # Single namespace
+    assert parse_permission("manage_namespaces:my_ns") == Permissions.namespaces(
+        namespace="my_ns", manage=True
+    )
+
+    # Comma-separated list
+    assert parse_permission(
+        "manage_namespaces:ns_one,ns_two"
+    ) == Permissions.namespaces(namespace=["ns_one", "ns_two"], manage=True)
+
+
+def test_parse_permission_namespaces_requires_name():
+    with pytest.raises(ValueError, match="manage_namespaces requires"):
+        parse_permission("manage_namespaces")
+
+
+def test_parse_permission_namespaces_empty_name():
+    with pytest.raises(ValueError, match="must be non-empty"):
+        parse_permission("manage_namespaces:")
+
+    with pytest.raises(ValueError, match="must be non-empty"):
+        parse_permission("manage_namespaces:ns1,,ns2")
+
+
 def test_parse_permission_invalid():
     # Test invalid action
     with pytest.raises(ValueError, match="Invalid permission action: invalid_action"):

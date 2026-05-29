@@ -113,10 +113,10 @@ weaviate-cli [--config-file FILE] [--user USER] <group> <command> [--json] [opti
 
 | Group | Description |
 |-------|-------------|
-| `create` | Create collections, tenants, data, backups, exports, roles, users, aliases, replications |
-| `get` | Inspect collections, tenants, shards, backups, exports, roles, users, nodes, aliases, replications |
-| `update` | Update collections, tenants, shards, data, users, aliases |
-| `delete` | Delete collections, tenants, data, roles, users, aliases, replications |
+| `create` | Create collections, tenants, data, backups, exports, roles, users, aliases, namespaces, replications |
+| `get` | Inspect collections, tenants, shards, backups, exports, roles, users, nodes, aliases, namespaces, replications |
+| `update` | Update collections, tenants, shards, data, users, aliases, namespaces |
+| `delete` | Delete collections, tenants, data, roles, users, aliases, namespaces, replications |
 | `query` | Query data (fetch/vector/keyword/hybrid/uuid), replications, sharding state |
 | `restore` | Restore backups |
 | `cancel` | Cancel backups, exports, and replications |
@@ -134,6 +134,9 @@ weaviate-cli [--config-file FILE] [--user USER] <group> <command> [--json] [opti
 weaviate-cli create collection --collection MyCollection --replication_factor 3 --vector_index hnsw --vectorizer none --json
 weaviate-cli get collection --json                          # List all
 weaviate-cli get collection --collection MyCollection --json # Specific
+weaviate-cli get collection --collection Movies --namespace myns --json  # Operator: qualified target
+weaviate-cli get collection --list-qualified-keys --json           # Operator: list using full keys (no shell glob issue)
+weaviate-cli get collection --namespace '*' --json                 # Same; * must be quoted in the shell
 weaviate-cli update collection --collection MyCollection --description "Updated" --replication_factor 5 --json
 weaviate-cli delete collection --collection MyCollection --json
 weaviate-cli delete collection --all --json
@@ -283,6 +286,47 @@ weaviate-cli delete user --user_name test-user --json
 Permission format: `action:target`. See [references/rbac.md](references/rbac.md) for full permission reference.
 
 **Shell quoting**: Permissions with wildcards must be quoted to prevent shell globbing: `-p 'crud_data:*'` (not `-p crud_data:*`, which fails in zsh with `no matches found`).
+
+### Namespaces
+
+```bash
+weaviate-cli create namespace --name tenantswest --json
+weaviate-cli create namespace --name tenantswest --home_node node1 --json   # pin shards to a node
+weaviate-cli get namespace --name tenantswest --json   # shows home_node + read-only state
+weaviate-cli get namespace --all --json
+weaviate-cli update namespace --name tenantswest --home_node node2 --json   # change home node only
+weaviate-cli delete namespace --name tenantswest --json
+```
+
+Namespace names must be **3–36 lowercase alphanumeric characters starting with a letter** (regexp: `[a-z][a-z0-9]{2,35}`).
+
+`--home_node` pins which cluster node holds the namespace's shards (optional on create, required on update). `update namespace` only changes the home node; existing live shards are not moved. `get namespace` surfaces the read-only `state` (`active`/`deleting`) and `home_node` when the server returns them.
+
+**Prerequisite**: Requires Weaviate 1.38.0+. The CLI defers the version check to the python client.
+
+#### Namespace-scoped DB users
+
+On namespace-enabled clusters, a DB user is bound to a namespace by passing a
+namespace-qualified id `<namespace>:<user>` as `--user_name` (there is no `--namespace`
+flag; the server derives the namespace from the qualified id):
+
+```bash
+weaviate-cli create user --user_name tenantswest:scoped-user --json
+weaviate-cli get user --user_name tenantswest:scoped-user --json   # output includes "namespace"
+```
+
+#### Granting namespace permissions
+
+```bash
+weaviate-cli create role --role_name NsAdmin -p manage_namespaces:tenantswest --json
+weaviate-cli assign permission -p manage_namespaces:tenantseast --role_name NsAdmin --json
+```
+
+Multiple namespaces in one permission: `-p manage_namespaces:ns1,ns2`. The wildcard form
+`manage_namespaces` (without a name) is rejected — every grant must name an explicit
+namespace.
+
+See [references/namespaces.md](references/namespaces.md).
 
 ### Cluster & Nodes
 
@@ -461,6 +505,7 @@ When new commands or options are added to `weaviate-cli`:
 - [references/backups.md](references/backups.md) -- Backup/restore options and notes
 - [references/exports.md](references/exports.md) -- Collection export options and notes
 - [references/rbac.md](references/rbac.md) -- Permission format, actions, and examples
+- [references/namespaces.md](references/namespaces.md) -- Namespace CRUD, RBAC, and namespace-scoped users
 - [references/cluster.md](references/cluster.md) -- Nodes, shards, replication operations
 - [references/benchmark.md](references/benchmark.md) -- Benchmark options and output modes
 - [references/config-management.md](references/config-management.md) -- Config patterns and decision tree

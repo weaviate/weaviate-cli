@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.alias_manager import AliasManager
+from weaviate_cli.managers.namespace_manager import NamespaceManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.utils import (
@@ -21,6 +22,7 @@ from weaviate_cli.defaults import UpdateTenantsDefaults
 from weaviate_cli.defaults import UpdateShardsDefaults
 from weaviate_cli.defaults import UpdateDataDefaults
 from weaviate_cli.defaults import UpdateUserDefaults
+from weaviate_cli.defaults import UpdateNamespaceDefaults
 
 
 # Update Group
@@ -543,6 +545,44 @@ def update_alias_cli(
         alias_man = AliasManager(client)
         alias_man.update_alias(
             alias_name=alias_name, collection=collection, json_output=json_output
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@update.command("namespace")
+@click.option(
+    "--name",
+    default=UpdateNamespaceDefaults.name,
+    required=True,
+    help="The name of the namespace to update.",
+)
+@click.option(
+    "--home_node",
+    default=UpdateNamespaceDefaults.home_node,
+    required=True,
+    help="Cluster node to use for future placements. Must be a current storage candidate. Existing live shards are not moved.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def update_namespace_cli(
+    ctx: click.Context, name: str, home_node: str, json_output: bool
+) -> None:
+    """Update the home node of a namespace in Weaviate (requires Weaviate 1.38.0+)."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        namespace_man = NamespaceManager(client)
+        namespace_man.update_namespace(
+            name=name, home_node=home_node, json_output=json_output
         )
     except Exception as e:
         click.echo(f"Error: {e}")

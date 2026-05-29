@@ -26,15 +26,31 @@ class UserManager:
         self,
         user_name: Optional[str] = None,
     ) -> Union[OwnUser, UserDB]:
-        """Get a user in Weaviate. If no user name is provided, the current user is returned."""
+        """Get a user in Weaviate. If no user name is provided, the current user is returned.
+
+        Only DB users can be looked up by name: the Weaviate Python client
+        exposes ``users.db.get(...)`` but no equivalent ``users.oidc.get(...)``.
+        When the DB lookup returns ``None`` (404), the user may still exist
+        as an OIDC user — surface that possibility in the error message so
+        callers don't waste time chasing a "not found" that is in fact a DB
+        vs OIDC mismatch.
+        """
 
         try:
             if user_name is None:
                 return self.client.users.get_my_user()
-            else:
-                return self.client.users.db.get(user_id=user_name)
+            user = self.client.users.db.get(user_id=user_name)
         except Exception as e:
             raise Exception(f"Error getting user '{user_name}': {e}")
+        if user is None:
+            raise Exception(
+                f"User '{user_name}' not found as a DB user. "
+                f"If '{user_name}' is an OIDC user, the Weaviate Python "
+                "client does not support fetching OIDC users directly — use "
+                f"`get role --user_name {user_name} --user_type oidc` to "
+                "list their assigned roles instead."
+            )
+        return user
 
     def get_all_users(self) -> List[UserDB]:
         """Get all users in Weaviate."""
@@ -49,7 +65,14 @@ class UserManager:
     ) -> str:
         """
         Create a user in Weaviate.
-        Returns the api key for the user.
+
+        Args:
+            user_name: The id of the new user. On namespace-enabled clusters
+                (Weaviate 1.38.0+) bind the user to a namespace by passing a
+                namespace-qualified id of the form ``<namespace>:<user>``.
+
+        Returns:
+            The api key for the user.
         """
         if user_name is None:
             raise Exception("User name is required.")
@@ -66,7 +89,11 @@ class UserManager:
         deactivate: bool = False,
     ) -> Optional[str]:
         """Update a user in Weaviate.
-        Returns the api key for the user if the api key was rotated, otherwise returns None.
+
+        Returns the api key for the user if the api key was rotated, otherwise
+        returns ``None``. Raises if ``activate``/``deactivate`` is a no-op
+        because the user is already in the requested state (the underlying
+        client returns ``False`` instead of raising on 409).
         """
         if user_name is None:
             raise Exception("User name is required.")
@@ -80,9 +107,13 @@ class UserManager:
             if rotate_api_key:
                 return self.client.users.db.rotate_key(user_id=user_name)
             if activate:
-                return self.client.users.db.activate(user_id=user_name)
+                if not self.client.users.db.activate(user_id=user_name):
+                    raise Exception(f"User '{user_name}' is already active.")
+                return None
             if deactivate:
-                return self.client.users.db.deactivate(user_id=user_name)
+                if not self.client.users.db.deactivate(user_id=user_name):
+                    raise Exception(f"User '{user_name}' is already deactivated.")
+                return None
         except Exception as e:
             raise Exception(f"Error updating user '{user_name}': {e}")
 
@@ -90,13 +121,19 @@ class UserManager:
         self,
         user_name: Optional[str] = None,
     ) -> None:
-        """Delete a user in Weaviate."""
+        """Delete a user in Weaviate.
+
+        Raises if the user does not exist (the underlying client returns
+        ``False`` on a 404 instead of raising).
+        """
         if user_name is None:
             raise Exception("User name is required.")
         try:
-            self.client.users.db.delete(user_id=user_name)
+            deleted = self.client.users.db.delete(user_id=user_name)
         except Exception as e:
             raise Exception(f"Error deleting user '{user_name}': {e}")
+        if not deleted:
+            raise Exception(f"User '{user_name}' not found.")
 
     def add_role(
         self,
@@ -205,22 +242,23 @@ class UserManager:
 
     def print_db_user(self, user: UserDB, json_output: bool = False) -> None:
         """Print user roles in a human readable format."""
+        namespace = getattr(user, "namespace", None)
         if json_output:
-            click.echo(
-                json.dumps(
-                    {
-                        "user_id": user.user_id,
-                        "active": user.active,
-                        "user_type": user.user_type.name,
-                        "roles": list(user.role_names),
-                    },
-                    indent=2,
-                )
-            )
+            payload = {
+                "user_id": user.user_id,
+                "active": user.active,
+                "user_type": user.user_type.name,
+                "roles": list(user.role_names),
+            }
+            if namespace is not None:
+                payload["namespace"] = namespace
+            click.echo(json.dumps(payload, indent=2))
             return
         print(f"User: {user.user_id}")
         print(f"Active: {'Yes' if user.active else 'No'}")
         print(f"Type: {user.user_type.name}")
+        if namespace is not None:
+            print(f"Namespace: {namespace}")
         print(f"Roles:")
         if len(user.role_names) == 0:
             print(f" - No roles assigned")

@@ -7,6 +7,7 @@ from weaviate import WeaviateClient
 
 from weaviate_cli.completion.complete import collection_name_complete
 from weaviate_cli.managers.alias_manager import AliasManager
+from weaviate_cli.managers.namespace_manager import NamespaceManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.utils import get_client_from_context
 from weaviate_cli.managers.collection_manager import CollectionManager
@@ -16,6 +17,7 @@ from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.user_manager import UserManager
 from weaviate_cli.defaults import (
     DeleteCollectionDefaults,
+    DeleteNamespaceDefaults,
     DeleteTenantsDefaults,
     DeleteDataDefaults,
     DeleteRoleDefaults,
@@ -269,6 +271,34 @@ def delete_user_cli(ctx, user_name, json_output):
             )
         else:
             click.echo(f"User '{user_name}' deleted successfully.")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@delete.command("namespace")
+@click.option(
+    "--name",
+    default=DeleteNamespaceDefaults.name,
+    required=True,
+    help="The name of the namespace to delete.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def delete_namespace_cli(ctx: click.Context, name: str, json_output: bool) -> None:
+    """Delete a namespace in Weaviate (requires Weaviate 1.38.0+)."""
+    client = None
+    try:
+        client = get_client_from_context(ctx)
+        namespace_man = NamespaceManager(client)
+        namespace_man.delete_namespace(name=name, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

@@ -1114,3 +1114,239 @@ def test_update_collection_async_replication_config_warns_on_old_version(
         captured.out + captured.err
     )
     mock_collection.config.update.assert_called_once()
+
+
+def _collection_schema_mock(multitenant: bool = False) -> MagicMock:
+    return MagicMock(
+        vector_config=None,
+        vectorizer=MagicMock(value="none"),
+        vector_index_type=MagicMock(value="hnsw"),
+        multi_tenancy_config=MagicMock(
+            enabled=multitenant,
+            auto_tenant_creation=False,
+            auto_tenant_activation=False,
+        ),
+        replication_config=MagicMock(factor=1),
+    )
+
+
+def test_get_collection_single_qualifies_with_namespace(mock_client):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = True
+    mock_col = MagicMock()
+    mock_col.config.get.return_value.to_dict.return_value = {"foo": 1}
+    mock_collections.get.return_value = mock_col
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(
+        collection="Movies", namespace="customer1", json_output=False
+    )
+
+    mock_collections.exists.assert_called_once_with("customer1:Movies")
+    mock_collections.get.assert_called_once_with("customer1:Movies")
+
+
+def test_get_collection_single_keeps_qualified_when_collection_has_colon(
+    mock_client,
+):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = True
+    mock_col = MagicMock()
+    mock_col.config.get.return_value.to_dict.return_value = {}
+    mock_collections.get.return_value = mock_col
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(
+        collection="customer1:Movies", namespace="customer1", json_output=False
+    )
+
+    mock_collections.get.assert_called_once_with("customer1:Movies")
+
+
+def test_get_collection_single_namespace_star_requires_qualified_name(mock_client):
+    mock_client.collections = MagicMock()
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception, match="--namespace"):
+        manager.get_collection(collection="Movies", namespace="*", json_output=False)
+
+
+def test_get_collection_single_qualified_without_namespace_unchanged(mock_client):
+    """Global-style full name without --namespace must not be stripped."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = True
+    mock_col = MagicMock()
+    mock_col.config.get.return_value.to_dict.return_value = {}
+    mock_collections.get.return_value = mock_col
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(
+        collection="customer1:Movies", namespace=None, json_output=False
+    )
+
+    mock_collections.get.assert_called_once_with("customer1:Movies")
+
+
+def test_get_collection_single_qualified_with_namespace_star(mock_client):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = True
+    mock_col = MagicMock()
+    mock_col.config.get.return_value.to_dict.return_value = {}
+    mock_collections.get.return_value = mock_col
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(
+        collection="customer1:Movies", namespace="*", json_output=False
+    )
+
+    mock_collections.get.assert_called_once_with("customer1:Movies")
+
+
+def test_get_collection_list_strips_without_namespace(mock_client):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = {"customer1:Movies": object()}
+
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.return_value = _collection_schema_mock()
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(collection=None, json_output=True, namespace=None)
+
+    mock_collections.get.assert_called_once_with("Movies")
+
+
+def test_get_collection_list_uses_qualified_with_namespace_star(mock_client):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = ["customer1:M1", "ns2:M2"]
+
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.return_value = _collection_schema_mock()
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(collection=None, json_output=True, namespace="*")
+
+    assert mock_collections.get.call_count == 2
+    assert mock_collections.get.call_args_list[0].args[0] == "customer1:M1"
+    assert mock_collections.get.call_args_list[1].args[0] == "ns2:M2"
+
+
+def test_get_collection_list_uses_qualified_with_list_qualified_keys(mock_client):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = ["customer1:M1", "ns2:M2"]
+
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.return_value = _collection_schema_mock()
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(
+        collection=None,
+        json_output=True,
+        namespace=None,
+        list_qualified_keys=True,
+    )
+
+    assert mock_collections.get.call_count == 2
+    assert mock_collections.get.call_args_list[0].args[0] == "customer1:M1"
+    assert mock_collections.get.call_args_list[1].args[0] == "ns2:M2"
+
+
+def test_get_collection_list_qualified_keys_conflicts_with_namespace(mock_client):
+    manager = CollectionManager(MagicMock())
+    with pytest.raises(Exception, match="not both"):
+        manager.get_collection(
+            collection=None,
+            json_output=True,
+            namespace="customer1",
+            list_qualified_keys=True,
+        )
+
+
+def test_get_collection_list_qualified_keys_with_collection_rejected(mock_client):
+    manager = CollectionManager(MagicMock())
+    with pytest.raises(Exception, match="list-qualified-keys"):
+        manager.get_collection(
+            collection="Movies",
+            json_output=True,
+            list_qualified_keys=True,
+        )
+
+
+def test_get_collection_list_no_namespace_404_raises_hint_for_namespaced_keys(
+    mock_client,
+):
+    """When config.get() 404s on a stripped key, surface a namespace hint."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = [
+        "customer1:Movies",
+        "customer1:Articles",
+        "otherteam:Books",
+    ]
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.side_effect = Exception(
+        "Collection configuration could not be retrieved.! Unexpected status code: 404"
+    )
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.get_collection(collection=None, json_output=False, namespace=None)
+
+    msg = str(exc_info.value)
+    assert "--list-qualified-keys" in msg
+    assert "customer1" in msg
+    assert "otherteam" in msg
+
+
+def test_get_collection_list_no_namespace_non_404_error_propagates(mock_client):
+    """Non-404 errors on stripped keys must propagate without the namespace hint."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = ["customer1:Movies"]
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.side_effect = Exception("Connection refused")
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception, match="Connection refused"):
+        manager.get_collection(collection=None, json_output=False, namespace=None)
+
+
+def test_get_collection_list_no_namespace_no_hint_for_plain_keys(mock_client):
+    """Plain (non-prefixed) keys should work without any namespace hint."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = ["Movies", "Articles"]
+
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.return_value = _collection_schema_mock()
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(collection=None, json_output=True, namespace=None)
+
+    assert mock_collections.get.call_count == 2
+
+
+def test_get_collection_list_filters_by_namespace(mock_client):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.list_all.return_value = ["customer1:A", "other:B"]
+
+    mock_col = MagicMock()
+    mock_collections.get.return_value = mock_col
+    mock_col.config.get.return_value = _collection_schema_mock()
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(collection=None, json_output=True, namespace="customer1")
+
+    mock_collections.get.assert_called_once_with("customer1:A")

@@ -9,6 +9,7 @@ from weaviate_cli.completion.complete import (
 )
 from weaviate_cli.managers.alias_manager import AliasManager
 from weaviate_cli.managers.export_manager import ExportManager
+from weaviate_cli.managers.namespace_manager import NamespaceManager
 from weaviate_cli.managers.role_manager import RoleManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.user_manager import UserManager
@@ -24,6 +25,7 @@ from weaviate_cli.defaults import (
     GetTenantsDefaults,
     GetShardsDefaults,
     GetCollectionDefaults,
+    GetNamespaceDefaults,
     GetRoleDefaults,
     GetUserDefaults,
     GetNodesDefaults,
@@ -47,10 +49,33 @@ def get():
     shell_complete=collection_name_complete,
 )
 @click.option(
+    "--namespace",
+    "namespace",
+    default=GetCollectionDefaults.namespace,
+    help=(
+        "Weaviate namespace for global/operator credentials: with --collection NAME, "
+        "resolves the API target to NAMESPACE:NAME. When listing all collections, "
+        "limits to that namespace. For all namespaces, use --list-qualified-keys "
+        "(recommended) or --namespace '*' — the latter must be quoted in the shell "
+        "because unquoted * is expanded to filenames."
+    ),
+)
+@click.option(
+    "--list-qualified-keys",
+    "list_qualified_keys",
+    is_flag=True,
+    default=GetCollectionDefaults.list_qualified_keys,
+    help=(
+        "When listing collections (no --collection), pass each server key verbatim "
+        "to the API (namespace:collection). Use this for global operator credentials "
+        "instead of --namespace '*', which breaks when * is not quoted."
+    ),
+)
+@click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
 )
 @click.pass_context
-def get_collection_cli(ctx, collection, json_output):
+def get_collection_cli(ctx, collection, namespace, list_qualified_keys, json_output):
     """Get all collections in Weaviate. If --collection is provided, get the specific collection."""
 
     client = None
@@ -58,7 +83,12 @@ def get_collection_cli(ctx, collection, json_output):
         client = get_client_from_context(ctx)
         collection_man = CollectionManager(client)
         # Call the function from get_collections.py with general arguments
-        collection_man.get_collection(collection=collection, json_output=json_output)
+        collection_man.get_collection(
+            collection=collection,
+            json_output=json_output,
+            namespace=namespace,
+            list_qualified_keys=list_qualified_keys,
+        )
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:
@@ -306,15 +336,18 @@ def get_user_cli(
         if all:
             users = user_man.get_all_users()
             if json_output:
-                users_data = [
-                    {
+                users_data = []
+                for u in users:
+                    entry = {
                         "user_id": u.user_id,
                         "active": u.active,
                         "user_type": u.user_type.name,
                         "roles": list(u.role_names),
                     }
-                    for u in users
-                ]
+                    namespace = getattr(u, "namespace", None)
+                    if namespace is not None:
+                        entry["namespace"] = namespace
+                    users_data.append(entry)
                 click.echo(json.dumps({"users": users_data}, indent=2, default=str))
             else:
                 click.echo("Users:")
@@ -559,6 +592,82 @@ def get_replications_cli(ctx: click.Context, json_output: bool) -> None:
         manager = ClusterManager(client, click.echo)
         ops = manager.get_all_replications()
         manager.print_replications(ops, json_output=json_output)
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@get.command("namespace")
+@click.option(
+    "--name",
+    default=GetNamespaceDefaults.name,
+    help="The namespace name to fetch.",
+)
+@click.option(
+    "--all",
+    "all_",
+    is_flag=True,
+    default=GetNamespaceDefaults.all,
+    help="List all namespaces visible to the current principal.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def get_namespace_cli(
+    ctx: click.Context,
+    name: Optional[str],
+    all_: bool,
+    json_output: bool,
+) -> None:
+    """Get a namespace by name, or list all namespaces with --all (requires Weaviate 1.38.0+)."""
+    client = None
+    try:
+        if all_ and name:
+            raise Exception("Can't provide both --all and --name.")
+        if not all_ and not name:
+            raise Exception("Either --all or --name is required.")
+
+        client = get_client_from_context(ctx)
+        namespace_man = NamespaceManager(client)
+        if all_:
+            namespaces = namespace_man.list_namespaces()
+            if json_output:
+                click.echo(
+                    json.dumps(
+                        {
+                            "namespaces": [
+                                namespace_man.namespace_to_dict(ns) for ns in namespaces
+                            ],
+                            "total": len(namespaces),
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo("Namespaces")
+                separator = "-" * 50
+                click.echo(separator)
+                if len(namespaces) == 0:
+                    click.echo("No namespaces found.")
+                else:
+                    for ns in namespaces:
+                        namespace_man.print_namespace(ns)
+                    click.echo(separator)
+        else:
+            namespace = namespace_man.get_namespace(name=name)
+            if namespace is None:
+                if json_output:
+                    click.echo(json.dumps({"namespace": None}, indent=2))
+                else:
+                    click.echo(f"Namespace '{name}' not found.")
+            else:
+                namespace_man.print_namespace(namespace, json_output=json_output)
     except Exception as e:
         click.echo(f"Error: {e}")
         if client:

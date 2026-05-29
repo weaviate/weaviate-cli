@@ -18,6 +18,7 @@ from weaviate_cli.utils import (
     parse_async_replication_config,
     ASYNC_REPLICATION_CONFIG_HELP,
 )
+from weaviate_cli.managers.namespace_manager import NamespaceManager
 from weaviate_cli.managers.collection_manager import CollectionManager
 from weaviate_cli.managers.tenant_manager import TenantManager
 from weaviate_cli.managers.data_manager import DataManager
@@ -29,9 +30,11 @@ from weaviate_cli.defaults import (
     CreateBackupDefaults,
     CreateCollectionDefaults,
     CreateExportCollectionDefaults,
+    CreateNamespaceDefaults,
     CreateTenantsDefaults,
     CreateDataDefaults,
     CreateRoleDefaults,
+    CreateUserDefaults,
     PERMISSION_HELP_STRING,
     MAX_WORKERS,
 )
@@ -689,8 +692,12 @@ def create_role_cli(
 @create.command("user")
 @click.option(
     "--user_name",
-    default=None,
-    help="The name of the user to create.",
+    default=CreateUserDefaults.user_name,
+    help=(
+        "The name of the user to create. On namespace-enabled clusters "
+        "(Weaviate 1.38.0+) bind the user to a namespace by passing a "
+        "namespace-qualified id of the form '<namespace>:<user>'."
+    ),
 )
 @click.option(
     "--store",
@@ -702,7 +709,10 @@ def create_role_cli(
 )
 @click.pass_context
 def create_user_cli(
-    ctx: click.Context, user_name: str, store: bool, json_output: bool
+    ctx: click.Context,
+    user_name: str,
+    store: bool,
+    json_output: bool,
 ) -> None:
     """Create a user in Weaviate."""
     client = None
@@ -967,6 +977,43 @@ def create_export_collection_cli(
             exclude=exclude,
             wait=wait,
             json_output=json_output,
+        )
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        if client:
+            client.close()
+        sys.exit(1)
+    finally:
+        if client:
+            client.close()
+
+
+@create.command("namespace")
+@click.option(
+    "--name",
+    default=CreateNamespaceDefaults.name,
+    required=True,
+    help="The namespace name. Must be 3-36 lowercase alphanumeric characters starting with a letter.",
+)
+@click.option(
+    "--home_node",
+    default=CreateNamespaceDefaults.home_node,
+    help="Cluster node to place this namespace's shards on. Must be a current storage candidate. When omitted, the cluster picks one automatically.",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output in JSON format."
+)
+@click.pass_context
+def create_namespace_cli(
+    ctx: click.Context, name: str, home_node: Optional[str], json_output: bool
+) -> None:
+    """Create a namespace in Weaviate (requires Weaviate 1.38.0+)."""
+    client: Optional[WeaviateClient] = None
+    try:
+        client = get_client_from_context(ctx)
+        namespace_man = NamespaceManager(client)
+        namespace_man.create_namespace(
+            name=name, home_node=home_node, json_output=json_output
         )
     except Exception as e:
         click.echo(f"Error: {e}")

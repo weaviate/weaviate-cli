@@ -50,3 +50,79 @@ def test_main_commands_registered():
     assert "update" in main.commands
     assert "restore" in main.commands
     assert "query" in main.commands
+
+
+def test_update_namespace_registered():
+    assert "namespace" in main.commands["update"].commands
+
+
+def test_create_namespace_forwards_home_node(cli_runner):
+    with (
+        patch(
+            "weaviate_cli.commands.create.get_client_from_context",
+            return_value=MagicMock(),
+        ),
+        patch("weaviate_cli.commands.create.NamespaceManager") as mock_manager_cls,
+    ):
+        result = cli_runner.invoke(
+            main,
+            ["create", "namespace", "--name", "tenantswest", "--home_node", "node1"],
+        )
+    assert result.exit_code == 0
+    mock_manager_cls.return_value.create_namespace.assert_called_once_with(
+        name="tenantswest", home_node="node1", json_output=False
+    )
+
+
+def test_update_namespace_forwards_home_node(cli_runner):
+    with (
+        patch(
+            "weaviate_cli.commands.update.get_client_from_context",
+            return_value=MagicMock(),
+        ),
+        patch("weaviate_cli.commands.update.NamespaceManager") as mock_manager_cls,
+    ):
+        result = cli_runner.invoke(
+            main,
+            ["update", "namespace", "--name", "tenantswest", "--home_node", "node2"],
+        )
+    assert result.exit_code == 0
+    mock_manager_cls.return_value.update_namespace.assert_called_once_with(
+        name="tenantswest", home_node="node2", json_output=False
+    )
+
+
+def test_update_namespace_requires_home_node(cli_runner):
+    result = cli_runner.invoke(main, ["update", "namespace", "--name", "tenantswest"])
+    # Missing required --home_node is a usage error.
+    assert result.exit_code == 2
+    assert "--home_node" in result.output
+
+
+def test_create_user_forwards_qualified_user_name(cli_runner):
+    # A namespace-scoped user is created by passing a namespace-qualified id
+    # ("<namespace>:<user>") as --user_name; the CLI forwards it verbatim.
+    with (
+        patch(
+            "weaviate_cli.commands.create.get_client_from_context",
+            return_value=MagicMock(),
+        ),
+        patch("weaviate_cli.commands.create.UserManager") as mock_manager_cls,
+    ):
+        mock_manager_cls.return_value.create_user.return_value = "api-key"
+        result = cli_runner.invoke(
+            main, ["create", "user", "--user_name", "tenantswest:scoped"]
+        )
+    assert result.exit_code == 0
+    mock_manager_cls.return_value.create_user.assert_called_once_with(
+        user_name="tenantswest:scoped"
+    )
+
+
+def test_create_user_rejects_namespace_option(cli_runner):
+    # The dropped --namespace flag must no longer be accepted (usage error).
+    result = cli_runner.invoke(
+        main, ["create", "user", "--user_name", "scoped", "--namespace", "tenantswest"]
+    )
+    assert result.exit_code == 2
+    assert "--namespace" in result.output

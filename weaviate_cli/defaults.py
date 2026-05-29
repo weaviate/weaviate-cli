@@ -15,6 +15,7 @@ PERMISSION_HELP_STRING = (
     "  User management: assign_and_revoke_users, read_users\n\n"
     "  Node management: read_nodes\n\n"
     "  Alias management: create_aliases, read_aliases, update_aliases, delete_aliases\n\n"
+    "  Namespace management: manage_namespaces\n\n"
     "  CRUD shorthands for collections, roles, tenants, users and data:\n\n"
     "    crud_collections:collection,cud_data:collection,rd_collections,\n\n"
     "    crud_roles:role,cud_tenants:tenant,rd_tenants,\n\n"
@@ -28,6 +29,7 @@ PERMISSION_HELP_STRING = (
     "  - *_aliases:collection_name:alias_name, can be specified multiple times\n\n"
     "  - *_data:collection_name, can be specified multiple times\n\n"
     "  - *_backups:collection_name, can be specified multiple times\n\n"
+    "  - manage_namespaces:namespace_name, can be specified multiple times\n\n"
     "  - read_nodes:verbosity (verbosity level)\n\n"
     "Examples:\n\n"
     "  --permission crud_collections:Movies\n\n"
@@ -47,6 +49,7 @@ PERMISSION_HELP_STRING = (
     "  --permission crud_aliases:Movies,Books:Alias*\n\n"
     "  --permission create_aliases:Banks\n\n"
     "  --permission crud_users:user-1,user-2\n\n"
+    "  --permission manage_namespaces:my_namespace\n\n"
 )
 QUERY_MAXIMUM_RESULTS = 10000
 MAX_OBJECTS_PER_BATCH = 5000
@@ -192,6 +195,12 @@ class DeleteRoleDefaults:
 @dataclass
 class GetCollectionDefaults:
     collection: Optional[str] = None
+    # For global/operator credentials against namespaced clusters: qualify API calls
+    # as namespace:collection. Use "*" when listing all collections to use server keys
+    # verbatim (no namespace prefix stripping). Prefer --list-qualified-keys over
+    # --namespace '*' because shells glob unquoted *.
+    namespace: Optional[str] = None
+    list_qualified_keys: bool = False
 
 
 @dataclass
@@ -333,3 +342,32 @@ class GetExportCollectionDefaults:
 class CancelExportCollectionDefaults:
     export_id: str = "test-export"
     backend: str = "filesystem"
+
+
+@dataclass
+class CreateNamespaceDefaults:
+    name: Optional[str] = None
+    home_node: Optional[str] = None
+
+
+@dataclass
+class GetNamespaceDefaults:
+    name: Optional[str] = None
+    all: bool = False
+
+
+@dataclass
+class UpdateNamespaceDefaults:
+    name: Optional[str] = None
+    home_node: Optional[str] = None
+
+
+@dataclass
+class DeleteNamespaceDefaults:
+    name: Optional[str] = None
+
+
+@dataclass
+class CreateUserDefaults:
+    user_name: Optional[str] = None
+    store: bool = False
