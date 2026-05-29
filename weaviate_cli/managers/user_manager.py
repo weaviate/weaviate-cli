@@ -62,15 +62,14 @@ class UserManager:
     def create_user(
         self,
         user_name: Optional[str] = None,
-        namespace: Optional[str] = None,
     ) -> str:
         """
         Create a user in Weaviate.
 
         Args:
-            user_name: The id of the new user.
-            namespace: Optional namespace to bind the user to. Required on
-                namespace-enabled clusters (Weaviate 1.38.0+).
+            user_name: The id of the new user. On namespace-enabled clusters
+                (Weaviate 1.38.0+) bind the user to a namespace by passing a
+                namespace-qualified id of the form ``<namespace>:<user>``.
 
         Returns:
             The api key for the user.
@@ -78,10 +77,7 @@ class UserManager:
         if user_name is None:
             raise Exception("User name is required.")
         try:
-            kwargs = {"user_id": user_name}
-            if namespace is not None:
-                kwargs["namespace"] = namespace
-            return self.client.users.db.create(**kwargs)
+            return self.client.users.db.create(user_id=user_name)
         except Exception as e:
             raise Exception(f"Error creating user '{user_name}': {e}")
 

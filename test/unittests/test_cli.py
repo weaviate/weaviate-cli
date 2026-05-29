@@ -97,3 +97,32 @@ def test_update_namespace_requires_home_node(cli_runner):
     # Missing required --home_node is a usage error.
     assert result.exit_code == 2
     assert "--home_node" in result.output
+
+
+def test_create_user_forwards_qualified_user_name(cli_runner):
+    # A namespace-scoped user is created by passing a namespace-qualified id
+    # ("<namespace>:<user>") as --user_name; the CLI forwards it verbatim.
+    with (
+        patch(
+            "weaviate_cli.commands.create.get_client_from_context",
+            return_value=MagicMock(),
+        ),
+        patch("weaviate_cli.commands.create.UserManager") as mock_manager_cls,
+    ):
+        mock_manager_cls.return_value.create_user.return_value = "api-key"
+        result = cli_runner.invoke(
+            main, ["create", "user", "--user_name", "tenantswest:scoped"]
+        )
+    assert result.exit_code == 0
+    mock_manager_cls.return_value.create_user.assert_called_once_with(
+        user_name="tenantswest:scoped"
+    )
+
+
+def test_create_user_rejects_namespace_option(cli_runner):
+    # The dropped --namespace flag must no longer be accepted (usage error).
+    result = cli_runner.invoke(
+        main, ["create", "user", "--user_name", "scoped", "--namespace", "tenantswest"]
+    )
+    assert result.exit_code == 2
+    assert "--namespace" in result.output

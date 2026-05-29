@@ -50,22 +50,25 @@ key). Both keys are omitted when the server does not return them (e.g. older clu
 
 ## Namespace-scoped DB users
 
-On namespace-enabled clusters, every dynamic DB user must be bound to a namespace
-at creation time. The `--namespace` flag forwards the value to
-`client.users.db.create(user_id=..., namespace=...)`.
+On namespace-enabled clusters, a dynamic DB user is bound to a namespace by giving it
+a **namespace-qualified id** of the form `<namespace>:<user>`. There is no separate
+`--namespace` flag — the namespace is part of the `--user_name` value, which the CLI
+forwards verbatim to `client.users.db.create(user_id=...)`. The server derives the
+namespace from the qualified id.
 
 ```bash
-# Create a user inside a namespace
-weaviate-cli create user --user_name scoped-user --namespace tenantswest --json
-# Output JSON includes "namespace": "tenantswest" alongside user_name and api_key.
+# Create a user inside a namespace (qualified id "<namespace>:<user>")
+weaviate-cli create user --user_name tenantswest:scoped-user --json
+# Output JSON includes user_name and api_key.
 
-# Inspect — text output adds a "Namespace:" line; JSON adds a "namespace" key
-weaviate-cli get user --user_name scoped-user --json
+# Inspect — for a global operator, text output adds a "Namespace:" line and JSON adds
+# a "namespace" key (the server still returns it in the user response).
+weaviate-cli get user --user_name tenantswest:scoped-user --json
 weaviate-cli get user --all --json
 ```
 
-If `--namespace` is omitted, the request is sent unchanged (compatible with clusters
-where namespaces are not enabled).
+To create a non-namespaced user, pass an unqualified `--user_name` (no colon) — this is
+the normal form on clusters where namespaces are not enabled.
 
 ## RBAC: manage_namespaces
 
@@ -98,7 +101,7 @@ once:
 
 1. `create namespace --name <ns>` — provision the namespace.
 2. `create role --role_name <r> -p manage_namespaces:<ns>` — grant the management permission.
-3. `create user --user_name <u> --namespace <ns>` — create a namespace-scoped DB user.
+3. `create user --user_name <ns>:<u>` — create a namespace-scoped DB user (qualified id).
 4. `assign role --role_name <r> --user_name <u>` — wire the role to the user.
 5. Verify: `get namespace --name <ns>`, `get role --role_name <r>`, `get user --user_name <u>`.
 6. Cleanup: `delete user` → `revoke role` (or `delete role`) → `delete namespace`.

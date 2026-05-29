@@ -693,12 +693,11 @@ def create_role_cli(
 @click.option(
     "--user_name",
     default=CreateUserDefaults.user_name,
-    help="The name of the user to create.",
-)
-@click.option(
-    "--namespace",
-    default=CreateUserDefaults.namespace,
-    help="Bind the user to this namespace. Required on namespace-enabled clusters (Weaviate 1.38.0+).",
+    help=(
+        "The name of the user to create. On namespace-enabled clusters "
+        "(Weaviate 1.38.0+) bind the user to a namespace by passing a "
+        "namespace-qualified id of the form '<namespace>:<user>'."
+    ),
 )
 @click.option(
     "--store",
@@ -712,7 +711,6 @@ def create_role_cli(
 def create_user_cli(
     ctx: click.Context,
     user_name: str,
-    namespace: Optional[str],
     store: bool,
     json_output: bool,
 ) -> None:
@@ -721,7 +719,7 @@ def create_user_cli(
     try:
         client = get_client_from_context(ctx)
         user_man = UserManager(client)
-        api_key = user_man.create_user(user_name=user_name, namespace=namespace)
+        api_key = user_man.create_user(user_name=user_name)
 
         if store:
             config_manager = ctx.obj.get("config")
@@ -753,34 +751,36 @@ def create_user_cli(
                 json.dump(config, f, indent=4)
 
             if json_output:
-                payload = {
-                    "status": "success",
-                    "user_name": user_name,
-                    "api_key": api_key,
-                    "stored_at": str(config_path),
-                }
-                if namespace is not None:
-                    payload["namespace"] = namespace
-                click.echo(json.dumps(payload, indent=2))
-            else:
-                ns_suffix = f" (namespace: {namespace})" if namespace else ""
                 click.echo(
-                    f"User '{user_name}'{ns_suffix} created and API key stored in config file at {config_path}"
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "user_name": user_name,
+                            "api_key": api_key,
+                            "stored_at": str(config_path),
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"User '{user_name}' created and API key stored in config file at {config_path}"
                 )
         else:
             if json_output:
-                payload = {
-                    "status": "success",
-                    "user_name": user_name,
-                    "api_key": api_key,
-                }
-                if namespace is not None:
-                    payload["namespace"] = namespace
-                click.echo(json.dumps(payload, indent=2))
-            else:
-                ns_suffix = f" (namespace: {namespace})" if namespace else ""
                 click.echo(
-                    f"User '{user_name}'{ns_suffix} created successfully in Weaviate with api key: \n{api_key}"
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "user_name": user_name,
+                            "api_key": api_key,
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                click.echo(
+                    f"User '{user_name}' created successfully in Weaviate with api key: \n{api_key}"
                 )
 
     except Exception as e:

@@ -306,11 +306,13 @@ Namespace names must be **3–36 lowercase alphanumeric characters starting with
 
 #### Namespace-scoped DB users
 
-On namespace-enabled clusters, DB users are bound to a namespace at creation time:
+On namespace-enabled clusters, a DB user is bound to a namespace by passing a
+namespace-qualified id `<namespace>:<user>` as `--user_name` (there is no `--namespace`
+flag; the server derives the namespace from the qualified id):
 
 ```bash
-weaviate-cli create user --user_name scoped-user --namespace tenantswest --json
-weaviate-cli get user --user_name scoped-user --json   # output includes "namespace"
+weaviate-cli create user --user_name tenantswest:scoped-user --json
+weaviate-cli get user --user_name tenantswest:scoped-user --json   # output includes "namespace"
 ```
 
 #### Granting namespace permissions

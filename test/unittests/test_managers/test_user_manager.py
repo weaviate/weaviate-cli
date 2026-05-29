@@ -68,27 +68,18 @@ def test_create_user_no_name(user_manager):
     assert str(exc_info.value) == "User name is required."
 
 
-def test_create_user_with_namespace(user_manager):
-    user_name = "scoped_user"
+def test_create_user_qualified_id_forwarded_as_user_id(user_manager):
+    # The server derives the namespace from a namespace-qualified id of the
+    # form "<namespace>:<user>"; the CLI must forward it verbatim as user_id
+    # without a separate namespace kwarg.
+    qualified_id = "my_ns:scoped_user"
     expected_api_key = "ns-key"
     user_manager.client.users.db.create.return_value = expected_api_key
 
-    result = user_manager.create_user(user_name=user_name, namespace="my_ns")
+    result = user_manager.create_user(user_name=qualified_id)
 
     assert result == expected_api_key
-    user_manager.client.users.db.create.assert_called_once_with(
-        user_id=user_name, namespace="my_ns"
-    )
-
-
-def test_create_user_without_namespace_omits_kwarg(user_manager):
-    user_manager.client.users.db.create.return_value = "key"
-
-    user_manager.create_user(user_name="bare")
-
-    # When namespace is None it must not be forwarded as a kwarg, so the call
-    # remains compatible with older Weaviate servers that do not understand it.
-    user_manager.client.users.db.create.assert_called_once_with(user_id="bare")
+    user_manager.client.users.db.create.assert_called_once_with(user_id=qualified_id)
 
 
 def test_create_user_error(user_manager):

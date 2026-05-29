@@ -370,5 +370,4 @@ class DeleteNamespaceDefaults:
 @dataclass
 class CreateUserDefaults:
     user_name: Optional[str] = None
-    namespace: Optional[str] = None
     store: bool = False
