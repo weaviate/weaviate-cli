@@ -31,6 +31,27 @@ class CollectionManager:
             )
         return acc
 
+    @staticmethod
+    def __named_vector_index_types(vector_config: Dict) -> str:
+        """Summarize the index types used by a collection's named vectors.
+
+        Every distinct type is reported, in schema order, so that a per-vector
+        difference stays visible in the collection listing. A vector whose index was
+        dropped with `update collection --drop_vector_index` is reported by Weaviate as
+        `vectorIndexType: "none"` and surfaces here as a `vector_index_config` of `None`.
+        """
+        types: List[str] = []
+        for named_vector in vector_config.values():
+            index_config = named_vector.vector_index_config
+            index_type = (
+                "none"
+                if index_config is None
+                else str(index_config.vector_index_type())
+            )
+            if index_type not in types:
+                types.append(index_type)
+        return ", ".join(types) if types else "None"
+
     def get_collection(
         self,
         collection: Optional[str] = GetCollectionDefaults.collection,
@@ -67,9 +88,9 @@ class CollectionManager:
                         list(schema.vector_config.keys())[0]
                     ].vectorizer.vectorizer.value
                     if not schema.vector_index_type:
-                        vector_index_type = schema.vector_config[
-                            list(schema.vector_config.keys())[0]
-                        ].vector_index_config.vector_index_type()
+                        vector_index_type = self.__named_vector_index_types(
+                            schema.vector_config
+                        )
                     else:
                         vector_index_type = schema.vector_index_type
                 else:
@@ -629,6 +650,44 @@ class CollectionManager:
         else:
             click.echo(f"Collection '{collection}' created successfully in Weaviate.")
 
+    @staticmethod
+    def __check_drop_target(config, collection: str, vector_name: str) -> bool:
+        """Validate the drop target and report whether its index is already marked dropped.
+
+        Returns True when the vector's index was already dropped (server reports it as
+        `vectorIndexType: "none"`). Re-issuing the drop is intentionally allowed in that
+        case: it is a no-op while cleanup is in flight and re-enqueues a fresh cleanup task
+        if the previous one FAILED — the only way for an operator to recover a stuck drop.
+        Only the two genuinely invalid states raise.
+        """
+        vector_config = config.vector_config
+        if not vector_config:
+            raise Exception(
+                f"Collection '{collection}' has no named vectors. Only the index "
+                "of a named vector can be dropped."
+            )
+        if vector_name not in vector_config:
+            raise Exception(
+                f"Named vector '{vector_name}' does not exist in collection "
+                f"'{collection}'. Available named vectors: "
+                f"{', '.join(sorted(vector_config))}."
+            )
+        return vector_config[vector_name].vector_index_config is None
+
+    @staticmethod
+    def __drop_vector_index(
+        col_obj: Collection, collection: str, vector_name: str
+    ) -> None:
+        try:
+            col_obj.config.delete_vector_index(vector_name=vector_name)
+        except Exception as e:
+            raise Exception(
+                f"Failed to drop the index of named vector '{vector_name}' in collection "
+                f"'{collection}': {e}. This endpoint is experimental, make sure Weaviate "
+                "is started with "
+                "ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true."
+            )
+
     def update_collection(
         self,
         collection: str = UpdateCollectionDefaults.collection,
@@ -656,6 +715,7 @@ class CollectionManager:
             str
         ] = UpdateCollectionDefaults.object_ttl_property_name,
         async_replication_config: Optional[Dict[str, int]] = None,
+        drop_vector_index: Optional[str] = UpdateCollectionDefaults.drop_vector_index,
     ) -> None:
 
         if (
@@ -670,6 +730,12 @@ class CollectionManager:
             raise Exception(
                 "Error: --async_replication_config cannot be used when --async_enabled is False."
             )
+        if drop_vector_index is not None and vector_index is not None:
+            raise Exception(
+                "--drop_vector_index cannot be combined with --vector_index. "
+                "Dropping an index removes it permanently, it cannot be reconfigured "
+                "in the same call."
+            )
 
         if async_replication_config is not None and older_than_version(
             self.client, "1.36.0"
@@ -677,6 +743,12 @@ class CollectionManager:
             click.echo(
                 "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
                 "The server may ignore or reject these settings."
+            )
+
+        if drop_vector_index is not None and older_than_version(self.client, "1.39.0"):
+            click.echo(
+                "Warning: --drop_vector_index requires Weaviate >= v1.39.0. "
+                "The server may reject this request."
             )
 
         if not self.client.collections.exists(collection):
@@ -728,26 +800,32 @@ class CollectionManager:
         }
 
         col_obj: Collection = self.client.collections.get(collection)
+        current_config = col_obj.config.get()
+        drop_already_marked = False
+        if drop_vector_index is not None:
+            drop_already_marked = self.__check_drop_target(
+                current_config, collection, drop_vector_index
+            )
         rf = (
             replication_factor
             if replication_factor is not None
-            else col_obj.config.get().replication_config.factor
+            else current_config.replication_config.factor
         )
         rds_map = {
             "delete_on_conflict": wvc.ReplicationDeletionStrategy.DELETE_ON_CONFLICT,
             "no_automated_resolution": wvc.ReplicationDeletionStrategy.NO_AUTOMATED_RESOLUTION,
             "time_based_resolution": wvc.ReplicationDeletionStrategy.TIME_BASED_RESOLUTION,
         }
-        mt = col_obj.config.get().multi_tenancy_config.enabled
+        mt = current_config.multi_tenancy_config.enabled
         auto_tenant_creation = (
             auto_tenant_creation
             if auto_tenant_creation is not None
-            else col_obj.config.get().multi_tenancy_config.auto_tenant_creation
+            else current_config.multi_tenancy_config.auto_tenant_creation
         )
         auto_tenant_activation = (
             auto_tenant_activation
             if auto_tenant_activation is not None
-            else col_obj.config.get().multi_tenancy_config.auto_tenant_activation
+            else current_config.multi_tenancy_config.auto_tenant_activation
         )
 
         col_obj.config.update(
@@ -790,18 +868,31 @@ class CollectionManager:
 
         assert self.client.collections.exists(collection)
 
-        if json_output:
-            click.echo(
-                json.dumps(
-                    {
-                        "status": "success",
-                        "message": f"Collection '{collection}' modified successfully in Weaviate.",
-                    },
-                    indent=2,
+        # Dropped last: `config.update()` reads the whole schema and writes it back, so
+        # doing this first would send a `vectorIndexType: "none"` vector back to Weaviate.
+        if drop_vector_index is not None:
+            self.__drop_vector_index(col_obj, collection, drop_vector_index)
+
+        message = f"Collection '{collection}' modified successfully in Weaviate."
+        if drop_vector_index is not None:
+            if drop_already_marked:
+                message += (
+                    f" The index of named vector '{drop_vector_index}' was already dropped; "
+                    "the request was re-issued to re-trigger cleanup if it had stalled."
                 )
-            )
+            else:
+                message += (
+                    f" Dropping the index of named vector '{drop_vector_index}' was accepted; "
+                    "the removal runs asynchronously and cannot be undone."
+                )
+
+        if json_output:
+            result: Dict[str, str] = {"status": "success", "message": message}
+            if drop_vector_index is not None:
+                result["dropped_vector_index"] = drop_vector_index
+            click.echo(json.dumps(result, indent=2))
         else:
-            click.echo(f"Collection '{collection}' modified successfully in Weaviate.")
+            click.echo(message)
 
     def delete_collection(
         self,

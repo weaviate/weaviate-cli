@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock
 from weaviate.exceptions import WeaviateConnectionError
@@ -1114,3 +1115,273 @@ def test_update_collection_async_replication_config_warns_on_old_version(
         captured.out + captured.err
     )
     mock_collection.config.update.assert_called_once()
+
+
+def _named_vector(index_type=None, vectorizer="none"):
+    """Build a mock named vector config. `index_type=None` means the index was dropped."""
+    named_vector = MagicMock()
+    if index_type is None:
+        named_vector.vector_index_config = None
+    else:
+        named_vector.vector_index_config.vector_index_type.return_value = index_type
+    named_vector.vectorizer.vectorizer.value = vectorizer
+    return named_vector
+
+
+def _named_vector_schema(vector_config):
+    """Build a mock collection config that uses named vectors."""
+    return MagicMock(
+        vector_config=vector_config,
+        vectorizer=None,
+        vector_index_type=None,
+        replication_config=MagicMock(factor=1),
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+
+
+def _drop_ready_collection(mock_client, vector_config=None):
+    """Wire a mock collection whose named vector index can be dropped."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.side_effect = [True, True]
+    mock_client.get_meta.return_value = {"version": "1.39.0"}
+
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+    mock_collection.config.get.return_value = _named_vector_schema(
+        vector_config
+        if vector_config is not None
+        else {"title_vector": _named_vector("hnsw")}
+    )
+    return mock_collection
+
+
+def test_update_collection_drop_vector_index(mock_client, mock_wvc_object_ttl):
+    """--drop_vector_index deletes the index of the named vector, after the config update."""
+    mock_collection = _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        drop_vector_index="title_vector",
+    )
+
+    mock_collection.config.delete_vector_index.assert_called_once_with(
+        vector_name="title_vector"
+    )
+
+    # `config.update()` reads the whole schema and writes it back, so the drop has to
+    # come last -- otherwise a `vectorIndexType: "none"` vector is sent back to Weaviate.
+    call_names = [
+        call[0]
+        for call in mock_collection.config.mock_calls
+        if call[0] in ("update", "delete_vector_index")
+    ]
+    assert call_names == ["update", "delete_vector_index"]
+
+
+def test_update_collection_drop_vector_index_json_output(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """The JSON payload reports the dropped vector and that the removal is async."""
+    _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        drop_vector_index="title_vector",
+        json_output=True,
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "success"
+    assert payload["dropped_vector_index"] == "title_vector"
+    assert "asynchronously" in payload["message"]
+
+
+def test_update_collection_drop_vector_index_rejects_vector_index_combo(mock_client):
+    """--drop_vector_index and --vector_index are mutually exclusive."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            vector_index="hnsw",
+            drop_vector_index="title_vector",
+        )
+
+    assert "cannot be combined with --vector_index" in str(exc_info.value)
+    mock_collections.get.assert_not_called()
+
+
+def test_update_collection_drop_vector_index_unknown_vector(
+    mock_client, mock_wvc_object_ttl
+):
+    """An unknown vector name fails before anything is updated or dropped."""
+    mock_collection = _drop_ready_collection(
+        mock_client,
+        vector_config={
+            "title_vector": _named_vector("hnsw"),
+            "body_vector": _named_vector("flat"),
+        },
+    )
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            drop_vector_index="missing_vector",
+        )
+
+    assert "Named vector 'missing_vector' does not exist" in str(exc_info.value)
+    assert "body_vector, title_vector" in str(exc_info.value)
+    mock_collection.config.update.assert_not_called()
+    mock_collection.config.delete_vector_index.assert_not_called()
+
+
+def test_update_collection_drop_vector_index_without_named_vectors(
+    mock_client, mock_wvc_object_ttl
+):
+    """Only named vectors can be dropped, a legacy single-vector collection is rejected."""
+    mock_collection = _drop_ready_collection(mock_client, vector_config={})
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            drop_vector_index="title_vector",
+        )
+
+    assert "has no named vectors" in str(exc_info.value)
+    mock_collection.config.update.assert_not_called()
+    mock_collection.config.delete_vector_index.assert_not_called()
+
+
+def test_update_collection_drop_vector_index_already_dropped_re_triggers(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Re-dropping an already-'none' vector is allowed: it re-triggers cleanup.
+
+    The server returns 200 for a repeat drop (no-op while cleanup runs, or a fresh
+    cleanup task if the previous one FAILED). The CLI must not block this -- it is the
+    only way for an operator to recover a stalled drop.
+    """
+    mock_collection = _drop_ready_collection(
+        mock_client, vector_config={"title_vector": _named_vector(None)}
+    )
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        drop_vector_index="title_vector",
+    )
+
+    mock_collection.config.delete_vector_index.assert_called_once_with(
+        vector_name="title_vector"
+    )
+    assert "already dropped" in capsys.readouterr().out
+
+
+def test_update_collection_drop_vector_index_already_dropped_json_re_trigger(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """JSON output still reports success and the re-trigger note for a repeat drop."""
+    _drop_ready_collection(
+        mock_client, vector_config={"title_vector": _named_vector(None)}
+    )
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        drop_vector_index="title_vector",
+        json_output=True,
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "success"
+    assert payload["dropped_vector_index"] == "title_vector"
+    assert "re-trigger" in payload["message"]
+
+
+def test_update_collection_drop_vector_index_warns_on_old_version(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Warn when --drop_vector_index is used against a server older than v1.39.0."""
+    mock_collection = _drop_ready_collection(mock_client)
+    mock_client.get_meta.return_value = {"version": "1.38.0"}
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        drop_vector_index="title_vector",
+    )
+
+    captured = capsys.readouterr()
+    assert "Warning: --drop_vector_index requires Weaviate >= v1.39.0" in (
+        captured.out + captured.err
+    )
+    mock_collection.config.delete_vector_index.assert_called_once()
+
+
+def test_update_collection_drop_vector_index_server_error_hints_at_env_var(
+    mock_client, mock_wvc_object_ttl
+):
+    """A server rejection points at the experimental feature flag it most likely needs."""
+    mock_collection = _drop_ready_collection(mock_client)
+    mock_collection.config.delete_vector_index.side_effect = Exception(
+        "endpoint is experimental and disabled by default"
+    )
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            drop_vector_index="title_vector",
+        )
+
+    assert "Failed to drop the index of named vector 'title_vector'" in str(
+        exc_info.value
+    )
+    assert "ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true" in str(
+        exc_info.value
+    )
+
+
+def test_get_collection_lists_dropped_vector_index_as_none(mock_client, capsys):
+    """A dropped index surfaces as `none` instead of crashing on a null index config."""
+    mock_client.collections = MagicMock()
+    mock_client.collections.list_all.return_value = ["Movies"]
+    mock_client.collections.get.return_value.config.get.return_value = (
+        _named_vector_schema({"title_vector": _named_vector(None)})
+    )
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(collection=None, json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["collections"][0]["vector_index"] == "none"
+
+
+def test_get_collection_lists_all_distinct_vector_index_types(mock_client, capsys):
+    """Every distinct index type is listed, so a per-vector drop stays visible."""
+    mock_client.collections = MagicMock()
+    mock_client.collections.list_all.return_value = ["Movies"]
+    mock_client.collections.get.return_value.config.get.return_value = (
+        _named_vector_schema(
+            {
+                "title_vector": _named_vector("hnsw"),
+                "body_vector": _named_vector(None),
+                "extra_vector": _named_vector("hnsw"),
+            }
+        )
+    )
+
+    manager = CollectionManager(mock_client)
+    manager.get_collection(collection=None, json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["collections"][0]["vector_index"] == "hnsw, none"

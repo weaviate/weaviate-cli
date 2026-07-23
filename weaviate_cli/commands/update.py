@@ -119,6 +119,17 @@ def update() -> None:
     multiple=True,
     help=ASYNC_REPLICATION_CONFIG_HELP,
 )
+@click.option(
+    "--drop_vector_index",
+    default=UpdateCollectionDefaults.drop_vector_index,
+    help=(
+        "Name of the named vector whose index to drop. Destructive and irreversible: the "
+        "vectors are kept, but their index is removed from disk and cannot be re-created, "
+        "and the vector can no longer be searched. Cannot be combined with --vector_index. "
+        "Requires Weaviate >= v1.39.0 started with "
+        "ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true."
+    ),
+)
 @click.pass_context
 def update_collection_cli(
     ctx: click.Context,
@@ -137,6 +148,7 @@ def update_collection_cli(
     object_ttl_filter_expired: bool,
     object_ttl_property_name: Optional[str],
     async_replication_config: Tuple[str, ...],
+    drop_vector_index: Optional[str],
 ) -> None:
     """Update a collection in Weaviate."""
 
@@ -173,6 +185,7 @@ def update_collection_cli(
             async_replication_config=parse_async_replication_config(
                 async_replication_config
             ),
+            drop_vector_index=drop_vector_index,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

@@ -141,7 +141,21 @@ weaviate-cli delete collection --all --json
 
 Key create options: `--multitenant`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--shards N`, `--vectorizer <type>`, `--named_vector`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable; requires `--async_enabled` and Weaviate >= v1.36.0), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
 
-Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config key=value` (repeatable), `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`), `--drop_vector_index`
+
+#### Drop a Named Vector Index
+
+```bash
+weaviate-cli update collection --collection Movies --drop_vector_index title_vector --json
+```
+
+**Destructive and irreversible.** Deletes the index of one named vector from disk; the vectors
+are kept but can no longer be searched, and the index cannot be re-created. Named vectors only,
+cannot be combined with `--vector_index`, and the drop is applied asynchronously.
+
+Requires Weaviate >= v1.39.0 started with `ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true`
+-- the endpoint is experimental and disabled by default. Dropped vectors show as `none` in the
+**Vector Index** column of `get collection` (e.g. `hnsw, none` for a partially dropped collection).
 
 #### Async Replication Config
 

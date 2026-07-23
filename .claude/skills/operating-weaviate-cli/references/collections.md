@@ -104,9 +104,34 @@ weaviate-cli update collection \
   --json
 ```
 
-Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`), `--drop_vector_index`
 
 **Immutable (cannot change after creation):** multitenant, vectorizer, named_vector, shards
+
+## Drop a Named Vector Index (destructive, irreversible)
+```bash
+weaviate-cli update collection --collection Movies --drop_vector_index title_vector --json
+```
+
+Removes the index of one named vector. The vectors themselves are kept, but the index is
+deleted from disk, **cannot be re-created**, and the vector can no longer be searched.
+
+- Named vectors only -- a collection with a single legacy vector is rejected.
+- Cannot be combined with `--vector_index` (reconfiguring an index you are deleting is contradictory).
+- Requires Weaviate **>= v1.39.0** started with `ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true`.
+  The endpoint is experimental and disabled by default; without the flag the server answers with a 500.
+- The drop is applied **asynchronously**. A success message means Weaviate accepted the request,
+  not that the index is already gone. Poll `get collection --collection <name>` to observe completion.
+
+Once dropped, the vector is reported by the server as `vectorIndexType: "none"` with no
+`vectorIndexConfig`. In the collection listing it shows up as `none` in the **Vector Index**
+column (e.g. `hnsw, none` when only some of the named vectors were dropped).
+
+**Re-triggering a stalled drop.** Re-issuing `--drop_vector_index` on a vector that already
+shows `none` is allowed and returns success. While cleanup is still running it is a no-op;
+if the background cleanup had FAILED, it re-enqueues a fresh cleanup task. This is the only
+way to recover a drop whose marker is stuck at `none`. The command reports that the vector
+was already dropped and that it re-triggered cleanup.
 
 **Async replication config examples (update):**
 ```bash

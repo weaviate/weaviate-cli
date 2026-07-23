@@ -263,6 +263,7 @@ class UpdateCollectionDefaults:
     object_ttl_time: Optional[int] = None
     object_ttl_filter_expired: Optional[bool] = None
     object_ttl_property_name: str = "releaseDate"
+    drop_vector_index: Optional[str] = None
 
 
 @dataclass

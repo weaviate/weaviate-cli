@@ -1,4 +1,9 @@
-weaviate-client>=4.21.0
+# TEMPORARY: pinned to weaviate/weaviate-python-client#1991, which adds
+# `collection.config.delete_vector_index()` and `VectorIndexType.NONE`, required by
+# `update collection --drop_vector_index`. Swap back to a released `weaviate-client>=X`
+# once the PR is merged and shipped. Use `@alter-schema-drop-vector-index` instead of the
+# SHA to track new pushes to the PR.
+weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@2dbfaedf8d232057ce6d5a3b6a3479edcda62f94
 click==8.1.7
 twine
 pytest
