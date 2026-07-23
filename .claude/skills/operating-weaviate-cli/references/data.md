@@ -31,6 +31,12 @@ weaviate-cli create data \
 - `--tenants "T1,T2"` -- Send data to specific tenants
 - `--tenant_suffix` -- Prefix for auto-tenant names (default: "Tenant")
 
+**Dropped vector indexes:** with `--randomize` on a named-vector collection, any vector whose
+index was dropped (`vectorIndexType: "none"`, see `update collection --drop_vector_index`) is
+**skipped automatically** -- generated objects do not carry it, so ingestion keeps working
+instead of failing with "writes targeting it are rejected". A one-line note lists the skipped
+vectors (suppressed under `--json`). Re-ingest the vector after re-creating its index.
+
 ## Update Data
 ```bash
 weaviate-cli update data --collection "Movies" --limit 100 --randomize --json

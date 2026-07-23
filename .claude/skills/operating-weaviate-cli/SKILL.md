@@ -149,9 +149,11 @@ Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--
 weaviate-cli update collection --collection Movies --drop_vector_index title_vector --json
 ```
 
-**Destructive and irreversible.** Deletes the index of one named vector from disk; the vectors
-are kept but can no longer be searched, and the index cannot be re-created. Named vectors only,
-cannot be combined with `--vector_index`, and the drop is applied asynchronously.
+**Destructive.** Deletes the index of one named vector from disk; the vector can no longer be
+searched and the stored vectors are stripped by background cleanup. The vector **can be
+re-created afterwards** (as a fresh, empty index via the client's `config.add_vector()`) once
+the drop has finalized. Named vectors only, cannot be combined with `--vector_index`, and the
+drop is applied asynchronously.
 
 Requires Weaviate >= v1.39.0 started with `ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true`
 -- the endpoint is experimental and disabled by default. Dropped vectors show as `none` in the

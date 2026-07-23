@@ -123,9 +123,10 @@ def update() -> None:
     "--drop_vector_index",
     default=UpdateCollectionDefaults.drop_vector_index,
     help=(
-        "Name of the named vector whose index to drop. Destructive and irreversible: the "
-        "vectors are kept, but their index is removed from disk and cannot be re-created, "
-        "and the vector can no longer be searched. Cannot be combined with --vector_index. "
+        "Name of the named vector whose index to drop. Destructive: the index is removed "
+        "from disk and the vector can no longer be searched, and the stored vectors are "
+        "stripped by background cleanup. The vector can be re-created afterwards (as a fresh, "
+        "empty index) once the drop has finalized. Cannot be combined with --vector_index. "
         "Requires Weaviate >= v1.39.0 started with "
         "ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true."
     ),

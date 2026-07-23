@@ -733,8 +733,7 @@ class CollectionManager:
         if drop_vector_index is not None and vector_index is not None:
             raise Exception(
                 "--drop_vector_index cannot be combined with --vector_index. "
-                "Dropping an index removes it permanently, it cannot be reconfigured "
-                "in the same call."
+                "Dropping an index and reconfiguring it in the same call is contradictory."
             )
 
         if async_replication_config is not None and older_than_version(
@@ -883,7 +882,8 @@ class CollectionManager:
             else:
                 message += (
                     f" Dropping the index of named vector '{drop_vector_index}' was accepted; "
-                    "the removal runs asynchronously and cannot be undone."
+                    "the removal runs asynchronously. Once it finalizes the vector can be "
+                    "re-created as a fresh, empty index."
                 )
 
         if json_output:

@@ -669,10 +669,30 @@ class DataManager:
             config = collection.config.get()
 
             if not config.vectorizer and config.vector_config:
-                named_vectors = list(config.vector_config.keys())
-                vectorizer = config.vector_config[
-                    named_vectors[0]
-                ].vectorizer.vectorizer
+                all_named_vectors = list(config.vector_config.keys())
+                # Skip vectors whose index was dropped (vectorIndexType "none"): the
+                # server rejects any object carrying a vector that targets a dropped
+                # index, which would fail every batch. Such vectors report a
+                # `vector_index_config` of None.
+                named_vectors = [
+                    name
+                    for name in all_named_vectors
+                    if config.vector_config[name].vector_index_config is not None
+                ]
+                dropped_vectors = [
+                    name for name in all_named_vectors if name not in named_vectors
+                ]
+                if dropped_vectors and not json_output:
+                    click.echo(
+                        f"Note: skipping dropped vector index(es) "
+                        f"{', '.join(dropped_vectors)} (vectorIndexType 'none'); "
+                        "generated objects will not carry these vectors."
+                    )
+                vectorizer = (
+                    config.vector_config[named_vectors[0]].vectorizer.vectorizer
+                    if named_vectors
+                    else "none"
+                )
             elif config.vectorizer:
                 vectorizer = config.vectorizer
                 named_vectors = None

@@ -108,13 +108,15 @@ Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--
 
 **Immutable (cannot change after creation):** multitenant, vectorizer, named_vector, shards
 
-## Drop a Named Vector Index (destructive, irreversible)
+## Drop a Named Vector Index (destructive)
 ```bash
 weaviate-cli update collection --collection Movies --drop_vector_index title_vector --json
 ```
 
-Removes the index of one named vector. The vectors themselves are kept, but the index is
-deleted from disk, **cannot be re-created**, and the vector can no longer be searched.
+Removes the index of one named vector. The index is deleted from disk and the vector can no
+longer be searched; the stored vectors are stripped by background cleanup. **The vector can be
+re-created afterwards** as a fresh, empty index (e.g. via the client's `config.add_vector()`)
+once the drop has finalized -- you then re-ingest to repopulate it.
 
 - Named vectors only -- a collection with a single legacy vector is rejected.
 - Cannot be combined with `--vector_index` (reconfiguring an index you are deleting is contradictory).
@@ -126,6 +128,11 @@ deleted from disk, **cannot be re-created**, and the vector can no longer be sea
 Once dropped, the vector is reported by the server as `vectorIndexType: "none"` with no
 `vectorIndexConfig`. In the collection listing it shows up as `none` in the **Vector Index**
 column (e.g. `hnsw, none` when only some of the named vectors were dropped).
+
+**Re-creation timing.** While the drop is in progress (vector shows `none`), re-creating the
+same name is rejected. Once it finalizes (the vector disappears from the schema), the name can
+be added again as a brand-new, empty index; the original index and any vectors already stripped
+are not restored.
 
 **Re-triggering a stalled drop.** Re-issuing `--drop_vector_index` on a vector that already
 shows `none` is allowed and returns success. While cleanup is still running it is a no-op;
