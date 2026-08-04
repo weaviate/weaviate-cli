@@ -3,7 +3,7 @@
 # `update collection --drop_vector_index`. Swap back to a released `weaviate-client>=X`
 # once the PR is merged and shipped. Use `@alter-schema-drop-vector-index` instead of the
 # SHA to track new pushes to the PR.
-weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@2dbfaedf8d232057ce6d5a3b6a3479edcda62f94
+weaviate-client @ git+https://github.com/weaviate/weaviate-python-client.git@9d7b91636fd78e6c30e862a83fa7124d3aa0c494
 click==8.1.7
 twine
 pytest
