@@ -156,7 +156,7 @@ def create() -> None:
 @click.option(
     "--named_vector_name",
     default=CreateCollectionDefaults.named_vector_name,
-    help="Name of the named vector to use. Only used if --named_vector is enabled. Default: 'default'.",
+    help="Name(s) of the named vector(s) to create. Comma-separate to create several, e.g. 'vec_a,vec_b'. Only used if --named_vector is enabled. Default: 'default'.",
 )
 @click.option(
     "--replication_deletion_strategy",

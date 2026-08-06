@@ -37,7 +37,7 @@ weaviate-cli create collection \
 - `--vectorizer` -- Vectorizer: contextionary, transformers, openai, ollama, cohere, jinaai, jinaai_colbert, weaviate, weaviate-1.5, model2vec, none
 - `--vectorizer_base_url` -- Custom vectorizer URL
 - `--named_vector` -- Enable named vectors
-- `--named_vector_name` -- Named vector name (default: "default")
+- `--named_vector_name` -- Name(s) of the named vector(s). Comma-separate to create several, e.g. `"vec_a,vec_b"` (default: "default"). All named vectors share the chosen `--vectorizer` and `--vector_index`.
 - `--replication_deletion_strategy` -- delete_on_conflict, no_automated_resolution, time_based_resolution
 - `--object_ttl_type` -- TTL event type: create, update, property (default: "create")
 - `--object_ttl_time` -- Time to live in seconds (default: None, TTL disabled when omitted)

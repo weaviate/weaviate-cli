@@ -89,6 +89,109 @@ def test_create_existing_collection(mock_client, mock_wvc_object_ttl):
     mock_collections.create.assert_not_called()
 
 
+def test_create_collection_multiple_named_vectors(mock_client, mock_wvc_object_ttl):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+    manager.create_collection(
+        collection="MultiVec",
+        vectorizer="contextionary",
+        vector_index="hnsw",
+        named_vector=True,
+        named_vector_name="vec_a,vec_b,vec_c",
+    )
+
+    create_call_kwargs = mock_collections.create.call_args.kwargs
+    vectorizer_config = create_call_kwargs["vectorizer_config"]
+    assert isinstance(vectorizer_config, list)
+    assert [nv.name for nv in vectorizer_config] == ["vec_a", "vec_b", "vec_c"]
+    # Named vectors carry their own index, so the top-level index must be None.
+    assert create_call_kwargs["vector_index_config"] is None
+
+
+def test_create_collection_single_named_vector_backward_compatible(
+    mock_client, mock_wvc_object_ttl
+):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+    manager.create_collection(
+        collection="SingleVec",
+        vectorizer="contextionary",
+        vector_index="hnsw",
+        named_vector=True,
+        named_vector_name="myvec",
+    )
+
+    vectorizer_config = mock_collections.create.call_args.kwargs["vectorizer_config"]
+    assert isinstance(vectorizer_config, list)
+    assert [nv.name for nv in vectorizer_config] == ["myvec"]
+
+
+def test_create_collection_named_vectors_strip_whitespace(
+    mock_client, mock_wvc_object_ttl
+):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+    manager.create_collection(
+        collection="TrimVec",
+        vectorizer="contextionary",
+        vector_index="hnsw",
+        named_vector=True,
+        named_vector_name=" vec_a , vec_b ",
+    )
+
+    vectorizer_config = mock_collections.create.call_args.kwargs["vectorizer_config"]
+    assert [nv.name for nv in vectorizer_config] == ["vec_a", "vec_b"]
+
+
+def test_create_collection_named_vectors_duplicate_names_rejected(
+    mock_client, mock_wvc_object_ttl
+):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.return_value = False
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception, match="duplicate names"):
+        manager.create_collection(
+            collection="DupVec",
+            vectorizer="contextionary",
+            vector_index="hnsw",
+            named_vector=True,
+            named_vector_name="vec_a,vec_a",
+        )
+    mock_collections.create.assert_not_called()
+
+
+def test_create_collection_non_named_vector_uses_single_config(
+    mock_client, mock_wvc_object_ttl
+):
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+
+    manager = CollectionManager(mock_client)
+    manager.create_collection(
+        collection="PlainVec",
+        vectorizer="contextionary",
+        vector_index="hnsw",
+        named_vector=False,
+    )
+
+    create_call_kwargs = mock_collections.create.call_args.kwargs
+    # Without named vectors the config is a single object, not a list.
+    assert not isinstance(create_call_kwargs["vectorizer_config"], list)
+    assert create_call_kwargs["vector_index_config"] is not None
+
+
 def test_create_collection_failure(mock_client, mock_wvc_object_ttl):
     # Setup
     mock_collections = MagicMock()

@@ -290,6 +290,22 @@ class CollectionManager:
                 "Error: Named vector name is only supported with named vectors. Please use --named_vector to enable named vectors."
             )
 
+        # A comma-separated --named_vector_name creates one named vector per name.
+        named_vector_names = [
+            name.strip()
+            for name in (named_vector_name or "").split(",")
+            if name.strip()
+        ]
+        if named_vector:
+            if not named_vector_names:
+                raise Exception(
+                    "Error: --named_vector_name must contain at least one non-empty name."
+                )
+            if len(named_vector_names) != len(set(named_vector_names)):
+                raise Exception(
+                    "Error: --named_vector_name contains duplicate names; each named vector must have a unique name."
+                )
+
         distance_metric_enum = self._resolve_distance_metric(distance_metric)
 
         vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
@@ -509,31 +525,20 @@ class CollectionManager:
             ),
         }
 
-        vectorizer_map: Dict[str, wvc.VectorizerConfig] = {}
+        # jinaai_colbert is only available as a named vector, so the set of
+        # supported vectorizers depends on whether named vectors are enabled.
         if named_vector:
-            # Common arguments for named vectors
-            named_vector_args = {
-                "name": named_vector_name,
-                "vector_index_config": vector_index_map[vector_index],
+            named_vector_factories = {
+                name: (named_func, params)
+                for name, (named_func, _, params) in vectorizers_config.items()
             }
-            for name, (
-                named_func,
-                _,
-                params,
-            ) in vectorizers_config.items():
-                vectorizer_map[name] = named_func(**named_vector_args, **params)
-
-            # Add jinaai_colbert only for named vectors
-            vectorizer_map["jinaai_colbert"] = (
-                wvc.Configure.NamedVectors.text2colbert_jinaai(**named_vector_args)
+            named_vector_factories["jinaai_colbert"] = (
+                wvc.Configure.NamedVectors.text2colbert_jinaai,
+                {},
             )
+            supported_vectorizers = list(named_vector_factories.keys())
         else:
-            for name, (
-                _,
-                default_func,
-                params,
-            ) in vectorizers_config.items():
-                vectorizer_map[name] = default_func(**params)
+            supported_vectorizers = list(vectorizers_config.keys())
 
         inverted_index_map: Dict[str, wvc.InvertedIndexConfig] = {
             "timestamp": wvc.Configure.inverted_index(index_timestamps=True),
@@ -582,10 +587,24 @@ class CollectionManager:
         }
 
         try:
-            if vectorizer not in vectorizer_map.keys():
+            if vectorizer not in supported_vectorizers:
                 raise Exception(
-                    f"Error: Vectorizer '{vectorizer}' is not supported. Please use one of the following: {list(vectorizer_map.keys())}"
+                    f"Error: Vectorizer '{vectorizer}' is not supported. Please use one of the following: {supported_vectorizers}"
                 )
+
+            if named_vector:
+                named_func, params = named_vector_factories[vectorizer]
+                vectorizer_config = [
+                    named_func(
+                        name=name,
+                        vector_index_config=vector_index_map[vector_index],
+                        **params,
+                    )
+                    for name in named_vector_names
+                ]
+            else:
+                _, default_func, params = vectorizers_config[vectorizer]
+                vectorizer_config = default_func(**params)
 
             self.client.collections.create(
                 name=collection,
@@ -619,11 +638,7 @@ class CollectionManager:
                     auto_tenant_creation=auto_tenant_creation,
                     auto_tenant_activation=auto_tenant_activation,
                 ),
-                vectorizer_config=(
-                    [vectorizer_map[vectorizer]]
-                    if named_vector
-                    else vectorizer_map[vectorizer]
-                ),
+                vectorizer_config=vectorizer_config,
                 object_ttl_config=(
                     object_ttl_type_map[object_ttl_type]
                     if object_ttl_time is not None
