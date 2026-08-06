@@ -37,7 +37,7 @@ weaviate-cli create collection \
 - `--vectorizer` -- Vectorizer: contextionary, transformers, openai, ollama, cohere, jinaai, jinaai_colbert, weaviate, weaviate-1.5, model2vec, none
 - `--vectorizer_base_url` -- Custom vectorizer URL
 - `--named_vector` -- Enable named vectors
-- `--named_vector_name` -- Named vector name (default: "default")
+- `--named_vector_name` -- Name(s) of the named vector(s). Comma-separate to create several, e.g. `"vec_a,vec_b"` (default: "default"). All named vectors share the chosen `--vectorizer` and `--vector_index`.
 - `--replication_deletion_strategy` -- delete_on_conflict, no_automated_resolution, time_based_resolution
 - `--object_ttl_type` -- TTL event type: create, update, property (default: "create")
 - `--object_ttl_time` -- Time to live in seconds (default: None, TTL disabled when omitted)
@@ -104,9 +104,61 @@ weaviate-cli update collection \
   --json
 ```
 
-Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`)
+Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--description`, `--training_limit`, `--auto_tenant_creation`, `--auto_tenant_activation`, `--replication_deletion_strategy`, `--async_replication_config`, `--object_ttl_type`, `--object_ttl_time`, `--object_ttl_filter_expired`, `--object_ttl_property_name` (only when `object_ttl_type=property`), `--drop_vector_index`, `--add_vector`
 
 **Immutable (cannot change after creation):** multitenant, vectorizer, named_vector, shards
+
+## Drop a Named Vector Index (destructive)
+```bash
+weaviate-cli update collection --collection Movies --drop_vector_index title_vector --json
+```
+
+Removes the index of one named vector. The index is deleted from disk and the vector can no
+longer be searched; the stored vectors are stripped by background cleanup. **The vector can be
+re-created afterwards** as a fresh, empty index with `--add_vector` (see below) once the drop
+has finalized -- you then re-ingest to repopulate it.
+
+- Named vectors only -- a collection with a single legacy vector is rejected.
+- Cannot be combined with `--vector_index` (reconfiguring an index you are deleting is contradictory).
+- Requires Weaviate **>= v1.39.0** started with `ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true`.
+  The endpoint is experimental and disabled by default; without the flag the server answers with a 500.
+- The drop is applied **asynchronously**. A success message means Weaviate accepted the request,
+  not that the index is already gone. Poll `get collection --collection <name>` to observe completion.
+
+Once dropped, the vector is reported by the server as `vectorIndexType: "none"` with no
+`vectorIndexConfig`. In the collection listing it shows up as `none` in the **Vector Index**
+column (e.g. `hnsw, none` when only some of the named vectors were dropped).
+
+**Re-creation timing.** While the drop is in progress (vector shows `none`), re-creating the
+same name is rejected. Once it finalizes (the vector disappears from the schema), the name can
+be added again as a brand-new, empty index; the original index and any vectors already stripped
+are not restored.
+
+**Re-triggering a stalled drop.** Re-issuing `--drop_vector_index` on a vector that already
+shows `none` is allowed and returns success. While cleanup is still running it is a no-op;
+if the background cleanup had FAILED, it re-enqueues a fresh cleanup task. This is the only
+way to recover a drop whose marker is stuck at `none`. The command reports that the vector
+was already dropped and that it re-triggered cleanup.
+
+## Add a Named Vector
+```bash
+# Re-create a vector after its drop finalized, or add a brand-new one
+weaviate-cli update collection --collection Movies --add_vector title_vector --json
+weaviate-cli update collection --collection Movies --add_vector title_vector \
+  --add_vector_vectorizer model2vec --add_vector_index_type hnsw_pq
+```
+
+Adds a named vector with a fresh index (the client's `config.add_vector()` under the hood).
+This is the CLI-native way to re-create a vector whose index was dropped, once the drop has
+finalized -- then re-ingest to repopulate it.
+
+- `--add_vector_vectorizer` -- `none` (default, self-provided vectors), `contextionary`,
+  `transformers`, or `model2vec`. Only the local, no-API-key vectorizers are offered.
+- `--add_vector_index_type` -- `hnsw` (default), `flat`, `hnsw_pq`, `hnsw_sq`, `hnsw_bq`,
+  `hnsw_rq`, `hfresh`, `flat_bq`, or `hnsw_acorn`. The `pq`/`sq` variants use `--training_limit`.
+- Cannot be combined with `--drop_vector_index` or `--vector_index`.
+- Re-adding a name that still shows `none` (drop not finalized) is rejected by the server; wait
+  for the vector to disappear from the schema first.
 
 **Async replication config examples (update):**
 ```bash

@@ -935,3 +935,113 @@ class TestCreateDataConcurrentRequestsScaling:
 
         # Single tenant: no reduction
         assert captured_concurrent == [8]
+
+
+# ---------------------------------------------------------------------------
+# create data skips dropped ("none") vector indexes
+# ---------------------------------------------------------------------------
+
+
+def _named_vec(dropped, vectorizer_name="none"):
+    """Mock a named-vector config; dropped => vector_index_config is None."""
+    nv = MagicMock()
+    nv.vector_index_config = None if dropped else MagicMock()
+    nv.vectorizer.vectorizer = vectorizer_name
+    return nv
+
+
+def _col_with_named_vectors(vector_config):
+    col = MagicMock()
+    col.name = "SkipTest"
+    col.config.get.return_value = MagicMock(
+        vectorizer=None,  # named-vector collection => empty legacy vectorizer
+        vector_config=vector_config,
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+    col.__len__ = MagicMock(return_value=0)
+    return col
+
+
+def test_create_data_skips_dropped_vector_index(mock_client, capsys):
+    """A dropped ("none") named vector is excluded from generated objects."""
+    col = _col_with_named_vectors(
+        {"vec_a": _named_vec(dropped=True), "vec_b": _named_vec(dropped=False)}
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    captured = {}
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ) as prod:
+        manager = DataManager(mock_client)
+        manager.create_data(collection="SkipTest", limit=10, randomize=True)
+        captured = prod.call_args.kwargs
+
+    # vec_a (dropped) must not be generated; only vec_b is passed through
+    assert captured["named_vectors"] == ["vec_b"]
+    # informational note surfaced to the user
+    assert "skipping dropped vector index" in capsys.readouterr().out
+
+
+def test_create_data_all_vectors_dropped_generates_none(mock_client):
+    """When every named vector is dropped, no vectors are generated (empty list)."""
+    col = _col_with_named_vectors(
+        {"vec_a": _named_vec(dropped=True), "vec_b": _named_vec(dropped=True)}
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ) as prod:
+        manager = DataManager(mock_client)
+        manager.create_data(collection="SkipTest", limit=10, randomize=True)
+        kwargs = prod.call_args.kwargs
+
+    assert kwargs["named_vectors"] == []
+    assert kwargs["vectorizer"] == "none"
+
+
+def test_create_data_no_dropped_vectors_unchanged(mock_client, capsys):
+    """With no dropped vectors, all named vectors are generated and no note is printed."""
+    col = _col_with_named_vectors(
+        {"vec_a": _named_vec(dropped=False), "vec_b": _named_vec(dropped=False)}
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ) as prod:
+        manager = DataManager(mock_client)
+        manager.create_data(collection="SkipTest", limit=10, randomize=True)
+        kwargs = prod.call_args.kwargs
+
+    assert sorted(kwargs["named_vectors"]) == ["vec_a", "vec_b"]
+    assert "skipping dropped vector index" not in capsys.readouterr().out
+
+
+def test_create_data_skip_note_suppressed_in_json(mock_client, capsys):
+    """The skip note must not corrupt --json output."""
+    col = _col_with_named_vectors(
+        {"vec_a": _named_vec(dropped=True), "vec_b": _named_vec(dropped=False)}
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ):
+        manager = DataManager(mock_client)
+        manager.create_data(
+            collection="SkipTest", limit=10, randomize=True, json_output=True
+        )
+
+    assert "skipping dropped vector index" not in capsys.readouterr().out
