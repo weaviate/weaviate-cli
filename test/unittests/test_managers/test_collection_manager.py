@@ -1321,6 +1321,148 @@ def test_update_collection_drop_vector_index_rejects_vector_index_combo(mock_cli
     mock_collections.get.assert_not_called()
 
 
+def test_update_collection_add_vector(mock_client, mock_wvc_object_ttl):
+    """--add_vector adds a named vector with a fresh index, after the config update."""
+    mock_collection = _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        add_vector="revived",
+    )
+
+    mock_collection.config.add_vector.assert_called_once()
+    added = mock_collection.config.add_vector.call_args.kwargs["vector_config"]
+    assert added.name == "revived"
+
+    # The added vector is applied after the config update, like the drop path.
+    call_names = [
+        call[0]
+        for call in mock_collection.config.mock_calls
+        if call[0] in ("update", "add_vector")
+    ]
+    assert call_names == ["update", "add_vector"]
+
+
+def test_update_collection_add_vector_json_output(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """The JSON payload reports the added vector."""
+    _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        add_vector="revived",
+        json_output=True,
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "success"
+    assert payload["added_vector"] == "revived"
+
+
+def test_update_collection_add_vector_rejects_drop_combo(mock_client):
+    """--add_vector and --drop_vector_index are mutually exclusive."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            add_vector="revived",
+            drop_vector_index="title_vector",
+        )
+
+    assert "cannot be combined with --drop_vector_index" in str(exc_info.value)
+    mock_collections.get.assert_not_called()
+
+
+def test_update_collection_add_vector_rejects_vector_index_combo(mock_client):
+    """--add_vector and --vector_index are mutually exclusive."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            add_vector="revived",
+            vector_index="hnsw",
+        )
+
+    assert "--add_vector cannot be combined with --vector_index" in str(exc_info.value)
+    mock_collections.get.assert_not_called()
+
+
+def test_update_collection_add_vector_unsupported_vectorizer(mock_client):
+    """An unsupported vectorizer for --add_vector fails before anything is changed."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            add_vector="revived",
+            add_vector_vectorizer="openai",
+        )
+
+    assert "is not supported for --add_vector" in str(exc_info.value)
+    mock_collections.get.assert_not_called()
+
+
+def test_update_collection_add_vector_quantized_index(mock_client, mock_wvc_object_ttl):
+    """--add_vector_index_type builds a quantized index that honors --training_limit."""
+    mock_collection = _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        add_vector="revived",
+        add_vector_index_type="hnsw_pq",
+        training_limit=777,
+    )
+
+    added = mock_collection.config.add_vector.call_args.kwargs["vector_config"]
+    index_config = added._to_dict()["vectorIndexConfig"]
+    assert index_config["pq"]["enabled"] is True
+    assert index_config["pq"]["trainingLimit"] == 777
+
+
+def test_update_collection_add_vector_rq_index(mock_client, mock_wvc_object_ttl):
+    """--add_vector_index_type hnsw_rq builds an RQ-quantized index."""
+    mock_collection = _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        add_vector="revived",
+        add_vector_index_type="hnsw_rq",
+    )
+
+    added = mock_collection.config.add_vector.call_args.kwargs["vector_config"]
+    assert added._to_dict()["vectorIndexConfig"]["rq"]["enabled"] is True
+
+
+def test_update_collection_add_vector_unsupported_index_type(mock_client):
+    """An unsupported index type for --add_vector fails before anything is changed."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+
+    manager = CollectionManager(mock_client)
+    with pytest.raises(Exception) as exc_info:
+        manager.update_collection(
+            collection="TestCollection",
+            add_vector="revived",
+            add_vector_index_type="bogus",
+        )
+
+    assert "Index type 'bogus' is not supported" in str(exc_info.value)
+    mock_collections.get.assert_not_called()
+
+
 def test_update_collection_drop_vector_index_unknown_vector(
     mock_client, mock_wvc_object_ttl
 ):

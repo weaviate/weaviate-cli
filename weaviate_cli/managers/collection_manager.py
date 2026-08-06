@@ -703,6 +703,85 @@ class CollectionManager:
                 "ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true."
             )
 
+    # Local, no-API-key vectorizers usable for a freshly added named vector.
+    _ADD_VECTOR_FACTORIES = {
+        "none": wvc.Configure.Vectors.self_provided,
+        "contextionary": wvc.Configure.Vectors.text2vec_contextionary,
+        "transformers": wvc.Configure.Vectors.text2vec_transformers,
+        "model2vec": wvc.Configure.Vectors.text2vec_model2vec,
+    }
+    _ADD_VECTOR_INDEX_TYPES = (
+        "hnsw",
+        "flat",
+        "hnsw_pq",
+        "hnsw_sq",
+        "hnsw_bq",
+        "hnsw_rq",
+        "hfresh",
+        "flat_bq",
+        "hnsw_acorn",
+    )
+
+    @staticmethod
+    def __add_vector_index_config(
+        index_type: str, training_limit: int
+    ) -> "wvc.VectorIndexConfig":
+        """Build a create-style index config for a freshly added named vector."""
+        index_map: Dict[str, wvc.VectorIndexConfig] = {
+            "hnsw": wvc.Configure.VectorIndex.hnsw(),
+            "flat": wvc.Configure.VectorIndex.flat(),
+            "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
+                    training_limit=training_limit
+                )
+            ),
+            "hnsw_sq": wvc.Configure.VectorIndex.hnsw(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
+                    training_limit=training_limit
+                )
+            ),
+            "hnsw_bq": wvc.Configure.VectorIndex.hnsw(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+            ),
+            "hnsw_rq": wvc.Configure.VectorIndex.hnsw(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.rq()
+            ),
+            "hfresh": wvc.Configure.VectorIndex.hfresh(),
+            "flat_bq": wvc.Configure.VectorIndex.flat(
+                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
+            ),
+            "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
+                filter_strategy=VectorFilterStrategy.ACORN
+            ),
+        }
+        return index_map[index_type]
+
+    @staticmethod
+    def __add_vector(
+        col_obj: Collection,
+        collection: str,
+        vector_name: str,
+        vectorizer: str,
+        index_type: str,
+        training_limit: int,
+    ) -> None:
+        factory = CollectionManager._ADD_VECTOR_FACTORIES[vectorizer]
+        index_config = CollectionManager.__add_vector_index_config(
+            index_type, training_limit
+        )
+        try:
+            col_obj.config.add_vector(
+                vector_config=factory(
+                    name=vector_name,
+                    vector_index_config=index_config,
+                )
+            )
+        except Exception as e:
+            raise Exception(
+                f"Failed to add named vector '{vector_name}' to collection "
+                f"'{collection}': {e}."
+            )
+
     def update_collection(
         self,
         collection: str = UpdateCollectionDefaults.collection,
@@ -731,6 +810,9 @@ class CollectionManager:
         ] = UpdateCollectionDefaults.object_ttl_property_name,
         async_replication_config: Optional[Dict[str, int]] = None,
         drop_vector_index: Optional[str] = UpdateCollectionDefaults.drop_vector_index,
+        add_vector: Optional[str] = UpdateCollectionDefaults.add_vector,
+        add_vector_vectorizer: str = UpdateCollectionDefaults.add_vector_vectorizer,
+        add_vector_index_type: str = UpdateCollectionDefaults.add_vector_index_type,
     ) -> None:
 
         if (
@@ -749,6 +831,28 @@ class CollectionManager:
             raise Exception(
                 "--drop_vector_index cannot be combined with --vector_index. "
                 "Dropping an index and reconfiguring it in the same call is contradictory."
+            )
+        if add_vector is not None and drop_vector_index is not None:
+            raise Exception(
+                "--add_vector cannot be combined with --drop_vector_index in the same call."
+            )
+        if add_vector is not None and vector_index is not None:
+            raise Exception("--add_vector cannot be combined with --vector_index.")
+        if (
+            add_vector is not None
+            and add_vector_vectorizer not in self._ADD_VECTOR_FACTORIES
+        ):
+            raise Exception(
+                f"Vectorizer '{add_vector_vectorizer}' is not supported for --add_vector. "
+                f"Choose one of: {list(self._ADD_VECTOR_FACTORIES)}."
+            )
+        if (
+            add_vector is not None
+            and add_vector_index_type not in self._ADD_VECTOR_INDEX_TYPES
+        ):
+            raise Exception(
+                f"Index type '{add_vector_index_type}' is not supported for --add_vector. "
+                f"Choose one of: {list(self._ADD_VECTOR_INDEX_TYPES)}."
             )
 
         if async_replication_config is not None and older_than_version(
@@ -887,6 +991,16 @@ class CollectionManager:
         if drop_vector_index is not None:
             self.__drop_vector_index(col_obj, collection, drop_vector_index)
 
+        if add_vector is not None:
+            self.__add_vector(
+                col_obj,
+                collection,
+                add_vector,
+                add_vector_vectorizer,
+                add_vector_index_type,
+                training_limit,
+            )
+
         message = f"Collection '{collection}' modified successfully in Weaviate."
         if drop_vector_index is not None:
             if drop_already_marked:
@@ -900,11 +1014,18 @@ class CollectionManager:
                     "the removal runs asynchronously. Once it finalizes the vector can be "
                     "re-created as a fresh, empty index."
                 )
+        if add_vector is not None:
+            message += (
+                f" Named vector '{add_vector}' was added with a fresh "
+                f"'{add_vector_index_type}' index (vectorizer: {add_vector_vectorizer})."
+            )
 
         if json_output:
             result: Dict[str, str] = {"status": "success", "message": message}
             if drop_vector_index is not None:
                 result["dropped_vector_index"] = drop_vector_index
+            if add_vector is not None:
+                result["added_vector"] = add_vector
             click.echo(json.dumps(result, indent=2))
         else:
             click.echo(message)

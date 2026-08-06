@@ -131,6 +131,40 @@ def update() -> None:
         "ENABLE_EXPERIMENTAL_ALTER_SCHEMA_DROP_VECTOR_INDEX_ENDPOINT=true."
     ),
 )
+@click.option(
+    "--add_vector",
+    default=UpdateCollectionDefaults.add_vector,
+    help=(
+        "Name of a named vector to add to the collection, with a fresh HNSW index. "
+        "Useful to re-create a vector after its index was dropped with --drop_vector_index. "
+        "Cannot be combined with --drop_vector_index or --vector_index."
+    ),
+)
+@click.option(
+    "--add_vector_vectorizer",
+    default=UpdateCollectionDefaults.add_vector_vectorizer,
+    type=click.Choice(["none", "contextionary", "transformers", "model2vec"]),
+    help='Vectorizer for the vector added with --add_vector (default: "none", i.e. self-provided).',
+)
+@click.option(
+    "--add_vector_index_type",
+    default=UpdateCollectionDefaults.add_vector_index_type,
+    type=click.Choice(
+        [
+            "hnsw",
+            "flat",
+            "hnsw_pq",
+            "hnsw_sq",
+            "hnsw_bq",
+            "hnsw_rq",
+            "hfresh",
+            "flat_bq",
+            "hnsw_acorn",
+        ]
+    ),
+    help='Index type (incl. quantization) for the vector added with --add_vector (default: "hnsw"). '
+    "The pq/sq variants use --training_limit.",
+)
 @click.pass_context
 def update_collection_cli(
     ctx: click.Context,
@@ -150,6 +184,9 @@ def update_collection_cli(
     object_ttl_property_name: Optional[str],
     async_replication_config: Tuple[str, ...],
     drop_vector_index: Optional[str],
+    add_vector: Optional[str],
+    add_vector_vectorizer: str,
+    add_vector_index_type: str,
 ) -> None:
     """Update a collection in Weaviate."""
 
@@ -187,6 +224,9 @@ def update_collection_cli(
                 async_replication_config
             ),
             drop_vector_index=drop_vector_index,
+            add_vector=add_vector,
+            add_vector_vectorizer=add_vector_vectorizer,
+            add_vector_index_type=add_vector_index_type,
         )
     except Exception as e:
         click.echo(f"Error: {e}")

@@ -264,6 +264,9 @@ class UpdateCollectionDefaults:
     object_ttl_filter_expired: Optional[bool] = None
     object_ttl_property_name: str = "releaseDate"
     drop_vector_index: Optional[str] = None
+    add_vector: Optional[str] = None
+    add_vector_vectorizer: str = "none"
+    add_vector_index_type: str = "hnsw"
 
 
 @dataclass
