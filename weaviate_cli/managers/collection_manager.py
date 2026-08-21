@@ -12,7 +12,11 @@ from weaviate_cli.defaults import (
     DeleteCollectionDefaults,
     GetCollectionDefaults,
 )
-from weaviate_cli.utils import print_json_or_text, older_than_version
+from weaviate_cli.utils import (
+    print_json_or_text,
+    older_than_version,
+    warn_removed_async_replication_keys,
+)
 import weaviate.classes.config as wvc
 from prettytable import PrettyTable
 
@@ -263,6 +267,8 @@ class CollectionManager:
                 "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
                 "The server may ignore or reject these settings."
             )
+
+        warn_removed_async_replication_keys(self.client, async_replication_config)
 
         if named_vector_name != "default" and not named_vector:
             raise Exception(
@@ -678,6 +684,8 @@ class CollectionManager:
                 "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
                 "The server may ignore or reject these settings."
             )
+
+        warn_removed_async_replication_keys(self.client, async_replication_config)
 
         if not self.client.collections.exists(collection):
 

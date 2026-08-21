@@ -134,6 +134,15 @@ ASYNC_REPLICATION_CONFIG_KEYS = {
 }
 
 
+# Removed from the Weaviate server schema in v1.37.3. Still accepted by the CLI so
+# that users targeting older servers are not broken, but ignored by newer servers.
+ASYNC_REPLICATION_CONFIG_DEPRECATED_KEYS = {
+    "max_workers",
+    "alive_nodes_checking_frequency",
+}
+
+ASYNC_REPLICATION_CONFIG_REMOVED_VERSION = "1.37.3"
+
 ASYNC_REPLICATION_CONFIG_RESET = "reset"
 
 ASYNC_REPLICATION_CONFIG_HELP = (
@@ -141,7 +150,12 @@ ASYNC_REPLICATION_CONFIG_HELP = (
     "Valid keys: " + ", ".join(sorted(ASYNC_REPLICATION_CONFIG_KEYS)) + ". "
     "All values must be integers. "
     'Use "reset" to revert all async replication settings to server defaults (update only). '
-    "Requires --async_enabled on create and Weaviate >= v1.36.0."
+    "Requires --async_enabled on create and Weaviate >= v1.36.0. "
+    "Deprecated keys, ignored by Weaviate >= v"
+    + ASYNC_REPLICATION_CONFIG_REMOVED_VERSION
+    + ": "
+    + ", ".join(sorted(ASYNC_REPLICATION_CONFIG_DEPRECATED_KEYS))
+    + "."
 )
 
 
@@ -194,6 +208,33 @@ def parse_async_replication_config(
             )
 
     return result
+
+
+def warn_removed_async_replication_keys(
+    client, async_replication_config: Optional[dict]
+) -> None:
+    """Warn when async replication keys the target server no longer supports are used.
+
+    ``max_workers`` and ``alive_nodes_checking_frequency`` were removed from the
+    Weaviate server schema in v1.37.3 and are silently ignored from that version on.
+    They remain accepted here so that users targeting older servers keep working.
+    """
+    if not async_replication_config:
+        return
+
+    removed = sorted(
+        ASYNC_REPLICATION_CONFIG_DEPRECATED_KEYS & set(async_replication_config)
+    )
+    if not removed or older_than_version(
+        client, ASYNC_REPLICATION_CONFIG_REMOVED_VERSION
+    ):
+        return
+
+    click.echo(
+        f"Warning: {', '.join(removed)} removed from the Weaviate server schema in "
+        f"v{ASYNC_REPLICATION_CONFIG_REMOVED_VERSION}. "
+        "This server will ignore these settings."
+    )
 
 
 def parse_permission(perm: str) -> PermissionsCreateType:

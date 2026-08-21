@@ -148,17 +148,19 @@ Mutable fields: `--async_enabled`, `--replication_factor`, `--vector_index`, `--
 ```bash
 # Create with async replication tuning (requires --async_enabled and Weaviate >= v1.36.0)
 weaviate-cli create collection --collection MyCol --async_enabled \
-  --async_replication_config max_workers=10 \
   --async_replication_config frequency=60 \
+  --async_replication_config hashtree_height=16 \
   --async_replication_config propagation_concurrency=4 --json
 
 # Update async replication config on existing collection
 weaviate-cli update collection --collection MyCol \
-  --async_replication_config max_workers=20 \
+  --async_replication_config propagation_delay=30 \
   --async_replication_config propagation_batch_size=100 --json
 ```
 
 Valid keys (all integers): `max_workers`, `hashtree_height`, `frequency`, `frequency_while_propagating`, `alive_nodes_checking_frequency`, `logging_frequency`, `diff_batch_size`, `diff_per_node_timeout`, `pre_propagation_timeout`, `propagation_timeout`, `propagation_limit`, `propagation_delay`, `propagation_concurrency`, `propagation_batch_size`
+
+Deprecated (removed from the server schema in Weaviate v1.37.3 and silently ignored from that version on, but still accepted for older servers): `max_workers`, `alive_nodes_checking_frequency`.
 
 #### Object TTL
 

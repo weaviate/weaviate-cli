@@ -1114,3 +1114,114 @@ def test_update_collection_async_replication_config_warns_on_old_version(
         captured.out + captured.err
     )
     mock_collection.config.update.assert_called_once()
+
+
+def test_create_collection_warns_on_removed_async_replication_keys(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Warn when a removed async replication key is used against a server >= v1.37.3."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+    mock_client.get_meta.return_value = {"version": "1.38.0"}
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        replication_factor=3,
+        vector_index="hnsw",
+        async_enabled=True,
+        async_replication_config={"max_workers": 10, "frequency": 60},
+    )
+
+    captured = capsys.readouterr()
+    assert "max_workers removed from the Weaviate server schema in v1.37.3" in (
+        captured.out + captured.err
+    )
+    mock_collections.create.assert_called_once()
+
+
+def test_create_collection_no_removed_key_warning_on_older_server(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """A server older than v1.37.3 still supports the key, so no warning is emitted."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+    mock_client.get_meta.return_value = {"version": "1.36.0"}
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        replication_factor=3,
+        vector_index="hnsw",
+        async_enabled=True,
+        async_replication_config={"max_workers": 10},
+    )
+
+    captured = capsys.readouterr()
+    assert "removed from the Weaviate server schema" not in (
+        captured.out + captured.err
+    )
+    mock_collections.create.assert_called_once()
+
+
+def test_create_collection_no_removed_key_warning_for_supported_keys(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Keys that are still supported never trigger the removal warning."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_collections.exists.side_effect = [False, True]
+    mock_client.get_meta.return_value = {"version": "1.38.0"}
+
+    manager = CollectionManager(mock_client)
+
+    manager.create_collection(
+        collection="TestCollection",
+        replication_factor=3,
+        vector_index="hnsw",
+        async_enabled=True,
+        async_replication_config={"frequency": 60},
+    )
+
+    captured = capsys.readouterr()
+    assert "removed from the Weaviate server schema" not in (
+        captured.out + captured.err
+    )
+    mock_collections.create.assert_called_once()
+
+
+def test_update_collection_warns_on_removed_async_replication_keys(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Warn when a removed async replication key is used against a server >= v1.37.3."""
+    mock_collections = MagicMock()
+    mock_client.collections = mock_collections
+    mock_client.collections.exists.side_effect = [True, True]
+    mock_client.get_meta.return_value = {"version": "1.38.0"}
+
+    mock_collection = MagicMock()
+    mock_client.collections.get.return_value = mock_collection
+    mock_collection.config.get.return_value = MagicMock(
+        replication_config=MagicMock(factor=3),
+        multi_tenancy_config=MagicMock(
+            enabled=False, auto_tenant_creation=False, auto_tenant_activation=False
+        ),
+    )
+
+    manager = CollectionManager(mock_client)
+
+    manager.update_collection(
+        collection="TestCollection",
+        async_replication_config={"alive_nodes_checking_frequency": 30},
+    )
+
+    captured = capsys.readouterr()
+    assert (
+        "alive_nodes_checking_frequency removed from the Weaviate server schema "
+        "in v1.37.3"
+    ) in (captured.out + captured.err)
+    mock_collection.config.update.assert_called_once()

@@ -6,6 +6,10 @@ from weaviate_cli.utils import (
     pp_objects,
     parse_permission,
     parse_async_replication_config,
+    warn_removed_async_replication_keys,
+    ASYNC_REPLICATION_CONFIG_DEPRECATED_KEYS,
+    ASYNC_REPLICATION_CONFIG_KEYS,
+    ASYNC_REPLICATION_CONFIG_HELP,
 )
 from weaviate.collections import Collection
 from io import StringIO
@@ -461,3 +465,73 @@ def test_parse_async_replication_config_reset_case_insensitive():
 def test_parse_async_replication_config_reset_with_other_keys():
     with pytest.raises(ValueError, match="Expected key=value"):
         parse_async_replication_config(("reset", "max_workers=10"))
+
+
+def test_deprecated_async_replication_keys_still_accepted():
+    """Deprecated keys must keep parsing, so older servers are not broken."""
+    for key in ASYNC_REPLICATION_CONFIG_DEPRECATED_KEYS:
+        assert key in ASYNC_REPLICATION_CONFIG_KEYS
+        assert parse_async_replication_config((f"{key}=10",)) == {key: 10}
+
+
+def test_async_replication_help_flags_deprecated_keys():
+    assert "Deprecated keys, ignored by Weaviate >= v1.37.3" in (
+        ASYNC_REPLICATION_CONFIG_HELP
+    )
+    for key in ASYNC_REPLICATION_CONFIG_DEPRECATED_KEYS:
+        assert key in ASYNC_REPLICATION_CONFIG_HELP
+
+
+def test_warn_removed_async_replication_keys_on_new_server(capsys):
+    client = MagicMock()
+    client.get_meta.return_value = {"version": "1.37.3"}
+
+    warn_removed_async_replication_keys(client, {"max_workers": 10})
+
+    captured = capsys.readouterr()
+    assert "max_workers removed from the Weaviate server schema in v1.37.3" in (
+        captured.out + captured.err
+    )
+
+
+def test_warn_removed_async_replication_keys_lists_all_removed_keys(capsys):
+    client = MagicMock()
+    client.get_meta.return_value = {"version": "1.38.0"}
+
+    warn_removed_async_replication_keys(
+        client, {"max_workers": 10, "alive_nodes_checking_frequency": 30}
+    )
+
+    captured = capsys.readouterr()
+    assert "alive_nodes_checking_frequency, max_workers removed" in (
+        captured.out + captured.err
+    )
+
+
+def test_warn_removed_async_replication_keys_silent_on_old_server(capsys):
+    client = MagicMock()
+    client.get_meta.return_value = {"version": "1.37.2"}
+
+    warn_removed_async_replication_keys(client, {"max_workers": 10})
+
+    assert capsys.readouterr().out == ""
+
+
+def test_warn_removed_async_replication_keys_silent_for_supported_keys(capsys):
+    client = MagicMock()
+    client.get_meta.return_value = {"version": "1.38.0"}
+
+    warn_removed_async_replication_keys(client, {"frequency": 60})
+
+    assert capsys.readouterr().out == ""
+
+
+def test_warn_removed_async_replication_keys_handles_empty_config(capsys):
+    """None (unset) and {} (reset) must not trigger a server version lookup."""
+    client = MagicMock()
+
+    warn_removed_async_replication_keys(client, None)
+    warn_removed_async_replication_keys(client, {})
+
+    client.get_meta.assert_not_called()
+    assert capsys.readouterr().out == ""
