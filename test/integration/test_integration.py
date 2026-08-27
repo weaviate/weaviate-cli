@@ -164,3 +164,34 @@ def test_error_handling(collection_manager: CollectionManager):
             training_limit=100000,
             async_enabled=True,
         )
+
+
+def test_query_data_search_types(
+    collection_manager: CollectionManager, data_manager: DataManager
+):
+    # Guards against python-client query-signature drift: each search_type must call
+    # through the client without an unexpected-keyword-argument error (e.g. bm25 once
+    # rejected a stray return_objects kwarg the CLI was passing).
+    try:
+        collection_manager.create_collection(
+            collection="Movies",
+            replication_factor=1,
+            training_limit=100000,
+            async_enabled=False,
+            vectorizer="contextionary",
+            force_auto_schema=True,
+        )
+        data_manager.create_data(collection="Movies", limit=50, randomize=True)
+
+        for search_type in ["fetch", "vector", "keyword", "hybrid"]:
+            # Must not raise for any search type.
+            data_manager.query_data(
+                collection="Movies",
+                search_type=search_type,
+                query="action",
+                limit=5,
+                json_output=True,
+            )
+    finally:
+        if collection_manager.client.collections.exists("Movies"):
+            collection_manager.delete_collection(collection="Movies")
