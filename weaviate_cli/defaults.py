@@ -3,6 +3,30 @@ import multiprocessing
 from typing import Optional, List, Dict
 
 
+# Vector index types that build a fresh index (Configure.VectorIndex.*), shared by
+# `create collection --vector_index` and `update collection --add_vector_index_type`.
+VECTOR_INDEX_TYPES = [
+    "hnsw",
+    "flat",
+    "dynamic",
+    "dynamic_flat_bq",
+    "dynamic_flat_bq_hnsw_pq",
+    "dynamic_flat_bq_hnsw_sq",
+    "dynamic_flat_bq_hnsw_bq",
+    "dynamic_hnsw_pq",
+    "dynamic_hnsw_sq",
+    "dynamic_hnsw_bq",
+    "hnsw_pq",
+    "hnsw_bq",
+    "hnsw_sq",
+    "hnsw_rq",
+    "hnsw_acorn",
+    "hnsw_multivector",
+    "flat_bq",
+    "hfresh",
+]
+
+
 PERMISSION_HELP_STRING = (
     "Permission in format action:collection. Can be specified multiple times.\n\n"
     "Available Permissions:\n\n"

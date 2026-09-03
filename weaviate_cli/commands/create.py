@@ -34,6 +34,7 @@ from weaviate_cli.defaults import (
     CreateRoleDefaults,
     PERMISSION_HELP_STRING,
     MAX_WORKERS,
+    VECTOR_INDEX_TYPES,
 )
 
 
@@ -65,28 +66,7 @@ def create() -> None:
 @click.option(
     "--vector_index",
     default=CreateCollectionDefaults.vector_index,
-    type=click.Choice(
-        [
-            "hnsw",
-            "flat",
-            "dynamic",
-            "dynamic_flat_bq",
-            "dynamic_flat_bq_hnsw_pq",
-            "dynamic_flat_bq_hnsw_sq",
-            "dynamic_flat_bq_hnsw_bq",
-            "dynamic_hnsw_pq",
-            "dynamic_hnsw_sq",
-            "dynamic_hnsw_bq",
-            "hnsw_pq",
-            "hnsw_bq",
-            "hnsw_sq",
-            "hnsw_rq",
-            "hnsw_acorn",
-            "hnsw_multivector",
-            "flat_bq",
-            "hfresh",
-        ]
-    ),
+    type=click.Choice(VECTOR_INDEX_TYPES),
     help="Vector index type (default: 'hnsw').",
 )
 @click.option(

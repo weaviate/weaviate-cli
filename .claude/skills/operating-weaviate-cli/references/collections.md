@@ -154,8 +154,11 @@ finalized -- then re-ingest to repopulate it.
 
 - `--add_vector_vectorizer` -- `none` (default, self-provided vectors), `contextionary`,
   `transformers`, or `model2vec`. Only the local, no-API-key vectorizers are offered.
-- `--add_vector_index_type` -- `hnsw` (default), `flat`, `hnsw_pq`, `hnsw_sq`, `hnsw_bq`,
-  `hnsw_rq`, `hfresh`, `flat_bq`, or `hnsw_acorn`. The `pq`/`sq` variants use `--training_limit`.
+- `--add_vector_index_type` -- the same set as `create collection --vector_index`: `hnsw`
+  (default), `flat`, `dynamic`, the `dynamic_*` variants (`dynamic_flat_bq`,
+  `dynamic_flat_bq_hnsw_pq`, `dynamic_hnsw_pq`, ...), `hnsw_pq`, `hnsw_sq`, `hnsw_bq`,
+  `hnsw_rq`, `hnsw_acorn`, `hnsw_multivector`, `flat_bq`, and `hfresh`. The `pq`/`sq`
+  variants use `--training_limit`.
 - Cannot be combined with `--drop_vector_index` or `--vector_index`.
 - Re-adding a name that still shows `none` (drop not finalized) is rejected by the server; wait
   for the vector to disappear from the schema first.

@@ -1446,6 +1446,21 @@ def test_update_collection_add_vector_rq_index(mock_client, mock_wvc_object_ttl)
     assert added._to_dict()["vectorIndexConfig"]["rq"]["enabled"] is True
 
 
+def test_update_collection_add_vector_dynamic_index(mock_client, mock_wvc_object_ttl):
+    """--add_vector_index_type supports the create-style dynamic variants."""
+    mock_collection = _drop_ready_collection(mock_client)
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        add_vector="revived",
+        add_vector_index_type="dynamic_hnsw_pq",
+    )
+
+    added = mock_collection.config.add_vector.call_args.kwargs["vector_config"]
+    assert added._to_dict()["vectorIndexType"] == "dynamic"
+
+
 def test_update_collection_add_vector_unsupported_index_type(mock_client):
     """An unsupported index type for --add_vector fails before anything is changed."""
     mock_collections = MagicMock()

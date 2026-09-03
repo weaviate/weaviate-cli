@@ -17,6 +17,7 @@ from weaviate_cli.managers.shard_manager import ShardManager
 from weaviate_cli.managers.data_manager import DataManager
 from weaviate.exceptions import WeaviateConnectionError
 from weaviate_cli.defaults import UpdateCollectionDefaults
+from weaviate_cli.defaults import VECTOR_INDEX_TYPES
 from weaviate_cli.defaults import UpdateTenantsDefaults
 from weaviate_cli.defaults import UpdateShardsDefaults
 from weaviate_cli.defaults import UpdateDataDefaults
@@ -149,21 +150,9 @@ def update() -> None:
 @click.option(
     "--add_vector_index_type",
     default=UpdateCollectionDefaults.add_vector_index_type,
-    type=click.Choice(
-        [
-            "hnsw",
-            "flat",
-            "hnsw_pq",
-            "hnsw_sq",
-            "hnsw_bq",
-            "hnsw_rq",
-            "hfresh",
-            "flat_bq",
-            "hnsw_acorn",
-        ]
-    ),
-    help='Index type (incl. quantization) for the vector added with --add_vector (default: "hnsw"). '
-    "The pq/sq variants use --training_limit.",
+    type=click.Choice(VECTOR_INDEX_TYPES),
+    help="Index type for the vector added with --add_vector (same set as create "
+    'collection --vector_index; default "hnsw"). The pq/sq variants use --training_limit.',
 )
 @click.pass_context
 def update_collection_cli(

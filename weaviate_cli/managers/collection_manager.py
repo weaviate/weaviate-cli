@@ -11,6 +11,7 @@ from weaviate_cli.defaults import (
     UpdateCollectionDefaults,
     DeleteCollectionDefaults,
     GetCollectionDefaults,
+    VECTOR_INDEX_TYPES,
 )
 from weaviate_cli.utils import print_json_or_text, older_than_version
 import weaviate.classes.config as wvc
@@ -215,100 +216,21 @@ class CollectionManager:
 
         return wvc.Configure.VectorIndex.hfresh(**kwargs)
 
-    def create_collection(
+    def _build_vector_index_map(
         self,
-        collection: str = CreateCollectionDefaults.collection,
-        replication_factor: int = CreateCollectionDefaults.replication_factor,
-        async_enabled: bool = CreateCollectionDefaults.async_enabled,
-        vector_index: str = CreateCollectionDefaults.vector_index,
-        inverted_index: Optional[str] = CreateCollectionDefaults.inverted_index,
-        training_limit: int = CreateCollectionDefaults.training_limit,
-        multitenant: bool = CreateCollectionDefaults.multitenant,
-        auto_tenant_creation: bool = CreateCollectionDefaults.auto_tenant_creation,
-        auto_tenant_activation: bool = CreateCollectionDefaults.auto_tenant_activation,
-        force_auto_schema: bool = CreateCollectionDefaults.force_auto_schema,
-        shards: int = CreateCollectionDefaults.shards,
-        vectorizer: str = CreateCollectionDefaults.vectorizer,
-        vectorizer_base_url: Optional[
-            str
-        ] = CreateCollectionDefaults.vectorizer_base_url,
-        replication_deletion_strategy: Optional[
-            str
-        ] = CreateCollectionDefaults.replication_deletion_strategy,
-        named_vector: bool = CreateCollectionDefaults.named_vector,
-        named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
-        hfresh_max_posting_size_kb: Optional[
-            int
-        ] = CreateCollectionDefaults.hfresh_max_posting_size_kb,
-        hfresh_replicas: Optional[int] = CreateCollectionDefaults.hfresh_replicas,
-        hfresh_search_probe: Optional[
-            int
-        ] = CreateCollectionDefaults.hfresh_search_probe,
-        distance_metric: Optional[str] = CreateCollectionDefaults.distance_metric,
-        rescore_limit: Optional[int] = CreateCollectionDefaults.rescore_limit,
-        json_output: bool = False,
-        object_ttl_type: str = CreateCollectionDefaults.object_ttl_type,
-        object_ttl_time: Optional[int] = CreateCollectionDefaults.object_ttl_time,
-        object_ttl_filter_expired: Optional[
-            bool
-        ] = CreateCollectionDefaults.object_ttl_filter_expired,
-        object_ttl_property_name: Optional[
-            str
-        ] = CreateCollectionDefaults.object_ttl_property_name,
-        async_replication_config: Optional[Dict[str, int]] = None,
-    ) -> None:
+        training_limit: int,
+        rescore_limit: Optional[int] = None,
+        distance_metric_enum: Optional[wvc.VectorDistances] = None,
+        hfresh_max_posting_size_kb: Optional[int] = None,
+        hfresh_replicas: Optional[int] = None,
+        hfresh_search_probe: Optional[int] = None,
+    ) -> Dict[str, "wvc.VectorIndexConfig"]:
+        """Create-style vector index map shared by create_collection and --add_vector.
 
-        if (
-            object_ttl_type != "property"
-            and object_ttl_property_name
-            != CreateCollectionDefaults.object_ttl_property_name
-        ):
-            raise Exception(
-                "object_ttl_property_name is only valid when object_ttl_type is 'property'."
-            )
-        if self.client.collections.exists(collection):
-
-            raise Exception(
-                f"Error: Collection '{collection}' already exists in Weaviate. Delete using <delete collection> command."
-            )
-
-        if async_replication_config is not None and not async_enabled:
-            raise Exception(
-                "Error: --async_replication_config requires --async_enabled to be set."
-            )
-
-        if async_replication_config is not None and older_than_version(
-            self.client, "1.36.0"
-        ):
-            click.echo(
-                "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
-                "The server may ignore or reject these settings."
-            )
-
-        if named_vector_name != "default" and not named_vector:
-            raise Exception(
-                "Error: Named vector name is only supported with named vectors. Please use --named_vector to enable named vectors."
-            )
-
-        # A comma-separated --named_vector_name creates one named vector per name.
-        named_vector_names = [
-            name.strip()
-            for name in (named_vector_name or "").split(",")
-            if name.strip()
-        ]
-        if named_vector:
-            if not named_vector_names:
-                raise Exception(
-                    "Error: --named_vector_name must contain at least one non-empty name."
-                )
-            if len(named_vector_names) != len(set(named_vector_names)):
-                raise Exception(
-                    "Error: --named_vector_name contains duplicate names; each named vector must have a unique name."
-                )
-
-        distance_metric_enum = self._resolve_distance_metric(distance_metric)
-
-        vector_index_map: Dict[str, wvc.VectorIndexConfig] = {
+        Both build a fresh index (Configure.VectorIndex.*), so one map keeps the set of
+        supported index types identical between the two commands.
+        """
+        return {
             "hnsw": wvc.Configure.VectorIndex.hnsw(
                 distance_metric=distance_metric_enum
             ),
@@ -445,6 +367,108 @@ class CollectionManager:
                 search_probe=hfresh_search_probe,
             ),
         }
+
+    def create_collection(
+        self,
+        collection: str = CreateCollectionDefaults.collection,
+        replication_factor: int = CreateCollectionDefaults.replication_factor,
+        async_enabled: bool = CreateCollectionDefaults.async_enabled,
+        vector_index: str = CreateCollectionDefaults.vector_index,
+        inverted_index: Optional[str] = CreateCollectionDefaults.inverted_index,
+        training_limit: int = CreateCollectionDefaults.training_limit,
+        multitenant: bool = CreateCollectionDefaults.multitenant,
+        auto_tenant_creation: bool = CreateCollectionDefaults.auto_tenant_creation,
+        auto_tenant_activation: bool = CreateCollectionDefaults.auto_tenant_activation,
+        force_auto_schema: bool = CreateCollectionDefaults.force_auto_schema,
+        shards: int = CreateCollectionDefaults.shards,
+        vectorizer: str = CreateCollectionDefaults.vectorizer,
+        vectorizer_base_url: Optional[
+            str
+        ] = CreateCollectionDefaults.vectorizer_base_url,
+        replication_deletion_strategy: Optional[
+            str
+        ] = CreateCollectionDefaults.replication_deletion_strategy,
+        named_vector: bool = CreateCollectionDefaults.named_vector,
+        named_vector_name: Optional[str] = CreateCollectionDefaults.named_vector_name,
+        hfresh_max_posting_size_kb: Optional[
+            int
+        ] = CreateCollectionDefaults.hfresh_max_posting_size_kb,
+        hfresh_replicas: Optional[int] = CreateCollectionDefaults.hfresh_replicas,
+        hfresh_search_probe: Optional[
+            int
+        ] = CreateCollectionDefaults.hfresh_search_probe,
+        distance_metric: Optional[str] = CreateCollectionDefaults.distance_metric,
+        rescore_limit: Optional[int] = CreateCollectionDefaults.rescore_limit,
+        json_output: bool = False,
+        object_ttl_type: str = CreateCollectionDefaults.object_ttl_type,
+        object_ttl_time: Optional[int] = CreateCollectionDefaults.object_ttl_time,
+        object_ttl_filter_expired: Optional[
+            bool
+        ] = CreateCollectionDefaults.object_ttl_filter_expired,
+        object_ttl_property_name: Optional[
+            str
+        ] = CreateCollectionDefaults.object_ttl_property_name,
+        async_replication_config: Optional[Dict[str, int]] = None,
+    ) -> None:
+
+        if (
+            object_ttl_type != "property"
+            and object_ttl_property_name
+            != CreateCollectionDefaults.object_ttl_property_name
+        ):
+            raise Exception(
+                "object_ttl_property_name is only valid when object_ttl_type is 'property'."
+            )
+        if self.client.collections.exists(collection):
+
+            raise Exception(
+                f"Error: Collection '{collection}' already exists in Weaviate. Delete using <delete collection> command."
+            )
+
+        if async_replication_config is not None and not async_enabled:
+            raise Exception(
+                "Error: --async_replication_config requires --async_enabled to be set."
+            )
+
+        if async_replication_config is not None and older_than_version(
+            self.client, "1.36.0"
+        ):
+            click.echo(
+                "Warning: --async_replication_config requires Weaviate >= v1.36.0. "
+                "The server may ignore or reject these settings."
+            )
+
+        if named_vector_name != "default" and not named_vector:
+            raise Exception(
+                "Error: Named vector name is only supported with named vectors. Please use --named_vector to enable named vectors."
+            )
+
+        # A comma-separated --named_vector_name creates one named vector per name.
+        named_vector_names = [
+            name.strip()
+            for name in (named_vector_name or "").split(",")
+            if name.strip()
+        ]
+        if named_vector:
+            if not named_vector_names:
+                raise Exception(
+                    "Error: --named_vector_name must contain at least one non-empty name."
+                )
+            if len(named_vector_names) != len(set(named_vector_names)):
+                raise Exception(
+                    "Error: --named_vector_name contains duplicate names; each named vector must have a unique name."
+                )
+
+        distance_metric_enum = self._resolve_distance_metric(distance_metric)
+
+        vector_index_map = self._build_vector_index_map(
+            training_limit=training_limit,
+            rescore_limit=rescore_limit,
+            distance_metric_enum=distance_metric_enum,
+            hfresh_max_posting_size_kb=hfresh_max_posting_size_kb,
+            hfresh_replicas=hfresh_replicas,
+            hfresh_search_probe=hfresh_search_probe,
+        )
 
         # Vectorizer configurations
         vectorizers_config = {
@@ -710,51 +734,6 @@ class CollectionManager:
         "transformers": wvc.Configure.Vectors.text2vec_transformers,
         "model2vec": wvc.Configure.Vectors.text2vec_model2vec,
     }
-    _ADD_VECTOR_INDEX_TYPES = (
-        "hnsw",
-        "flat",
-        "hnsw_pq",
-        "hnsw_sq",
-        "hnsw_bq",
-        "hnsw_rq",
-        "hfresh",
-        "flat_bq",
-        "hnsw_acorn",
-    )
-
-    @staticmethod
-    def __add_vector_index_config(
-        index_type: str, training_limit: int
-    ) -> "wvc.VectorIndexConfig":
-        """Build a create-style index config for a freshly added named vector."""
-        index_map: Dict[str, wvc.VectorIndexConfig] = {
-            "hnsw": wvc.Configure.VectorIndex.hnsw(),
-            "flat": wvc.Configure.VectorIndex.flat(),
-            "hnsw_pq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.pq(
-                    training_limit=training_limit
-                )
-            ),
-            "hnsw_sq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.sq(
-                    training_limit=training_limit
-                )
-            ),
-            "hnsw_bq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
-            ),
-            "hnsw_rq": wvc.Configure.VectorIndex.hnsw(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.rq()
-            ),
-            "hfresh": wvc.Configure.VectorIndex.hfresh(),
-            "flat_bq": wvc.Configure.VectorIndex.flat(
-                quantizer=wvc.Configure.VectorIndex.Quantizer.bq()
-            ),
-            "hnsw_acorn": wvc.Configure.VectorIndex.hnsw(
-                filter_strategy=VectorFilterStrategy.ACORN
-            ),
-        }
-        return index_map[index_type]
 
     @staticmethod
     def __add_vector(
@@ -762,13 +741,9 @@ class CollectionManager:
         collection: str,
         vector_name: str,
         vectorizer: str,
-        index_type: str,
-        training_limit: int,
+        index_config: "wvc.VectorIndexConfig",
     ) -> None:
         factory = CollectionManager._ADD_VECTOR_FACTORIES[vectorizer]
-        index_config = CollectionManager.__add_vector_index_config(
-            index_type, training_limit
-        )
         try:
             col_obj.config.add_vector(
                 vector_config=factory(
@@ -846,13 +821,10 @@ class CollectionManager:
                 f"Vectorizer '{add_vector_vectorizer}' is not supported for --add_vector. "
                 f"Choose one of: {list(self._ADD_VECTOR_FACTORIES)}."
             )
-        if (
-            add_vector is not None
-            and add_vector_index_type not in self._ADD_VECTOR_INDEX_TYPES
-        ):
+        if add_vector is not None and add_vector_index_type not in VECTOR_INDEX_TYPES:
             raise Exception(
                 f"Index type '{add_vector_index_type}' is not supported for --add_vector. "
-                f"Choose one of: {list(self._ADD_VECTOR_INDEX_TYPES)}."
+                f"Choose one of: {VECTOR_INDEX_TYPES}."
             )
 
         if async_replication_config is not None and older_than_version(
@@ -997,8 +969,9 @@ class CollectionManager:
                 collection,
                 add_vector,
                 add_vector_vectorizer,
-                add_vector_index_type,
-                training_limit,
+                self._build_vector_index_map(training_limit=training_limit)[
+                    add_vector_index_type
+                ],
             )
 
         message = f"Collection '{collection}' modified successfully in Weaviate."
