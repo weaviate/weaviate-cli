@@ -30,7 +30,7 @@ from weaviate_cli.defaults import (
     UpdateDataDefaults,
     DeleteDataDefaults,
 )
-from weaviate_cli.utils import pp_objects
+from weaviate_cli.utils import pp_objects, vector_index_dropped
 
 PROPERTY_NAME_MAPPING = {
     "releaseDate": "release_date",
@@ -672,12 +672,13 @@ class DataManager:
                 all_named_vectors = list(config.vector_config.keys())
                 # Skip vectors whose index was dropped (vectorIndexType "none"): the
                 # server rejects any object carrying a vector that targets a dropped
-                # index, which would fail every batch. Such vectors report a
-                # `vector_index_config` of None.
+                # index, which would fail every batch.
                 named_vectors = [
                     name
                     for name in all_named_vectors
-                    if config.vector_config[name].vector_index_config is not None
+                    if not vector_index_dropped(
+                        config.vector_config[name].vector_index_config
+                    )
                 ]
                 dropped_vectors = [
                     name for name in all_named_vectors if name not in named_vectors

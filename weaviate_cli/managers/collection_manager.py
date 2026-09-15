@@ -13,7 +13,11 @@ from weaviate_cli.defaults import (
     GetCollectionDefaults,
     VECTOR_INDEX_TYPES,
 )
-from weaviate_cli.utils import print_json_or_text, older_than_version
+from weaviate_cli.utils import (
+    print_json_or_text,
+    older_than_version,
+    vector_index_dropped,
+)
 import weaviate.classes.config as wvc
 from prettytable import PrettyTable
 
@@ -711,7 +715,7 @@ class CollectionManager:
                 f"'{collection}'. Available named vectors: "
                 f"{', '.join(sorted(vector_config))}."
             )
-        return vector_config[vector_name].vector_index_config is None
+        return vector_index_dropped(vector_config[vector_name].vector_index_config)
 
     @staticmethod
     def __drop_vector_index(

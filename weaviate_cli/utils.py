@@ -453,3 +453,14 @@ def is_version_older_than(version, check_version):
     ):
         return True
     return False
+
+
+def vector_index_dropped(vector_index_config) -> bool:
+    """Report whether a named vector's index was dropped (vectorIndexType "none").
+
+    Older python-clients report a dropped vector's `vector_index_config` as `None`;
+    newer ones report a `_VectorIndexConfigNone` whose `vector_index_type()` is "none".
+    """
+    return (
+        vector_index_config is None or vector_index_config.vector_index_type() == "none"
+    )

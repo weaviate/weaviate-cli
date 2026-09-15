@@ -6,6 +6,7 @@ from weaviate_cli.utils import (
     pp_objects,
     parse_permission,
     parse_async_replication_config,
+    vector_index_dropped,
 )
 from weaviate.collections import Collection
 from io import StringIO
@@ -461,3 +462,21 @@ def test_parse_async_replication_config_reset_case_insensitive():
 def test_parse_async_replication_config_reset_with_other_keys():
     with pytest.raises(ValueError, match="Expected key=value"):
         parse_async_replication_config(("reset", "max_workers=10"))
+
+
+def test_vector_index_dropped_none():
+    # Older clients report a dropped vector's config as None.
+    assert vector_index_dropped(None) is True
+
+
+def test_vector_index_dropped_none_config_object():
+    # Newer clients report it as _VectorIndexConfigNone (vector_index_type() == "none").
+    cfg = MagicMock()
+    cfg.vector_index_type.return_value = "none"
+    assert vector_index_dropped(cfg) is True
+
+
+def test_vector_index_dropped_active_vector():
+    cfg = MagicMock()
+    cfg.vector_index_type.return_value = "hnsw"
+    assert vector_index_dropped(cfg) is False

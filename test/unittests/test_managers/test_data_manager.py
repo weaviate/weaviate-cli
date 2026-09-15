@@ -942,10 +942,20 @@ class TestCreateDataConcurrentRequestsScaling:
 # ---------------------------------------------------------------------------
 
 
-def _named_vec(dropped, vectorizer_name="none"):
-    """Mock a named-vector config; dropped => vector_index_config is None."""
+def _named_vec(dropped, vectorizer_name="none", new_repr=False):
+    """Mock a named-vector config.
+
+    dropped, new_repr=False => vector_index_config is None (older clients).
+    dropped, new_repr=True  => vector_index_config.vector_index_type() == "none"
+                               (newer clients' _VectorIndexConfigNone).
+    """
     nv = MagicMock()
-    nv.vector_index_config = None if dropped else MagicMock()
+    if dropped and not new_repr:
+        nv.vector_index_config = None
+    elif dropped:
+        nv.vector_index_config.vector_index_type.return_value = "none"
+    else:
+        nv.vector_index_config.vector_index_type.return_value = "hnsw"
     nv.vectorizer.vectorizer = vectorizer_name
     return nv
 
@@ -984,6 +994,30 @@ def test_create_data_skips_dropped_vector_index(mock_client, capsys):
     # vec_a (dropped) must not be generated; only vec_b is passed through
     assert captured["named_vectors"] == ["vec_b"]
     # informational note surfaced to the user
+    assert "skipping dropped vector index" in capsys.readouterr().out
+
+
+def test_create_data_skips_dropped_vector_index_new_client_repr(mock_client, capsys):
+    """Newer clients report a dropped vector as _VectorIndexConfigNone (its
+    vector_index_type() is 'none'), not None; it must still be skipped."""
+    col = _col_with_named_vectors(
+        {
+            "vec_a": _named_vec(dropped=True, new_repr=True),
+            "vec_b": _named_vec(dropped=False),
+        }
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ) as prod:
+        manager = DataManager(mock_client)
+        manager.create_data(collection="SkipTest", limit=10, randomize=True)
+        captured = prod.call_args.kwargs
+
+    assert captured["named_vectors"] == ["vec_b"]
     assert "skipping dropped vector index" in capsys.readouterr().out
 
 

@@ -1546,6 +1546,28 @@ def test_update_collection_drop_vector_index_already_dropped_re_triggers(
     assert "already dropped" in capsys.readouterr().out
 
 
+def test_update_collection_drop_vector_index_already_dropped_new_client_repr(
+    mock_client, mock_wvc_object_ttl, capsys
+):
+    """Newer clients report a dropped vector as _VectorIndexConfigNone (its
+    vector_index_type() is 'none'), not None. A re-drop must still be recognized as
+    already dropped."""
+    mock_collection = _drop_ready_collection(
+        mock_client, vector_config={"title_vector": _named_vector("none")}
+    )
+
+    manager = CollectionManager(mock_client)
+    manager.update_collection(
+        collection="TestCollection",
+        drop_vector_index="title_vector",
+    )
+
+    mock_collection.config.delete_vector_index.assert_called_once_with(
+        vector_name="title_vector"
+    )
+    assert "already dropped" in capsys.readouterr().out
+
+
 def test_update_collection_drop_vector_index_already_dropped_json_re_trigger(
     mock_client, mock_wvc_object_ttl, capsys
 ):
