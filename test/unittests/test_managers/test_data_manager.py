@@ -992,7 +992,7 @@ def test_create_data_skips_dropped_vector_index(mock_client, capsys):
         captured = prod.call_args.kwargs
 
     # vec_a (dropped) must not be generated; only vec_b is passed through
-    assert captured["named_vectors"] == ["vec_b"]
+    assert captured["client_side_named_vectors"] == ["vec_b"]
     # informational note surfaced to the user
     assert "skipping dropped vector index" in capsys.readouterr().out
 
@@ -1017,7 +1017,7 @@ def test_create_data_skips_dropped_vector_index_new_client_repr(mock_client, cap
         manager.create_data(collection="SkipTest", limit=10, randomize=True)
         captured = prod.call_args.kwargs
 
-    assert captured["named_vectors"] == ["vec_b"]
+    assert captured["client_side_named_vectors"] == ["vec_b"]
     assert "skipping dropped vector index" in capsys.readouterr().out
 
 
@@ -1037,7 +1037,7 @@ def test_create_data_all_vectors_dropped_generates_none(mock_client):
         manager.create_data(collection="SkipTest", limit=10, randomize=True)
         kwargs = prod.call_args.kwargs
 
-    assert kwargs["named_vectors"] == []
+    assert kwargs["client_side_named_vectors"] == []
     assert kwargs["vectorizer"] == "none"
 
 
@@ -1057,7 +1057,7 @@ def test_create_data_no_dropped_vectors_unchanged(mock_client, capsys):
         manager.create_data(collection="SkipTest", limit=10, randomize=True)
         kwargs = prod.call_args.kwargs
 
-    assert sorted(kwargs["named_vectors"]) == ["vec_a", "vec_b"]
+    assert sorted(kwargs["client_side_named_vectors"]) == ["vec_a", "vec_b"]
     assert "skipping dropped vector index" not in capsys.readouterr().out
 
 
@@ -1083,7 +1083,7 @@ def test_create_data_mixed_named_vector_modes_only_generates_manual_vectors(
         kwargs = prod.call_args.kwargs
 
     assert kwargs["vectorizer"] == "contextionary"
-    assert kwargs["named_vectors"] == ["manual_vec"]
+    assert kwargs["client_side_named_vectors"] == ["manual_vec"]
 
 
 def test_create_data_missing_named_vectorizer_does_not_crash(mock_client):
@@ -1108,7 +1108,7 @@ def test_create_data_missing_named_vectorizer_does_not_crash(mock_client):
         kwargs = prod.call_args.kwargs
 
     assert kwargs["vectorizer"] == "auto"
-    assert kwargs["named_vectors"] == ["manual_vec"]
+    assert kwargs["client_side_named_vectors"] == ["manual_vec"]
 
 
 def test_create_data_prefers_auto_vectorizer_regardless_of_named_vector_order(
@@ -1133,7 +1133,7 @@ def test_create_data_prefers_auto_vectorizer_regardless_of_named_vector_order(
         kwargs = prod.call_args.kwargs
 
     assert kwargs["vectorizer"] == "contextionary"
-    assert kwargs["named_vectors"] == ["manual_vec"]
+    assert kwargs["client_side_named_vectors"] == ["manual_vec"]
 
 
 def test_create_data_skip_note_suppressed_in_json(mock_client, capsys):
@@ -1174,7 +1174,7 @@ def test_multi_vector_generates_payload_for_all_named_vectors():
             num_objects=1,
             vectorizer="none",
             vector_dimensions=4,
-            named_vectors=["vec_a", "vec_b"],
+            client_side_named_vectors=["vec_a", "vec_b"],
             uuid=None,
             dynamic_batch=False,
             batch_size=1,

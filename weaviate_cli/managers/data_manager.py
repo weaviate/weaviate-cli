@@ -254,7 +254,7 @@ class DataManager:
         num_objects: int,
         vectorizer: str,
         vector_dimensions: int,
-        named_vectors: Optional[List[str]],
+        client_side_named_vectors: Optional[List[str]],
         uuid: Optional[str],
         dynamic_batch: bool,
         batch_size: int,
@@ -281,10 +281,10 @@ class DataManager:
         vector_dimensions : int
             Dimensionality of the generated vector(s) when ``vectorizer == "none"``.
             Should match the collection configuration for the relevant vectorizer(s).
-        named_vectors : Optional[List[str]]
-            Optional list of named vector keys to populate when generating client-side
-            vectors. If ``None``, a single unnamed vector is generated. If provided,
-            one vector per name is generated (or multiple per name when
+        client_side_named_vectors : Optional[List[str]]
+            Optional list of named vector keys that require client-side vector
+            generation. If ``None``, a single unnamed vector is generated. If
+            provided, one vector per name is generated (or multiple per name when
             ``multi_vector`` is ``True``).
         uuid : Optional[str]
             Optional fixed UUID to assign to all generated objects. If ``None``, UUIDs
@@ -337,8 +337,8 @@ class DataManager:
                 Union[List[float], Dict[str, List[float]], Dict[str, List[List[float]]]]
             ]
         ):
-            if named_vectors is not None:
-                if len(named_vectors) == 0:
+            if client_side_named_vectors is not None:
+                if len(client_side_named_vectors) == 0:
                     return None
                 if multi_vector:
                     return {
@@ -346,11 +346,11 @@ class DataManager:
                             (2 * np.random.rand(vector_dimensions) - 1).tolist(),
                             (2 * np.random.rand(vector_dimensions) - 1).tolist(),
                         ]
-                        for name in named_vectors
+                        for name in client_side_named_vectors
                     }
                 return {
                     name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                    for name in named_vectors
+                    for name in client_side_named_vectors
                 }
             if vectorizer != "none":
                 return None
@@ -733,7 +733,7 @@ class DataManager:
                 num_objects=num_objects,
                 vectorizer=vectorizer,
                 vector_dimensions=vector_dimensions or 1536,
-                named_vectors=named_vectors,
+                client_side_named_vectors=named_vectors,
                 uuid=uuid,
                 dynamic_batch=dynamic_batch,
                 batch_size=batch_size,
