@@ -252,7 +252,7 @@ class DataManager:
         self,
         collection: Collection,
         num_objects: int,
-        vectorizer: Optional[str],
+        vectorizer: str,
         vector_dimensions: int,
         named_vectors: Optional[List[str]],
         uuid: Optional[str],
@@ -671,14 +671,14 @@ class DataManager:
             # Determine vector dimensions based on vectorizer
             config = collection.config.get()
 
-            def get_named_vectorizer(name: str) -> Optional[str]:
+            def get_named_vectorizer(name: str) -> str:
                 vectorizer_config = getattr(
                     config.vector_config[name], "vectorizer", None
                 )
                 return (
-                    getattr(vectorizer_config, "vectorizer", None)
+                    getattr(vectorizer_config, "vectorizer", None) or "auto"
                     if vectorizer_config is not None
-                    else None
+                    else "auto"
                 )
 
             if not config.vectorizer and config.vector_config:

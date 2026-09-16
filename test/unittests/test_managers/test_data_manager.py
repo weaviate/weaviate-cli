@@ -1107,7 +1107,7 @@ def test_create_data_missing_named_vectorizer_does_not_crash(mock_client):
         manager.create_data(collection="SkipTest", limit=10, randomize=True)
         kwargs = prod.call_args.kwargs
 
-    assert kwargs["vectorizer"] is None
+    assert kwargs["vectorizer"] == "auto"
     assert kwargs["named_vectors"] == ["manual_vec"]
 
 
