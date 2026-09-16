@@ -1082,7 +1082,7 @@ def test_create_data_mixed_named_vector_modes_only_generates_manual_vectors(
         manager.create_data(collection="SkipTest", limit=10, randomize=True)
         kwargs = prod.call_args.kwargs
 
-    assert kwargs["vectorizer"] == "none"
+    assert kwargs["vectorizer"] == "contextionary"
     assert kwargs["named_vectors"] == ["manual_vec"]
 
 

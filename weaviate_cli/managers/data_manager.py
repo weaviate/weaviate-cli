@@ -337,22 +337,24 @@ class DataManager:
                 Union[List[float], Dict[str, List[float]], Dict[str, List[List[float]]]]
             ]
         ):
-            if vectorizer != "none":
-                return None
-            if multi_vector and named_vectors and len(named_vectors) > 0:
+            if named_vectors is not None:
+                if len(named_vectors) == 0:
+                    return None
+                if multi_vector:
+                    return {
+                        name: [
+                            (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                            (2 * np.random.rand(vector_dimensions) - 1).tolist(),
+                        ]
+                        for name in named_vectors
+                    }
                 return {
-                    name: [
-                        (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                        (2 * np.random.rand(vector_dimensions) - 1).tolist(),
-                    ]
+                    name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
                     for name in named_vectors
                 }
-            if named_vectors is None:
-                return (2 * np.random.rand(vector_dimensions) - 1).tolist()
-            return {
-                name: (2 * np.random.rand(vector_dimensions) - 1).tolist()
-                for name in named_vectors
-            }
+            if vectorizer != "none":
+                return None
+            return (2 * np.random.rand(vector_dimensions) - 1).tolist()
 
         base_seed: Optional[int] = 42 if not skip_seed else None
 
@@ -696,13 +698,9 @@ class DataManager:
                         "generated objects will not carry these vectors."
                     )
                 vectorizer = (
-                    "none"
-                    if client_side_named_vectors
-                    else (
-                        config.vector_config[named_vectors[0]].vectorizer.vectorizer
-                        if named_vectors
-                        else "none"
-                    )
+                    config.vector_config[named_vectors[0]].vectorizer.vectorizer
+                    if named_vectors
+                    else "none"
                 )
                 named_vectors = client_side_named_vectors
             elif config.vectorizer:
