@@ -1061,6 +1061,31 @@ def test_create_data_no_dropped_vectors_unchanged(mock_client, capsys):
     assert "skipping dropped vector index" not in capsys.readouterr().out
 
 
+def test_create_data_mixed_named_vector_modes_only_generates_manual_vectors(
+    mock_client,
+):
+    """Auto-vectorized named vectors must not suppress client-side vectors for manual ones."""
+    col = _col_with_named_vectors(
+        {
+            "auto_vec": _named_vec(dropped=False, vectorizer_name="contextionary"),
+            "manual_vec": _named_vec(dropped=False, vectorizer_name="none"),
+        }
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ) as prod:
+        manager = DataManager(mock_client)
+        manager.create_data(collection="SkipTest", limit=10, randomize=True)
+        kwargs = prod.call_args.kwargs
+
+    assert kwargs["vectorizer"] == "none"
+    assert kwargs["named_vectors"] == ["manual_vec"]
+
+
 def test_create_data_skip_note_suppressed_in_json(mock_client, capsys):
     """The skip note must not corrupt --json output."""
     col = _col_with_named_vectors(
@@ -1079,3 +1104,41 @@ def test_create_data_skip_note_suppressed_in_json(mock_client, capsys):
         )
 
     assert "skipping dropped vector index" not in capsys.readouterr().out
+
+
+def test_multi_vector_generates_payload_for_all_named_vectors():
+    """Each named vector should receive its own multi-vector payload."""
+    batch = MagicMock()
+    batch_cm = MagicMock()
+    batch_cm.__enter__.return_value = batch
+    batch_cm.__exit__.return_value = None
+
+    collection = MagicMock()
+    collection.batch.fixed_size.return_value = batch_cm
+    collection.batch.failed_objects = []
+
+    manager = DataManager(MagicMock())
+    ingested, failed_objects, error_tracker = (
+        manager._DataManager__producer_consumer_ingest(
+            collection=collection,
+            num_objects=1,
+            vectorizer="none",
+            vector_dimensions=4,
+            named_vectors=["vec_a", "vec_b"],
+            uuid=None,
+            dynamic_batch=False,
+            batch_size=1,
+            concurrent_requests=1,
+            multi_vector=True,
+            skip_seed=False,
+            verbose=False,
+        )
+    )
+
+    assert ingested == 1
+    assert failed_objects == []
+    assert error_tracker.total == 0
+
+    vector = batch.add_object.call_args.kwargs["vector"]
+    assert set(vector.keys()) == {"vec_a", "vec_b"}
+    assert all(len(value) == 2 for value in vector.values())

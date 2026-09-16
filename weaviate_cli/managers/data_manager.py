@@ -341,10 +341,11 @@ class DataManager:
                 return None
             if multi_vector and named_vectors and len(named_vectors) > 0:
                 return {
-                    named_vectors[0]: [
+                    name: [
                         (2 * np.random.rand(vector_dimensions) - 1).tolist(),
                         (2 * np.random.rand(vector_dimensions) - 1).tolist(),
                     ]
+                    for name in named_vectors
                 }
             if named_vectors is None:
                 return (2 * np.random.rand(vector_dimensions) - 1).tolist()
@@ -680,6 +681,11 @@ class DataManager:
                         config.vector_config[name].vector_index_config
                     )
                 ]
+                client_side_named_vectors = [
+                    name
+                    for name in named_vectors
+                    if config.vector_config[name].vectorizer.vectorizer == "none"
+                ]
                 dropped_vectors = [
                     name for name in all_named_vectors if name not in named_vectors
                 ]
@@ -690,10 +696,15 @@ class DataManager:
                         "generated objects will not carry these vectors."
                     )
                 vectorizer = (
-                    config.vector_config[named_vectors[0]].vectorizer.vectorizer
-                    if named_vectors
-                    else "none"
+                    "none"
+                    if client_side_named_vectors
+                    else (
+                        config.vector_config[named_vectors[0]].vectorizer.vectorizer
+                        if named_vectors
+                        else "none"
+                    )
                 )
+                named_vectors = client_side_named_vectors
             elif config.vectorizer:
                 vectorizer = config.vectorizer
                 named_vectors = None
