@@ -1111,6 +1111,31 @@ def test_create_data_missing_named_vectorizer_does_not_crash(mock_client):
     assert kwargs["named_vectors"] == ["manual_vec"]
 
 
+def test_create_data_prefers_auto_vectorizer_regardless_of_named_vector_order(
+    mock_client,
+):
+    """Mixed named-vector collections should not let a leading manual vector force ingest mode."""
+    col = _col_with_named_vectors(
+        {
+            "manual_vec": _named_vec(dropped=False, vectorizer_name="none"),
+            "auto_vec": _named_vec(dropped=False, vectorizer_name="contextionary"),
+        }
+    )
+    _setup_mock_client_with_col(mock_client, col)
+
+    with patch.object(
+        DataManager,
+        "_DataManager__producer_consumer_ingest",
+        return_value=(10, [], MagicMock(total=0)),
+    ) as prod:
+        manager = DataManager(mock_client)
+        manager.create_data(collection="SkipTest", limit=10, randomize=True)
+        kwargs = prod.call_args.kwargs
+
+    assert kwargs["vectorizer"] == "contextionary"
+    assert kwargs["named_vectors"] == ["manual_vec"]
+
+
 def test_create_data_skip_note_suppressed_in_json(mock_client, capsys):
     """The skip note must not corrupt --json output."""
     col = _col_with_named_vectors(

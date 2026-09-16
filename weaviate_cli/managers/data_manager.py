@@ -698,6 +698,11 @@ class DataManager:
                     for name in named_vectors
                     if get_named_vectorizer(name) == "none"
                 ]
+                auto_vectorized_named_vectors = [
+                    name
+                    for name in named_vectors
+                    if get_named_vectorizer(name) != "none"
+                ]
                 dropped_vectors = [
                     name for name in all_named_vectors if name not in named_vectors
                 ]
@@ -708,7 +713,9 @@ class DataManager:
                         "generated objects will not carry these vectors."
                     )
                 vectorizer = (
-                    get_named_vectorizer(named_vectors[0]) if named_vectors else "none"
+                    get_named_vectorizer(auto_vectorized_named_vectors[0])
+                    if auto_vectorized_named_vectors
+                    else "none"
                 )
                 named_vectors = client_side_named_vectors
             elif config.vectorizer:
