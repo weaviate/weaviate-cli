@@ -252,7 +252,7 @@ class DataManager:
         self,
         collection: Collection,
         num_objects: int,
-        vectorizer: str,
+        vectorizer: Optional[str],
         vector_dimensions: int,
         named_vectors: Optional[List[str]],
         uuid: Optional[str],
@@ -671,6 +671,16 @@ class DataManager:
             # Determine vector dimensions based on vectorizer
             config = collection.config.get()
 
+            def get_named_vectorizer(name: str) -> Optional[str]:
+                vectorizer_config = getattr(
+                    config.vector_config[name], "vectorizer", None
+                )
+                return (
+                    getattr(vectorizer_config, "vectorizer", None)
+                    if vectorizer_config is not None
+                    else None
+                )
+
             if not config.vectorizer and config.vector_config:
                 all_named_vectors = list(config.vector_config.keys())
                 # Skip vectors whose index was dropped (vectorIndexType "none"): the
@@ -686,7 +696,7 @@ class DataManager:
                 client_side_named_vectors = [
                     name
                     for name in named_vectors
-                    if config.vector_config[name].vectorizer.vectorizer == "none"
+                    if get_named_vectorizer(name) == "none"
                 ]
                 dropped_vectors = [
                     name for name in all_named_vectors if name not in named_vectors
@@ -698,9 +708,7 @@ class DataManager:
                         "generated objects will not carry these vectors."
                     )
                 vectorizer = (
-                    config.vector_config[named_vectors[0]].vectorizer.vectorizer
-                    if named_vectors
-                    else "none"
+                    get_named_vectorizer(named_vectors[0]) if named_vectors else "none"
                 )
                 named_vectors = client_side_named_vectors
             elif config.vectorizer:
