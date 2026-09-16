@@ -671,14 +671,14 @@ class DataManager:
             # Determine vector dimensions based on vectorizer
             config = collection.config.get()
 
-            def get_named_vectorizer(name: str) -> str:
+            def get_named_vectorizer(name: str) -> Optional[str]:
                 vectorizer_config = getattr(
                     config.vector_config[name], "vectorizer", None
                 )
                 return (
-                    getattr(vectorizer_config, "vectorizer", None) or "auto"
+                    getattr(vectorizer_config, "vectorizer", None)
                     if vectorizer_config is not None
-                    else "auto"
+                    else None
                 )
 
             if not config.vectorizer and config.vector_config:
@@ -693,15 +693,18 @@ class DataManager:
                         config.vector_config[name].vector_index_config
                     )
                 ]
-                client_side_named_vectors = [
+                named_vectorizers = {
+                    name: get_named_vectorizer(name) for name in named_vectors
+                }
+                explicit_manual_named_vectors = [
                     name
-                    for name in named_vectors
-                    if get_named_vectorizer(name) == "none"
+                    for name, named_vectorizer in named_vectorizers.items()
+                    if named_vectorizer == "none"
                 ]
-                auto_vectorized_named_vectors = [
+                explicit_auto_vectorized_named_vectors = [
                     name
-                    for name in named_vectors
-                    if get_named_vectorizer(name) != "none"
+                    for name, named_vectorizer in named_vectorizers.items()
+                    if named_vectorizer not in (None, "none")
                 ]
                 dropped_vectors = [
                     name for name in all_named_vectors if name not in named_vectors
@@ -713,11 +716,19 @@ class DataManager:
                         "generated objects will not carry these vectors."
                     )
                 vectorizer = (
-                    get_named_vectorizer(auto_vectorized_named_vectors[0])
-                    if auto_vectorized_named_vectors
+                    named_vectorizers[explicit_auto_vectorized_named_vectors[0]]
+                    if explicit_auto_vectorized_named_vectors
                     else "none"
                 )
-                named_vectors = client_side_named_vectors
+                named_vectors = (
+                    explicit_manual_named_vectors
+                    if explicit_auto_vectorized_named_vectors
+                    else [
+                        name
+                        for name in named_vectors
+                        if named_vectorizers[name] in (None, "none")
+                    ]
+                )
             elif config.vectorizer:
                 vectorizer = config.vectorizer
                 named_vectors = None

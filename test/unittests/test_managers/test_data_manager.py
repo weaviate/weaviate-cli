@@ -1087,12 +1087,13 @@ def test_create_data_mixed_named_vector_modes_only_generates_manual_vectors(
 
 
 def test_create_data_missing_named_vectorizer_does_not_crash(mock_client):
-    """Named vectors without explicit vectorizer metadata should be treated as auto-vectorized."""
-    auto_vec = _named_vec(dropped=False)
-    auto_vec.vectorizer = None
+    """Missing named-vector metadata should not crash mode selection."""
+    unknown_vec = _named_vec(dropped=False)
+    unknown_vec.vectorizer = None
     col = _col_with_named_vectors(
         {
-            "auto_vec": auto_vec,
+            "unknown_vec": unknown_vec,
+            "auto_vec": _named_vec(dropped=False, vectorizer_name="contextionary"),
             "manual_vec": _named_vec(dropped=False, vectorizer_name="none"),
         }
     )
@@ -1107,7 +1108,7 @@ def test_create_data_missing_named_vectorizer_does_not_crash(mock_client):
         manager.create_data(collection="SkipTest", limit=10, randomize=True)
         kwargs = prod.call_args.kwargs
 
-    assert kwargs["vectorizer"] == "auto"
+    assert kwargs["vectorizer"] == "contextionary"
     assert kwargs["client_side_named_vectors"] == ["manual_vec"]
 
 
