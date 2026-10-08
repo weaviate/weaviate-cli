@@ -52,10 +52,6 @@ class BackupManager:
                         if version.compare(semver.Version.parse("1.25.0")) > 0
                         else None
                     )
-        if users_include:
-            _config.includeUsers = users_include.split(",")
-        if roles_include:
-            _config.includeRoles = roles_include.split(",")
         result = self.client.backup.create(
             backup_id=backup_id,
             backend=backend,
@@ -63,7 +59,9 @@ class BackupManager:
             include_collections=include.split(",") if include else None,
             exclude_collections=exclude.split(",") if exclude else None,
             wait_for_completion=wait,
-            config=_config
+            config=_config,
+            include_roles=roles_include.split(",") if roles_include else None,
+            include_users=users_include.split(",") if users_include else None,
         )
 
         if wait and result and result.status.value != "SUCCESS":
