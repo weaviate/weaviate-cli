@@ -28,6 +28,8 @@ class BackupManager:
         incremental_base_backup_id: Optional[
             str
         ] = CreateBackupDefaults.incremental_base_backup_id,
+        users_include: Optional[str] = CreateBackupDefaults.users_include,
+        roles_include: Optional[str] = CreateBackupDefaults.roles_include,
     ) -> None:
 
         version = semver.Version.parse(self.client.get_meta()["version"])
@@ -43,7 +45,17 @@ class BackupManager:
                     raise Exception(
                         f"Collection '{collection}' does not exist in Weaviate. Cannot exclude from backup."
                     )
-
+        _config = (
+                        BackupConfigCreate(
+                            cpu_percentage=cpu_for_backup,
+                        )
+                        if version.compare(semver.Version.parse("1.25.0")) > 0
+                        else None
+                    )
+        if users_include:
+            _config.includeUsers = users_include.split(",")
+        if roles_include:
+            _config.includeRoles = roles_include.split(",")
         result = self.client.backup.create(
             backup_id=backup_id,
             backend=backend,
@@ -51,13 +63,7 @@ class BackupManager:
             include_collections=include.split(",") if include else None,
             exclude_collections=exclude.split(",") if exclude else None,
             wait_for_completion=wait,
-            config=(
-                BackupConfigCreate(
-                    cpu_percentage=cpu_for_backup,
-                )
-                if version.compare(semver.Version.parse("1.25.0")) > 0
-                else None
-            ),
+            config=_config
         )
 
         if wait and result and result.status.value != "SUCCESS":
@@ -87,6 +93,8 @@ class BackupManager:
         wait: bool = RestoreBackupDefaults.wait,
         override_alias: bool = RestoreBackupDefaults.override_alias,
         json_output: bool = False,
+        users_restore: bool = False,
+        roles_restore: bool = False,
     ) -> None:
 
         result = self.client.backup.restore(
@@ -96,6 +104,8 @@ class BackupManager:
             exclude_collections=exclude.split(",") if exclude else None,
             overwrite_alias=override_alias,
             wait_for_completion=wait,
+            users_restore="all" if users_restore else None,
+            roles_restore="all" if roles_restore else None,
         )
 
         if wait and result and result.status.value != "SUCCESS":

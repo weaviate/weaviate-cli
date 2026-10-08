@@ -108,6 +108,8 @@ class CreateBackupDefaults:
     exclude: Optional[str] = None
     wait: bool = False
     cpu_for_backup: int = 40
+    users_include: Optional[str] = None,
+    roles_include: Optional[str] = None
 
 
 @dataclass
