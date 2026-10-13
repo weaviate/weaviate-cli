@@ -46,12 +46,12 @@ class BackupManager:
                         f"Collection '{collection}' does not exist in Weaviate. Cannot exclude from backup."
                     )
         _config = (
-                        BackupConfigCreate(
-                            cpu_percentage=cpu_for_backup,
-                        )
-                        if version.compare(semver.Version.parse("1.25.0")) > 0
-                        else None
-                    )
+            BackupConfigCreate(
+                cpu_percentage=cpu_for_backup,
+            )
+            if version.compare(semver.Version.parse("1.25.0")) > 0
+            else None
+        )
         result = self.client.backup.create(
             backup_id=backup_id,
             backend=backend,
