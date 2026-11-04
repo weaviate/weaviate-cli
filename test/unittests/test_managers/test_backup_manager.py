@@ -251,6 +251,98 @@ def test_create_backup_passes_none_collections_when_not_specified(
 
 
 # ---------------------------------------------------------------------------
+# create_backup — users / roles argument passing
+# ---------------------------------------------------------------------------
+
+
+def test_create_backup_passes_include_users_as_split_list(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    create_backup passes users_include as a split list to include_users and leaves include_roles=None.
+    """
+    backup_manager.create_backup(
+        backup_id="my-backup",
+        backend="s3",
+        users_include="alice,bob",
+    )
+
+    call_kwargs = mock_client_with_backup.backup.create.call_args.kwargs
+    assert call_kwargs["include_users"] == ["alice", "bob"]
+    assert call_kwargs["include_roles"] is None
+
+
+def test_create_backup_passes_include_roles_as_split_list(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    create_backup passes roles_include as a split list to include_roles and leaves include_users=None.
+    """
+    backup_manager.create_backup(
+        backup_id="my-backup",
+        backend="s3",
+        roles_include="admin,viewer",
+    )
+
+    call_kwargs = mock_client_with_backup.backup.create.call_args.kwargs
+    assert call_kwargs["include_roles"] == ["admin", "viewer"]
+    assert call_kwargs["include_users"] is None
+
+
+def test_create_backup_passes_both_users_and_roles(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    create_backup passes both include_users and include_roles when both are specified,
+    alongside the collection include list.
+    """
+    backup_manager.create_backup(
+        backup_id="my-backup",
+        backend="gcs",
+        include="CollectionA",
+        users_include="alice",
+        roles_include="admin,viewer",
+    )
+
+    call_kwargs = mock_client_with_backup.backup.create.call_args.kwargs
+    assert call_kwargs["include_collections"] == ["CollectionA"]
+    assert call_kwargs["include_users"] == ["alice"]
+    assert call_kwargs["include_roles"] == ["admin", "viewer"]
+
+
+def test_create_backup_passes_none_users_and_roles_when_not_specified(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    create_backup passes None for include_users and include_roles when neither is specified.
+    """
+    backup_manager.create_backup(backup_id="my-backup", backend="s3")
+
+    call_kwargs = mock_client_with_backup.backup.create.call_args.kwargs
+    assert call_kwargs["include_users"] is None
+    assert call_kwargs["include_roles"] is None
+
+
+def test_create_backup_users_and_roles_do_not_trigger_collection_checks(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    create_backup does not check collection existence for user or role names.
+    """
+    mock_client_with_backup.collections.exists.return_value = False
+
+    backup_manager.create_backup(
+        backup_id="my-backup",
+        backend="s3",
+        users_include="alice",
+        roles_include="admin",
+    )
+
+    mock_client_with_backup.collections.exists.assert_not_called()
+    mock_client_with_backup.backup.create.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
 # restore_backup — success without wait
 # ---------------------------------------------------------------------------
 
@@ -338,6 +430,84 @@ def test_restore_backup_with_wait_non_success_raises(
 
     assert "my-backup" in str(exc_info.value)
     assert "FAILED" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# restore_backup — users / roles argument passing
+# ---------------------------------------------------------------------------
+
+
+def test_restore_backup_passes_none_users_and_roles_by_default(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    restore_backup passes users_restore=None and roles_restore=None when neither flag is set.
+    """
+    backup_manager.restore_backup(backup_id="my-backup", backend="s3")
+
+    mock_client_with_backup.backup.restore.assert_called_once()
+    call_kwargs = mock_client_with_backup.backup.restore.call_args.kwargs
+    assert call_kwargs["backup_id"] == "my-backup"
+    assert call_kwargs["backend"] == "s3"
+    assert call_kwargs["users_restore"] is None
+    assert call_kwargs["roles_restore"] is None
+
+
+def test_restore_backup_users_restore_true_passes_all(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    restore_backup with users_restore=True passes users_restore="all" and roles_restore=None.
+    """
+    backup_manager.restore_backup(
+        backup_id="my-backup",
+        backend="s3",
+        users_restore=True,
+    )
+
+    call_kwargs = mock_client_with_backup.backup.restore.call_args.kwargs
+    assert call_kwargs["users_restore"] == "all"
+    assert call_kwargs["roles_restore"] is None
+
+
+def test_restore_backup_roles_restore_true_passes_all(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    restore_backup with roles_restore=True passes roles_restore="all" and users_restore=None.
+    """
+    backup_manager.restore_backup(
+        backup_id="my-backup",
+        backend="s3",
+        roles_restore=True,
+    )
+
+    call_kwargs = mock_client_with_backup.backup.restore.call_args.kwargs
+    assert call_kwargs["roles_restore"] == "all"
+    assert call_kwargs["users_restore"] is None
+
+
+def test_restore_backup_both_users_and_roles_restore(
+    backup_manager: BackupManager, mock_client_with_backup: MagicMock
+) -> None:
+    """
+    restore_backup with both flags set passes "all" for both, alongside collection args.
+    """
+    backup_manager.restore_backup(
+        backup_id="my-backup",
+        backend="gcs",
+        include="CollectionA,CollectionB",
+        override_alias=True,
+        users_restore=True,
+        roles_restore=True,
+    )
+
+    call_kwargs = mock_client_with_backup.backup.restore.call_args.kwargs
+    assert call_kwargs["include_collections"] == ["CollectionA", "CollectionB"]
+    assert call_kwargs["exclude_collections"] is None
+    assert call_kwargs["overwrite_alias"] is True
+    assert call_kwargs["users_restore"] == "all"
+    assert call_kwargs["roles_restore"] == "all"
 
 
 # ---------------------------------------------------------------------------

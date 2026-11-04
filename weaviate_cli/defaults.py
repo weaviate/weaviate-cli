@@ -108,6 +108,8 @@ class CreateBackupDefaults:
     exclude: Optional[str] = None
     wait: bool = False
     cpu_for_backup: int = 40
+    users_include: Optional[str] = None
+    roles_include: Optional[str] = None
 
 
 @dataclass
@@ -246,6 +248,8 @@ class RestoreBackupDefaults:
     include: Optional[str] = None
     exclude: Optional[str] = None
     override_alias: bool = False
+    users_restore: bool = False
+    roles_restore: bool = False
 
 
 @dataclass

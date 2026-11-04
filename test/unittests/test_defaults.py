@@ -128,6 +128,8 @@ def test_create_backup_defaults(runner):
     assert CreateBackupDefaults.exclude == CreateBackupDefaults.exclude
     assert CreateBackupDefaults.wait == CreateBackupDefaults.wait
     assert CreateBackupDefaults.cpu_for_backup == CreateBackupDefaults.cpu_for_backup
+    assert CreateBackupDefaults.users_include is None
+    assert CreateBackupDefaults.roles_include is None
 
 
 def test_create_data_defaults(runner):
@@ -305,6 +307,8 @@ def test_restore_backup_defaults(runner):
     assert RestoreBackupDefaults.wait == RestoreBackupDefaults.wait
     assert RestoreBackupDefaults.include == RestoreBackupDefaults.include
     assert RestoreBackupDefaults.exclude == RestoreBackupDefaults.exclude
+    assert RestoreBackupDefaults.users_restore is False
+    assert RestoreBackupDefaults.roles_restore is False
 
 
 def test_update_collection_defaults(runner):
