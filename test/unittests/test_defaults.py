@@ -307,6 +307,8 @@ def test_restore_backup_defaults(runner):
     assert RestoreBackupDefaults.wait == RestoreBackupDefaults.wait
     assert RestoreBackupDefaults.include == RestoreBackupDefaults.include
     assert RestoreBackupDefaults.exclude == RestoreBackupDefaults.exclude
+    assert RestoreBackupDefaults.users_restore is False
+    assert RestoreBackupDefaults.roles_restore is False
 
 
 def test_update_collection_defaults(runner):

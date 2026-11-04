@@ -91,8 +91,8 @@ class BackupManager:
         wait: bool = RestoreBackupDefaults.wait,
         override_alias: bool = RestoreBackupDefaults.override_alias,
         json_output: bool = False,
-        users_restore: bool = False,
-        roles_restore: bool = False,
+        users_restore: bool = RestoreBackupDefaults.users_restore,
+        roles_restore: bool = RestoreBackupDefaults.roles_restore,
     ) -> None:
 
         result = self.client.backup.restore(

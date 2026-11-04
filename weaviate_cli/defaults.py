@@ -248,6 +248,8 @@ class RestoreBackupDefaults:
     include: Optional[str] = None
     exclude: Optional[str] = None
     override_alias: bool = False
+    users_restore: bool = False
+    roles_restore: bool = False
 
 
 @dataclass
