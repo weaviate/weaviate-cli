@@ -262,3 +262,20 @@ def test_get_client_with_host_and_custom_with_ports():
                 assert call_kwargs["grpc_port"] == 8080
                 assert call_kwargs["http_secure"] == True  # URL contains https
                 assert call_kwargs["grpc_secure"] == True  # URL contains https
+
+def test_corrupt_default_config_file_reports_fatal_error(tmp_path, monkeypatch, capsys):
+    # a corrupt default config must fail like an explicit bad --config-file:
+    # a clean fatal message, not a raw traceback from json.load
+    from weaviate_cli.managers import config_manager as config_manager_module
+
+    home = tmp_path / "home"
+    config_dir = home / ".config" / "weaviate"
+    config_dir.mkdir(parents=True)
+    (config_dir / "config.json").write_text("{not valid json", encoding="utf-8")
+    monkeypatch.setattr(config_manager_module.os, "getenv", lambda key, default=None: str(home))
+
+    with pytest.raises(SystemExit) as exc_info:
+        ConfigManager()
+
+    assert exc_info.value.code == 1
+    assert "Fatal Error" in capsys.readouterr().out

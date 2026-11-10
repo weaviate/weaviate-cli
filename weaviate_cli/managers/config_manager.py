@@ -50,7 +50,11 @@ class ConfigManager:
 
             if self.config_path.exists():
                 with open(self.config_path, "r", encoding="utf-8") as config_file:
-                    self.config = json.load(config_file)
+                    try:
+                        self.config = json.load(config_file)
+                    except ValueError:
+                        click.echo("Fatal Error: Config file is not valid JSON!")
+                        sys.exit(1)
             else:
                 self.create_default_config()
 
